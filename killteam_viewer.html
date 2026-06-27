@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -9,19 +9,14 @@
 <meta name="theme-color" content="#0b0e15">
 <title>Kill Team · Viewer</title>
 <style>
-:root {
-  --bg:#0b0e15; --surf:#131720; --card:#181e2c; --border:#252d40;
-  --accent:#e03030; --accent2:#ff6b35; --teal:#3ab8a0; --teal2:#5dd4be;
-  --text:#e8eaf0; --muted:#7a8199; --gold:#d4a843; --blue:#6ab0ff; --orange:#ffb07a;
-  --overlay:rgba(6,8,14,0.97); --tab-h:52px;
-}
+:root{--bg:#0b0e15;--surf:#131720;--card:#181e2c;--border:#252d40;--accent:#e03030;--accent2:#ff6b35;--teal:#3ab8a0;--teal2:#5dd4be;--text:#e8eaf0;--muted:#7a8199;--gold:#d4a843;--blue:#6ab0ff;--orange:#ffb07a;--overlay:rgba(6,8,14,0.97);--tab-h:88px}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif;min-height:100vh;overflow-x:hidden;padding-bottom:80px}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;min-height:100vh;overflow-x:hidden;padding-bottom:80px}
 header{background:linear-gradient(180deg,#07090f 0%,var(--bg) 100%);border-bottom:1px solid var(--border);padding:14px 14px 0;position:sticky;top:0;z-index:20}
 .header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .header-top h1{font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
 .tabs{display:flex}
-.tab{flex:1;height:var(--tab-h);display:flex;align-items:center;justify-content:center;gap:7px;font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;-webkit-user-select:none}
+.tab{flex:1;height:52px;display:flex;align-items:center;justify-content:center;gap:7px;font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;-webkit-user-select:none}
 .tab .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);transition:background .15s}
 .tab.active-mine{color:var(--accent);border-color:var(--accent)}
 .tab.active-mine .dot{background:var(--accent)}
@@ -37,7 +32,7 @@ header{background:linear-gradient(180deg,#07090f 0%,var(--bg) 100%);border-botto
 .toolbar-btn.mine:active{border-color:var(--accent);color:var(--accent)}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:6px 10px 0}
 .card{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:12px 12px 10px;cursor:pointer;position:relative;overflow:hidden;transition:border-color .15s,transform .1s;-webkit-user-select:none}
-.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;opacity:0;transition:opacity .15s}
+.card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;opacity:0;transition:opacity .15s}
 .card.mine::before{background:linear-gradient(90deg,var(--accent),var(--accent2))}
 .card.enemy::before{background:linear-gradient(90deg,var(--teal),var(--teal2))}
 .card:active{transform:scale(0.97)}
@@ -74,7 +69,7 @@ header{background:linear-gradient(180deg,#07090f 0%,var(--bg) 100%);border-botto
 .ov-body{padding:0 14px}
 .sec-label{font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin:16px 0 8px;display:flex;align-items:center;gap:8px}
 .sec-label.enemy{color:var(--teal)}.sec-label.neutral{color:var(--muted)}
-.sec-label::after{content:'';flex:1;height:1px;background:var(--border)}
+.sec-label::after{content:"";flex:1;height:1px;background:var(--border)}
 .wpn-table{width:100%;border-collapse:collapse}
 .wpn-table th{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;padding:4px 6px;border-bottom:1px solid var(--border)}
 .wpn-table td{font-size:12px;padding:6px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:top;color:var(--text)}
@@ -88,7 +83,7 @@ header{background:linear-gradient(180deg,#07090f 0%,var(--bg) 100%);border-botto
 .ability-desc{font-size:11px;line-height:1.5;color:var(--muted)}
 .ability.unique{border-color:#2a3a22}.ability.unique .ability-name{color:#8fcf70}
 .rules-item{background:var(--surf);border:1px solid var(--border);border-radius:9px;margin-bottom:6px;overflow:hidden}
-.rules-item-header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;cursor:pointer;-webkit-user-select:none;gap:8px}
+.rules-item-header{display:flex;align-items:center;padding:10px 12px;cursor:pointer;-webkit-user-select:none;gap:8px}
 .rules-item-name{font-size:12px;font-weight:800;color:var(--text);flex:1}
 .rules-item-name.strat{color:var(--blue)}.rules-item-name.fight{color:var(--orange)}
 .rules-item-chevron{font-size:11px;color:var(--muted);transition:transform .2s;flex-shrink:0}
@@ -101,9 +96,10 @@ header{background:linear-gradient(180deg,#07090f 0%,var(--bg) 100%);border-botto
 .tp-dot.used-fight{background:var(--orange);border-color:var(--orange);color:#0b0e15}
 .eq-item{background:var(--surf);border:1px solid var(--border);border-radius:9px;margin-bottom:6px;overflow:hidden}
 .eq-item-header{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;-webkit-user-select:none}
-.eq-check{width:26px;height:26px;min-width:26px;border-radius:7px;border:2px solid var(--border);background:var(--card);display:flex;align-items:center;justify-content:center;font-size:12px;color:transparent;transition:all .15s;flex-shrink:0}
-.eq-item.taken .eq-check{background:var(--teal);border-color:var(--teal);color:#fff}
-.eq-item.taken.mine-eq .eq-check{background:var(--accent);border-color:var(--accent);color:#fff}
+.eq-num{width:26px;height:26px;min-width:26px;border-radius:7px;border:2px solid var(--border);background:var(--card);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:transparent;transition:all .15s;flex-shrink:0}
+.eq-item.taken .eq-num{color:#fff}
+.eq-item.taken.mine-eq .eq-num{background:var(--accent);border-color:var(--accent)}
+.eq-item.taken.enemy-eq .eq-num{background:var(--teal);border-color:var(--teal)}
 .eq-item-name{font-size:12px;font-weight:800;color:var(--text);flex:1}
 .eq-item-chevron{font-size:11px;color:var(--muted);transition:transform .2s;flex-shrink:0}
 .eq-item.open .eq-item-chevron{transform:rotate(90deg)}
@@ -116,8 +112,8 @@ header{background:linear-gradient(180deg,#07090f 0%,var(--bg) 100%);border-botto
 <header>
   <div class="header-top"><h1>Kill Team · Field Viewer</h1></div>
   <div class="tabs">
-    <div class="tab active-mine" id="tab-mine" onclick="switchTab('mine')"><div class="dot"></div> Mój Team</div>
-    <div class="tab" id="tab-enemy" onclick="switchTab('enemy')"><div class="dot"></div> Przeciwnik</div>
+    <div class="tab active-mine" id="tab-mine" onclick="switchTab('mine')"><div class="dot"></div> My Team</div>
+    <div class="tab" id="tab-enemy" onclick="switchTab('enemy')"><div class="dot"></div> Opponent</div>
   </div>
 </header>
 
@@ -125,16 +121,16 @@ header{background:linear-gradient(180deg,#07090f 0%,var(--bg) 100%);border-botto
   <div class="panel-toolbar">
     <div class="dropdown-wrap">
       <select class="faction-select" id="mine-select" onchange="switchMineFaction(this.value)">
-        <option value="murderwing">Murderwing</option>
-        <option value="raveners">Raveners</option>
-        <option value="xv26">XV26 Stealth Battlesuits</option>
-        <option value="hearthkyn">Hearthkyn Salvager</option>
-        <option value="goremonger">Goremonger</option>
+        <option value="murderwing" selected>Murderwing</option>
+<option value="raveners">Raveners</option>
+<option value="xv26">XV26 Stealth Battlesuits</option>
+<option value="hearthkyn">Hearthkyn Salvager</option>
+<option value="goremonger">Goremonger</option>
       </select>
       <span class="dropdown-arrow">&#9660;</span>
     </div>
-    <div class="toolbar-btn mine" onclick="openRules('mine')">&#9876; Zasady</div>
-    <div class="toolbar-btn mine" onclick="openEq('mine')">&#127920; EQ</div>
+    <button class="toolbar-btn mine" onclick="openRules('mine')">&#9876; Rules</button>
+    <button class="toolbar-btn mine" onclick="openEq('mine')">&#127920; EQ</button>
   </div>
   <div id="mine-grids"></div>
 </div>
@@ -144,21 +140,22 @@ header{background:linear-gradient(180deg,#07090f 0%,var(--bg) 100%);border-botto
     <div class="dropdown-wrap">
       <select class="faction-select" id="enemy-select" onchange="switchEnemyFaction(this.value)">
         <option value="murderwing">Murderwing</option>
-        <option value="raveners" selected>Raveners</option>
-        <option value="xv26">XV26 Stealth Battlesuits</option>
-        <option value="hearthkyn">Hearthkyn Salvager</option>
-        <option value="goremonger">Goremonger</option>
+<option value="raveners" selected>Raveners</option>
+<option value="xv26">XV26 Stealth Battlesuits</option>
+<option value="hearthkyn">Hearthkyn Salvager</option>
+<option value="goremonger">Goremonger</option>
       </select>
       <span class="dropdown-arrow">&#9660;</span>
     </div>
-    <div class="toolbar-btn" onclick="openRules('enemy')">&#9876; Zasady</div>
-    <div class="toolbar-btn" onclick="openEq('enemy')">&#127920; EQ</div>
+    <button class="toolbar-btn" onclick="openRules('enemy')">&#9876; Rules</button>
+    <button class="toolbar-btn" onclick="openEq('enemy')">&#127920; EQ</button>
   </div>
   <div id="enemy-grids"></div>
 </div>
 
-<div class="overlay" id="overlay">
-  <div class="ov-inner">
+<!-- UNIT OVERLAY -->
+<div class="overlay" id="overlay" onclick="closeOverlay()">
+  <div class="ov-inner" onclick="event.stopPropagation()">
     <div class="ov-header">
       <div><div class="ov-role" id="ov-role"></div><div class="ov-name" id="ov-name"></div><div class="ov-badges" id="ov-badges"></div></div>
       <div class="close-btn" onclick="closeOverlay()">&#x2715;</div>
@@ -167,8 +164,9 @@ header{background:linear-gradient(180deg,#07090f 0%,var(--bg) 100%);border-botto
   </div>
 </div>
 
-<div class="overlay" id="rules-overlay">
-  <div class="ov-inner">
+<!-- RULES OVERLAY -->
+<div class="overlay" id="rules-overlay" onclick="closeRules()">
+  <div class="ov-inner" onclick="event.stopPropagation()">
     <div class="ov-header">
       <div><div class="ov-role" id="ro-sub"></div><div class="ov-name" id="ro-name"></div></div>
       <div class="close-btn" onclick="closeRules()">&#x2715;</div>
@@ -177,8 +175,9 @@ header{background:linear-gradient(180deg,#07090f 0%,var(--bg) 100%);border-botto
   </div>
 </div>
 
-<div class="overlay" id="eq-overlay">
-  <div class="ov-inner">
+<!-- EQ OVERLAY -->
+<div class="overlay" id="eq-overlay" onclick="closeEq()">
+  <div class="ov-inner" onclick="event.stopPropagation()">
     <div class="ov-header">
       <div><div class="ov-role" id="eq-sub"></div><div class="ov-name" id="eq-name"></div></div>
       <div class="close-btn" onclick="closeEq()">&#x2715;</div>
@@ -786,11 +785,8 @@ const GOREMONGER = [
 
 
 const ALL_FACTION_UNITS = {
-  murderwing: MINE,
-  raveners:   RAVENERS,
-  xv26:       XV26,
-  hearthkyn:  HEARTHKYN,
-  goremonger: GOREMONGER,
+  murderwing: MINE, raveners: RAVENERS, xv26: XV26,
+  hearthkyn: HEARTHKYN, goremonger: GOREMONGER
 };
 
 const FACTION_RULES = {
@@ -909,362 +905,420 @@ const FACTION_RULES = {
 };
 
 
+
+FACTION_EQ.murderwing = FACTION_EQ.murderwing || FACTION_EQ.murderwing;
+
+var UNIVERSAL_EQ = [{"id": "ue-ammo", "name": "1x Ammo Cache", "desc": "Before the battle, set up one Ammo Cache marker in your territory. AMMO RESUPPLY (0AP mission action): one Ammo Cache marker you control is used this turning point — until the start of the next turning point, when shooting, you can re-roll one attack dice. Cannot use while in control range of an enemy operative or if the marker has been used this turning point."}, {"id": "ue-razor", "name": "1x Razor Wire", "desc": "Exposed and Obstructing terrain. Set up wholly within your territory before the battle. Obstructing: whenever an operative would cross over this terrain feature within 1\" of it, treat the distance as an additional 1\"."}, {"id": "ue-comms", "name": "1x Comms Device", "desc": "Before the battle, set up one Comms Device marker in your territory. While a friendly operative controls this marker, add 3\" to the distance requirements of its SUPPORT rules that refer to friendly operatives."}, {"id": "ue-mines", "name": "1x Mines", "desc": "Before the battle, set up one Mines marker in your territory, more than 2\" from other markers, access points and Accessible terrain. The first time that marker is within an operative's control range, remove it and inflict D3+3 damage on that operative."}, {"id": "ue-lbarricade", "name": "2x Light Barricades", "desc": "Light terrain (feet are Insignificant and Exposed). Set up wholly within your territory before the battle."}, {"id": "ue-hbarricade", "name": "1x Heavy Barricade", "desc": "Heavy terrain. Set up wholly within 4\" of your drop zone before the battle."}, {"id": "ue-ladders", "name": "2x Ladders", "desc": "Insignificant and Exposed terrain. Set up within your territory, upright against terrain at least 2\" tall, more than 2\" from other equipment terrain features and more than 1\" from doors and access points. Once per action, when an operative is climbing the terrain a ladder is placed against, treat the vertical distance as 1\" if the ladder is within control range during the entire climb."}, {"id": "ue-portable", "name": "1x Portable Barricade", "desc": "Light, Protective and Portable terrain (feet Insignificant/Exposed). Protective: while in cover from this feature, improve Save stat by 1 (max 2+). Portable: only provides cover while an operative is connected and the shield is intervening. MOVE WITH BARRICADE (1AP): like Reposition but max Move -2\", cannot climb/drop/jump. Cannot use while in control range of enemy or during same activation as Fall Back or Charge."}, {"id": "ue-utility", "name": "Utility Grenades", "desc": "Select two utility grenades (2 smoke, 2 stun, or 1+1). SMOKE GRENADE (1AP): place a Smoke Grenade marker within 6\" visible to this operative — creates smoke 1\" horizontally; operatives wholly within are Obscured to those more than 2\" away; Piercing 2 becomes Piercing 1 within smoke unless within 2\". Removed after D3 activations or end of TP. STUN GRENADE (1AP): select visible enemy within 6\" — it and each operative within 1\" take a stun test (D6, on 3+ subtract 1 APL until end of next activation)."}, {"id": "ue-explosive", "name": "Explosive Grenades", "desc": "Select two explosive grenades (2 frag, 2 krak, or 1+1). Frag grenade: ATK 4, HIT 4+, DMG 2/4, Range 6\", Blast 2\", Saturate. Krak grenade: ATK 4, HIT 4+, DMG 4/5, Range 6\", Piercing 1, Saturate. Each usable a number of times equal to your selection."}, {"id": "ue-breach", "name": "Breaching Charge", "desc": "Once per battle, when a friendly operative performs the Breach action, it can perform it for 1 less AP (minimum 1AP) as though it had the word \"breach marker\" on its datacard."}];
+
 FACTION_RULES.murderwing = FACTION_RULES.mine;
+
+const FACTION_EQ = {
+  "murderwing": [
+    {
+      "id": "mw-bladefins",
+      "name": "Bladefins",
+      "desc": "Friendly MURDERWING operatives can perform: SLICE FROM ABOVE (1AP, BOOST action) — Inflict D3+1 damage on one enemy operative within this operative's BOOST ZONE. Performed during the Fall Back or Reposition action after setting up from a BOOST."
+    },
+    {
+      "id": "mw-clawed",
+      "name": "Clawed Armour",
+      "desc": "Friendly MURDERWING operatives can perform: CLAWED CHARGE (0AP, BOOST action) — Inflict 1 damage on one enemy operative within this operative's control range, then the Charge action ends. Performed during the Charge action after setting up from a BOOST."
+    },
+    {
+      "id": "mw-warpfuel",
+      "name": "Warp Fuel",
+      "desc": "Once per turning point, when an enemy operative ends the Fall Back action during its activation, if at least one friendly MURDERWING operative was within its control range at the start of that action, one of those friendly operatives can immediately perform a free Reposition or Charge action, but cannot use more than 3\" of move distance."
+    },
+    {
+      "id": "mw-voxcasters",
+      "name": "Vox-Casters",
+      "desc": "Friendly MURDERWING operatives can perform: VOX-CRY (1AP) — Each enemy operative within 3\" of this operative takes a stun test. Roll one D6: on a 3+, subtract 1 from its APL stat until the end of its next activation. Cannot perform this action while this operative has a Conceal order."
+    }
+  ],
+  "raveners": [
+    {
+      "id": "rv-chromato",
+      "name": "Chromatospore Camouflage",
+      "desc": "Whenever an operative is shooting a friendly RAVENER operative, if you can retain any cover saves, you can retain one additional cover save. This isn't cumulative with improved cover saves from Vantage terrain."
+    },
+    {
+      "id": "rv-acidblood",
+      "name": "Acid Blood",
+      "desc": "Whenever a friendly RAVENER operative is fighting or retaliating, whenever an attack dice inflicts damage on it, roll one D6: on a 5+, inflict 1 damage on the enemy operative in that sequence."
+    },
+    {
+      "id": "rv-metamorphic",
+      "name": "Metamorphic Flesh",
+      "desc": "Whenever a friendly RAVENER operative is activated, it regains up to D3 lost wounds."
+    },
+    {
+      "id": "rv-heightened",
+      "name": "Heightened Senses",
+      "desc": "Once per battle, after rolling off to decide initiative, if a friendly RAVENER operative is underground and an enemy operative is within 5\" of your TUNNEL, you can re-roll your dice."
+    }
+  ],
+  "xv26": [
+    {
+      "id": "xv-multitrackers",
+      "name": "XV26 Multitrackers",
+      "desc": "Once per turning point, when a friendly XV26 STEALTH BATTLESUIT operative is shooting and selects the burst cannon (sweeping) profile, until the end of that action the burst cannon (sweeping) has the Torrent 2\" weapon rule."
+    },
+    {
+      "id": "xv-blacksun",
+      "name": "Advanced Blacksun Filters",
+      "desc": "Whenever a friendly XV26 STEALTH BATTLESUIT operative is shooting an Obscured enemy operative, that friendly operative does not have to discard one of its successes as a result of the Obscured rule. Other effects of the Obscured rule still apply."
+    },
+    {
+      "id": "xv-jammers",
+      "name": "Counter-Network Jammers",
+      "desc": "STRATEGIC GAMBIT: Select one objective marker or mission marker. Until the end of the turning point, when determining control of that marker, treat the total APL stat of enemy operatives that contest it as 1 lower if at least one enemy operative contesting it is within 3\" of a friendly XV26 STEALTH BATTLESUIT operative."
+    },
+    {
+      "id": "xv-targetlocks",
+      "name": "Hardwired Target Locks",
+      "desc": "Whenever it's your turn to counteract with a friendly XV26 STEALTH BATTLESUIT operative that has a Conceal order and is more than 3\" from all enemy operatives, you can counteract with it. If you do, change its order to Engage, but it can only perform the Shoot action during that counteraction."
+    }
+  ],
+  "hearthkyn": [
+    {
+      "id": "hk-plasmaknives",
+      "name": "Plasma Knives",
+      "desc": "All HEARTHKYN SALVAGER operatives gain the following melee weapon: Plasma knives — ATK 3, HIT 4+, DMG 3/5, Lethal 5+. The FIELD MEDIC already has plasma knives on its datacard — use whichever profile is better."
+    },
+    {
+      "id": "hk-excavation",
+      "name": "Excavation Tools",
+      "desc": "Friendly HEARTHKYN SALVAGER operatives can perform the Pick Up Marker action for 1 less AP. In addition, they do not need to control a marker to pick it up — they only need to contest it."
+    },
+    {
+      "id": "hk-climbing",
+      "name": "Climbing Rigs",
+      "desc": "During each friendly HEARTHKYN SALVAGER operative's activation: when it climbs, treat the vertical distance as 2\" regardless of actual distance; or when it descends, it can ignore the vertical distance."
+    },
+    {
+      "id": "hk-writ",
+      "name": "Writ of Claim",
+      "desc": "Once per battle, if friendly HEARTHKYN SALVAGER operatives are contesting two or more objective markers, after rolling off to decide initiative, you can re-roll your dice."
+    }
+  ],
+  "goremonger": [
+    {
+      "id": "gm-gorytotem",
+      "name": "Gory Totem",
+      "desc": "Before the battle, place one Gory Totem marker on the killzone floor, wholly within your territory and more than 2\" from other markers. Enemy operatives within 3\" of that marker cannot re-roll their attack dice."
+    },
+    {
+      "id": "gm-cadaver",
+      "name": "Bloody Cadaver",
+      "desc": "Before the battle, place one Bloody Cadaver marker on the killzone floor, wholly within your territory. GOREMONGER operatives can perform the Pick Up Marker action on it. In the Ready step of each turning point, if a friendly GOREMONGER operative is carrying that marker and is not within control range of an enemy operative, you can increase that operative's GORE TANK."
+    },
+    {
+      "id": "gm-chaossigil",
+      "name": "Chaos Sigil",
+      "desc": "Once per turning point, when an enemy operative is shooting a friendly GOREMONGER operative, at the start of the Roll Defence Dice step, worsen the Piercing weapon rule of each of that enemy operative's weapons by 1 for that shooting action (e.g. Piercing 1 has no effect for that action)."
+    },
+    {
+      "id": "gm-wristchains",
+      "name": "Wrist Chains",
+      "desc": "Once per turning point, when a friendly GOREMONGER operative is performing the Shoot action, select one melee weapon: chainblade, chainglaive, great chainaxe (losing Brutal) or pickrippers. Until the end of that action, that weapon is treated as a ranged weapon with Range 2\"."
+    }
+  ]
+};
+
 FACTION_EQ.murderwing    = FACTION_EQ.mine;
 
-var UNIVERSAL_EQ = [{"id": "ue-ammo", "name": "1x Ammo Cache", "desc": "Before the battle, set up one Ammo Cache marker in your territory. AMMO RESUPPLY (0AP, mission action): one Ammo Cache marker you control is used this turning point. Until the start of the next turning point, when shooting with a weapon from this operative's datacard, you can re-roll one attack dice. Cannot use while within control range of an enemy operative or if the marker has been used this turning point."}, {"id": "ue-razor", "name": "1x Razor Wire", "desc": "Exposed and Obstructing terrain. Set up wholly within your territory before the battle. Obstructing: whenever an operative would cross over this terrain feature within 1\" of it, treat the distance as an additional 1\"."}, {"id": "ue-comms", "name": "1x Comms Device", "desc": "Before the battle, set up one Comms Device marker in your territory. While a friendly operative controls this marker, add 3\" to the distance requirements of its SUPPORT rules that refer to friendly operatives."}, {"id": "ue-mines", "name": "1x Mines", "desc": "Before the battle, set up one Mines marker in your territory, more than 2\" from other markers, access points and Accessible terrain. The first time that marker is within an operative's control range, remove it and inflict D3+3 damage on that operative."}, {"id": "ue-lbarricade", "name": "2x Light Barricades", "desc": "Light terrain (feet are Insignificant and Exposed). Set up wholly within your territory before the battle."}, {"id": "ue-hbarricade", "name": "1x Heavy Barricade", "desc": "Heavy terrain. Set up wholly within 4\" of your drop zone before the battle."}, {"id": "ue-ladders", "name": "2x Ladders", "desc": "Insignificant and Exposed terrain. Set up within your territory, upright against terrain at least 2\" tall, more than 2\" from other equipment terrain features and more than 1\" from doors and access points. Once per action, when an operative is climbing the terrain a ladder is placed against, treat the vertical distance as 1\" if the ladder is within control range during the entire climb."}, {"id": "ue-portable", "name": "1x Portable Barricade", "desc": "Light, Protective and Portable terrain (feet are Insignificant/Exposed). Protective: while in cover from this feature, improve Save stat by 1 (max 2+). Portable: only provides cover while an operative is connected to it and the shield is intervening. MOVE WITH BARRICADE (1AP): like Reposition but max Move -2\" and cannot climb, drop or jump. Cannot perform while in control range of an enemy operative or during same activation as Fall Back or Charge."}, {"id": "ue-utility", "name": "Utility Grenades", "desc": "Select two utility grenades (2 smoke, 2 stun, or 1+1). SMOKE GRENADE (1AP): place a Smoke Grenade marker within 6\" visible to this operative. Creates smoke 1\" horizontally/unlimited height \u2014 operatives wholly within are Obscured to those more than 2\" away; Piercing 2/Crits 2 becomes Piercing 1/Crits 1 within smoke unless within 2\". Removed after D3 activations or end of TP. STUN GRENADE (1AP): select visible enemy within 6\" \u2014 it and each operative within 1\" take a stun test (D6, on 3+ subtract 1 APL until end of next activation). Each effect usable a number of times equal to your selection."}, {"id": "ue-explosive", "name": "Explosive Grenades", "desc": "Select two explosive grenades (2 frag, 2 krak, or 1+1). Frag grenade: ATK 4, HIT 4+, DMG 2/4, Range 6\", Blast 2\", Saturate. Krak grenade: ATK 4, HIT 4+, DMG 4/5, Range 6\", Piercing 1, Saturate. Each usable a number of times equal to your selection."}, {"id": "ue-breach", "name": "Breaching Charge", "desc": "Once per battle, when a friendly operative performs the Breach action, that operative can perform it for 1 less AP (minimum 1AP) as though it had the word \"breach marker\" on its datacard."}];
-
 /* STATE */
-var activeTab      = 'mine';
-var mineFaction    = 'murderwing';
-var enemyFaction   = 'raveners';
-var selected       = {};
-var selectCounter  = 0;
-var eqTaken        = {};
-var eqOrder        = {};
-var eqCounter      = 0;
-var ployTP         = {};
+var activeTab     = "mine";
+var mineFaction   = "murderwing";
+var enemyFaction  = "raveners";
+var selected      = {};
+var selectCounter = 0;
+var eqTaken       = {};
+var eqOrder       = {};
+var eqCounter     = 0;
+var ployTP        = {};
 
 /* BUILD GRID */
 function buildGrid(faction, side) {
   var units = ALL_FACTION_UNITS[faction] || [];
-  var grid  = document.createElement('div');
-  grid.className = 'grid';
-  grid.id = 'grid-' + side + '-' + faction;
+  var grid  = document.createElement("div");
+  grid.className = "grid";
+  grid.id = "grid-" + side + "-" + faction;
   units.forEach(function(u) {
-    var u2 = Object.assign({}, u, {side: side});
-    grid.appendChild(buildCard(u2));
+    grid.appendChild(buildCard(Object.assign({}, u, {side: side})));
   });
   return grid;
 }
 
 function showGrid(side, faction) {
-  var container = document.getElementById(side === 'mine' ? 'mine-grids' : 'enemy-grids');
-  Array.from(container.children).forEach(function(c){ c.style.display = 'none'; });
-  var existing = document.getElementById('grid-' + side + '-' + faction);
-  if (existing) {
-    existing.style.display = '';
-  } else {
-    container.appendChild(buildGrid(faction, side));
-  }
+  var container = document.getElementById(side === "mine" ? "mine-grids" : "enemy-grids");
+  Array.from(container.children).forEach(function(c){ c.style.display = "none"; });
+  var existing = document.getElementById("grid-" + side + "-" + faction);
+  if (existing) { existing.style.display = ""; }
+  else { container.appendChild(buildGrid(faction, side)); }
 }
 
 /* BUILD CARD */
 function buildCard(unit) {
-  var card   = document.createElement('div');
-  var uid    = unit.side + '-' + unit.id;
-  card.className = 'card ' + unit.side;
-  card.id        = 'card-' + uid;
+  var uid  = unit.side + "-" + unit.id;
+  var card = document.createElement("div");
+  card.className = "card " + unit.side;
+  card.id = "card-" + uid;
 
-  var statKeys = ['APL','MOV','SV','W'];
+  var statKeys = ["APL","MOV","SV","W"];
   var statVals = [unit.apl, unit.move, unit.save, unit.wounds];
   var statRow  = statKeys.map(function(k,i){
-    return '<div class="sm"><span>'+k+'</span><span>'+statVals[i]+'</span></div>';
-  }).join('');
+    return "<div class=\"sm\"><span>"+k+"</span><span>"+statVals[i]+"</span></div>";
+  }).join("");
 
-  var long = unit.name.length > 15;
   card.innerHTML =
-    '<div class="card-num" id="num-'+uid+'"></div>' +
-    '<div class="card-role">'+unit.role+'</div>' +
-    '<div class="card-name'+(long?' long':'')+'">'+unit.name+'</div>' +
-    '<div class="stat-row">'+statRow+'</div>' +
-    '<div class="card-pills"><span class="pill w">W '+unit.wounds+'</span><span class="pill sv">Sv '+unit.save+'</span></div>';
+    "<div class=\"card-num\" id=\"num-"+uid+"\"></div>" +
+    "<div class=\"card-role\">"+unit.role+"</div>" +
+    "<div class=\"card-name"+(unit.name.length>15?" long":"")+"\">"+unit.name+"</div>" +
+    "<div class=\"stat-row\">"+statRow+"</div>" +
+    "<div class=\"card-pills\"><span class=\"pill w\">W "+unit.wounds+"</span><span class=\"pill sv\">Sv "+unit.save+"</span></div>";
 
-  card.querySelector('.card-num').addEventListener('click', function(e){
-    e.stopPropagation();
-    toggleSelect(unit, uid);
+  card.querySelector(".card-num").addEventListener("click", function(e){
+    e.stopPropagation(); toggleSelect(unit, uid);
   });
-  card.addEventListener('click', function(){ openOverlay(unit); });
+  card.addEventListener("click", function(){ openOverlay(unit); });
   return card;
 }
 
 function toggleSelect(unit, uid) {
-  var card = document.getElementById('card-' + uid);
+  var card = document.getElementById("card-" + uid);
   if (selected[uid] !== undefined) {
-    var removedNum = selected[uid];
-    delete selected[uid];
-    selectCounter--;
+    var n = selected[uid];
+    delete selected[uid]; selectCounter--;
     Object.keys(selected).forEach(function(id){
-      if (selected[id] > removedNum) { selected[id]--; updateNum(id); }
+      if (selected[id] > n) { selected[id]--; updateNum(id); }
     });
-    if (card) card.classList.remove('selected');
+    if (card) card.classList.remove("selected");
     updateNum(uid);
   } else {
-    selectCounter++;
-    selected[uid] = selectCounter;
-    if (card) card.classList.add('selected');
+    selectCounter++; selected[uid] = selectCounter;
+    if (card) card.classList.add("selected");
     updateNum(uid);
   }
   reorderGrid(unit.side);
 }
 
 function updateNum(uid) {
-  var el = document.getElementById('num-' + uid);
-  if (!el) return;
-  el.textContent = selected[uid] !== undefined ? selected[uid] : '';
+  var el = document.getElementById("num-" + uid);
+  if (el) el.textContent = selected[uid] !== undefined ? selected[uid] : "";
 }
 
 function reorderGrid(side) {
-  var faction = side === 'mine' ? mineFaction : enemyFaction;
-  var grid    = document.getElementById('grid-' + side + '-' + faction);
+  var faction = side === "mine" ? mineFaction : enemyFaction;
+  var grid = document.getElementById("grid-" + side + "-" + faction);
   if (!grid) return;
-  var cards   = Array.from(grid.children);
-  var sel     = cards.filter(function(c){ return c.classList.contains('selected'); })
-                     .sort(function(a,b){
-                       var na = selected[a.id.replace('card-','')] || 999;
-                       var nb = selected[b.id.replace('card-','')] || 999;
-                       return na - nb;
-                     });
-  var unsel   = cards.filter(function(c){ return !c.classList.contains('selected'); });
+  var cards = Array.from(grid.children);
+  var sel   = cards.filter(function(c){ return c.classList.contains("selected"); })
+                   .sort(function(a,b){
+                     return (selected[a.id.replace("card-","")]||999) - (selected[b.id.replace("card-","")]||999);
+                   });
+  var unsel = cards.filter(function(c){ return !c.classList.contains("selected"); });
   sel.concat(unsel).forEach(function(c){ grid.appendChild(c); });
 }
 
 /* UNIT OVERLAY */
 function openOverlay(unit) {
-  var isEnemy = unit.side === 'enemy';
-  var ac = isEnemy ? 'enemy' : '';
-  document.getElementById('ov-role').textContent  = unit.role;
-  document.getElementById('ov-role').style.color  = isEnemy ? 'var(--teal)' : 'var(--accent)';
-  document.getElementById('ov-name').textContent  = unit.name;
-  document.getElementById('ov-badges').innerHTML  =
-    '<span class="badge-apl '+ac+'">APL '+unit.apl+'</span>' +
-    '<span class="badge-w">W '+unit.wounds+'</span>' +
-    '<span class="badge-sv">Sv '+unit.save+' · Move '+unit.move+'</span>';
+  var ac = unit.side === "enemy" ? "enemy" : "";
+  document.getElementById("ov-role").textContent = unit.role;
+  document.getElementById("ov-role").style.color = unit.side==="enemy" ? "var(--teal)" : "var(--accent)";
+  document.getElementById("ov-name").textContent = unit.name;
+  document.getElementById("ov-badges").innerHTML =
+    "<span class=\"badge-apl "+ac+"\">APL "+unit.apl+"</span>" +
+    "<span class=\"badge-w\">W "+unit.wounds+"</span>" +
+    "<span class=\"badge-sv\">Sv "+unit.save+" &middot; Move "+unit.move+"</span>";
 
-  var html = '<div class="sec-label '+ac+'">Broń</div>' +
-    '<table class="wpn-table"><tr><th>Nazwa</th><th style="text-align:center">ATK</th><th style="text-align:center">HIT</th><th style="text-align:center">DMG</th><th>Zasady</th></tr>';
+  var html = "<div class=\"sec-label "+ac+"\">Weapons</div>" +
+    "<table class=\"wpn-table\"><tr><th>Name</th><th style=\"text-align:center\">ATK</th><th style=\"text-align:center\">HIT</th><th style=\"text-align:center\">DMG</th><th>Rules</th></tr>";
   unit.weapons.forEach(function(w){
-    html += '<tr><td>'+w.name+'</td><td class="num">'+w.atk+'</td><td class="num">'+w.hit+'</td><td class="num">'+w.dmg+'</td><td class="wpn-wr">'+w.wr+'</td></tr>';
+    html += "<tr><td>"+w.name+"</td><td class=\"num\">"+w.atk+"</td><td class=\"num\">"+w.hit+"</td><td class=\"num\">"+w.dmg+"</td><td class=\"wpn-wr\">"+w.wr+"</td></tr>";
   });
-  html += '</table>';
-
+  html += "</table>";
   if (unit.abilities && unit.abilities.length) {
-    html += '<div class="sec-label '+ac+'">Zdolności</div><div class="abilities">';
+    html += "<div class=\"sec-label "+ac+"\">Abilities</div><div class=\"abilities\">";
     unit.abilities.forEach(function(a){
-      html += '<div class="ability'+(a.unique?' unique':'')+'"><div class="ability-name">'+a.name+'</div><div class="ability-desc">'+a.desc+'</div></div>';
+      html += "<div class=\"ability"+(a.unique?" unique":"")+"\"><div class=\"ability-name\">"+a.name+"</div><div class=\"ability-desc\">"+a.desc+"</div></div>";
     });
-    html += '</div>';
+    html += "</div>";
   }
-  document.getElementById('ov-body').innerHTML = html;
-  var ov = document.getElementById('overlay');
-  ov.classList.add('open'); ov.scrollTop = 0;
+  document.getElementById("ov-body").innerHTML = html;
+  document.getElementById("overlay").classList.add("open");
+  document.getElementById("overlay").scrollTop = 0;
 }
-function closeOverlay(){ document.getElementById('overlay').classList.remove('open'); }
+function closeOverlay(){ document.getElementById("overlay").classList.remove("open"); }
 
 /* RULES OVERLAY */
 function openRules(side) {
-  var fkey = side === 'mine' ? mineFaction : enemyFaction;
+  var fkey = side === "mine" ? mineFaction : enemyFaction;
   var data = FACTION_RULES[fkey];
   if (!data) return;
-  document.getElementById('ro-sub').textContent = data.subtitle || '';
-  document.getElementById('ro-sub').style.color = data.color || 'var(--muted)';
-  document.getElementById('ro-name').textContent = data.name;
-  var isEnemy = side === 'enemy';
-  var html = '';
-
+  document.getElementById("ro-sub").textContent = data.subtitle || "";
+  document.getElementById("ro-sub").style.color = data.color || "var(--muted)";
+  document.getElementById("ro-name").textContent = data.name;
+  var html = "";
   if (data.rules && data.rules.length) {
-    html += '<div class="sec-label neutral">Zasady Frakcji</div>';
-    data.rules.forEach(function(r,i){ html += makeRuleItem('rr-'+i, r.name, '', r.desc, '', false); });
+    html += buildSectionLabel("Faction Rules");
+    data.rules.forEach(function(r,i){ html += buildRuleItem("rr"+i, r.name, "", r.desc, "", ""); });
   }
   if (data.strat && data.strat.length) {
-    html += '<div class="sec-label neutral">Strategy Ploys</div>';
+    html += buildSectionLabel("Strategy Ploys");
     data.strat.forEach(function(r,i){
-      var uid = 'strat-'+fkey+'-'+i;
-      html += makeRuleItem('rs-'+i, r.name, 'strat', r.desc, uid, true, 'strat');
+      var uid = "strat-"+fkey+"-"+i;
+      html += buildRuleItem("rs"+i, r.name, "strat", r.desc, uid, "strat");
     });
   }
   if (data.fight && data.fight.length) {
-    html += '<div class="sec-label neutral">Firefight Ploys</div>';
+    html += buildSectionLabel("Firefight Ploys");
     data.fight.forEach(function(r,i){
-      var uid = 'fight-'+fkey+'-'+i;
-      html += makeRuleItem('rf-'+i, r.name, 'fight', r.desc, uid, true, 'fight');
+      var uid = "fight-"+fkey+"-"+i;
+      html += buildRuleItem("rf"+i, r.name, "fight", r.desc, uid, "fight");
     });
   }
-  document.getElementById('ro-body').innerHTML = html;
-  var ov = document.getElementById('rules-overlay');
-  ov.classList.add('open'); ov.scrollTop = 0;
+  document.getElementById("ro-body").innerHTML = html;
+  document.getElementById("rules-overlay").classList.add("open");
+  document.getElementById("rules-overlay").scrollTop = 0;
+}
+function closeRules(){ document.getElementById("rules-overlay").classList.remove("open"); }
+
+function buildSectionLabel(txt) {
+  return "<div class=\"sec-label neutral\">"+txt+"</div>";
 }
 
-function makeRuleItem(id, name, nameClass, desc, uid, showDots, dotType) {
-  var dots = '';
-  if (showDots && uid) {
-    var used = ployTP[uid] || {};
-    dots = '<div class="tp-dots">' +
-      [1,2,3,4].map(function(tp){
-        var cls = used[tp] ? ('tp-dot used-' + dotType) : 'tp-dot';
-        return '<div class="'+cls+'" data-uid="'+uid+'" data-tp="'+tp+'" data-type="'+dotType+'" onclick="toggleTP(event)">'+tp+'</div>';
-      }).join('') + '</div>';
+function buildRuleItem(id, name, nameClass, desc, tpUid, tpType) {
+  var dots = "";
+  if (tpUid) {
+    var used = ployTP[tpUid] || {};
+    dots = "<div class=\"tp-dots\">";
+    for (var tp=1; tp<=4; tp++) {
+      var cls = used[tp] ? "tp-dot used-"+tpType : "tp-dot";
+      dots += "<div class=\""+cls+"\" data-uid=\""+tpUid+"\" data-tp=\""+tp+"\" data-type=\""+tpType+"\" onclick=\"toggleTP(event)\">"+tp+"</div>";
+    }
+    dots += "</div>";
   }
-  return '<div class="rules-item" id="'+id+'">' +
-    '<div class="rules-item-header" onclick="toggleRuleItem(&quot;'+id+'&quot;)"><span class="rules-item-name '+nameClass+'">'+name+'</span>'+dots+'<span class="rules-item-chevron">&#9658;</span></div>' +
-    '<div class="rules-item-body">'+desc+'</div></div>';
+  return "<div class=\"rules-item\" id=\""+id+"\">" +
+    "<div class=\"rules-item-header\" onclick=\"toggleItem('"+id+"')\">" +
+      "<span class=\"rules-item-name "+nameClass+"\">"+name+"</span>" +
+      dots +
+      "<span class=\"rules-item-chevron\">&#9658;</span>" +
+    "</div>" +
+    "<div class=\"rules-item-body\">"+desc+"</div>" +
+  "</div>";
 }
 
 function toggleTP(e) {
   e.stopPropagation();
-  var el   = e.currentTarget;
-  var uid  = el.dataset.uid;
-  var tp   = parseInt(el.dataset.tp);
-  var type = el.dataset.type;
+  var el = e.currentTarget;
+  var uid = el.dataset.uid, tp = parseInt(el.dataset.tp), type = el.dataset.type;
   if (!ployTP[uid]) ployTP[uid] = {};
-  if (ployTP[uid][tp]) {
-    delete ployTP[uid][tp];
-    el.className = 'tp-dot';
-  } else {
-    ployTP[uid][tp] = true;
-    el.className = 'tp-dot used-' + type;
-  }
+  if (ployTP[uid][tp]) { delete ployTP[uid][tp]; el.className = "tp-dot"; }
+  else { ployTP[uid][tp] = true; el.className = "tp-dot used-"+type; }
 }
 
-function toggleRuleItem(id) {
+function toggleItem(id) {
   var el = document.getElementById(id);
-  if (el) el.classList.toggle('open');
+  if (el) el.classList.toggle("open");
 }
-function closeRules(){ document.getElementById('rules-overlay').classList.remove('open'); }
 
 /* EQ OVERLAY */
 function openEq(side) {
-  var fkey  = side === 'mine' ? mineFaction : enemyFaction;
+  var fkey  = side === "mine" ? mineFaction : enemyFaction;
   var data  = FACTION_EQ[fkey];
   var rules = FACTION_RULES[fkey];
   if (!data) return;
-  document.getElementById('eq-sub').textContent  = rules ? rules.subtitle : '';
-  document.getElementById('eq-sub').style.color  = rules ? rules.color : 'var(--muted)';
-  document.getElementById('eq-name').textContent = (rules ? rules.name : fkey) + ' · Ekwipunek';
+  document.getElementById("eq-sub").textContent = rules ? rules.subtitle : "";
+  document.getElementById("eq-sub").style.color = rules ? rules.color : "var(--muted)";
+  document.getElementById("eq-name").textContent = (rules ? rules.name : fkey) + " · Equipment";
+  var isMine = side === "mine";
+  var cls = isMine ? " mine-eq" : " enemy-eq";
+  var html = "";
 
-  var isMine = side === 'mine';
-  var html = '';
-  data.forEach(function(eq, i){
-    var uid     = 'eq-' + fkey + '-' + i;
-    var taken   = !!eqTaken[uid];
-    var mClass  = isMine ? ' mine-eq' : '';
-    html += '<div class="eq-item'+(taken?' taken':'')+mClass+'" id="'+uid+'">' +
-      '<div class="eq-item-header" data-uid="'+uid+'" onclick="toggleEqItem(this.dataset.uid)">' +
-        '<div class="eq-check" data-uid="'+uid+'" onclick="toggleEqTaken(event,this.dataset.uid)">&#x2713;</div>' +
-        '<span class="eq-item-name">'+eq.name+'</span>' +
-        '<span class="eq-item-chevron">&#9658;</span>' +
-      '</div>' +
-      '<div class="eq-item-body">'+eq.desc+'</div>' +
-    '</div>';
-  });
-  // Universal EQ section
-  html += '<div class="sec-label neutral">Universal Equipment</div>';
-  UNIVERSAL_EQ.forEach(function(eq, i){
-    var uid    = 'eq-universal-' + i;
-    var taken  = !!eqTaken[uid];
-    html += '<div class="eq-item'+(taken?' taken':'')+'" id="'+uid+'">' +
-      '<div class="eq-item-header" data-uid="'+uid+'" onclick="toggleEqItem(this.dataset.uid)">' +
-        '<div class="eq-check" onclick="toggleEqTaken(event,\''+uid+'\')">&#x2713;</div>' +
-        '<span class="eq-item-name">'+eq.name+'</span>' +
-        '<span class="eq-item-chevron">&#9658;</span>' +
-      '</div>' +
-      '<div class="eq-item-body">'+eq.desc+'</div>' +
-    '</div>';
-  });
-  document.getElementById('eq-body').innerHTML = html;
-  // Restore numbers on already-taken items
-  Object.keys(eqOrder).forEach(function(uid){ updateEqBadge(uid); });
+  function buildEqItem(uid, name, desc) {
+    var taken = !!eqTaken[uid];
+    var num   = eqOrder[uid] !== undefined ? eqOrder[uid] : "";
+    return "<div class=\"eq-item"+(taken?" taken":"")+cls+"\" id=\""+uid+"\">" +
+      "<div class=\"eq-item-header\" onclick=\"toggleItem('"+uid+"')\">" +
+        "<div class=\"eq-num\" onclick=\"toggleEqTaken(event,'"+uid+"')\">"+num+"</div>" +
+        "<span class=\"eq-item-name\">"+name+"</span>" +
+        "<span class=\"eq-item-chevron\">&#9658;</span>" +
+      "</div>" +
+      "<div class=\"eq-item-body\">"+desc+"</div>" +
+    "</div>";
+  }
+
+  data.forEach(function(eq){ html += buildEqItem("eq-"+fkey+"-"+eq.id, eq.name, eq.desc); });
+  html += buildSectionLabel("Universal Equipment");
+  UNIVERSAL_EQ.forEach(function(eq){ html += buildEqItem("ue-"+eq.id, eq.name, eq.desc); });
+
+  document.getElementById("eq-body").innerHTML = html;
   reorderEqList();
-  var ov = document.getElementById('eq-overlay');
-  ov.classList.add('open'); ov.scrollTop = 0;
+  document.getElementById("eq-overlay").classList.add("open");
+  document.getElementById("eq-overlay").scrollTop = 0;
 }
+function closeEq(){ document.getElementById("eq-overlay").classList.remove("open"); }
 
 function toggleEqTaken(e, uid) {
   e.stopPropagation();
   var el = document.getElementById(uid);
   if (!el) return;
   if (eqTaken[uid]) {
-    var removedNum = eqOrder[uid];
-    delete eqTaken[uid];
-    delete eqOrder[uid];
-    eqCounter--;
+    var n = eqOrder[uid];
+    delete eqTaken[uid]; delete eqOrder[uid]; eqCounter--;
     Object.keys(eqOrder).forEach(function(id){
-      if (eqOrder[id] > removedNum) { eqOrder[id]--; updateEqBadge(id); }
+      if (eqOrder[id] > n) { eqOrder[id]--; updateEqNum(id); }
     });
-    el.classList.remove('taken');
-    updateEqBadge(uid);
-    reorderEqList();
+    el.classList.remove("taken");
+    updateEqNum(uid);
   } else {
-    eqCounter++;
-    eqTaken[uid] = true;
-    eqOrder[uid] = eqCounter;
-    el.classList.add('taken');
-    updateEqBadge(uid);
-    reorderEqList();
+    eqCounter++; eqTaken[uid] = true; eqOrder[uid] = eqCounter;
+    el.classList.add("taken");
+    updateEqNum(uid);
   }
+  reorderEqList();
 }
 
-function updateEqBadge(uid) {
+function updateEqNum(uid) {
   var el = document.getElementById(uid);
   if (!el) return;
-  var check = el.querySelector('.eq-check');
-  if (!check) return;
-  check.textContent = eqOrder[uid] !== undefined ? eqOrder[uid] : '\u2713';
-  check.style.color = eqOrder[uid] !== undefined ? '' : 'transparent';
+  var badge = el.querySelector(".eq-num");
+  if (badge) badge.textContent = eqOrder[uid] !== undefined ? eqOrder[uid] : "";
 }
 
 function reorderEqList() {
-  var body = document.getElementById('eq-body');
+  var body = document.getElementById("eq-body");
   if (!body) return;
-  var items = Array.from(body.children).filter(function(el){ return el.classList.contains('eq-item'); });
-  var taken = items.filter(function(el){ return el.classList.contains('taken'); })
+  var items = Array.from(body.querySelectorAll(".eq-item"));
+  var taken = items.filter(function(el){ return el.classList.contains("taken"); })
                    .sort(function(a,b){ return (eqOrder[a.id]||999)-(eqOrder[b.id]||999); });
-  var untaken = items.filter(function(el){ return !el.classList.contains('taken'); });
+  var untaken = items.filter(function(el){ return !el.classList.contains("taken"); });
   taken.concat(untaken).forEach(function(el){ body.appendChild(el); });
 }
 
-function toggleEqItem(uid) {
-  var el = document.getElementById(uid);
-  if (el) el.classList.toggle('open');
-}
-
-function closeEq(){ document.getElementById('eq-overlay').classList.remove('open'); }
-
-/* TABS & FACTION SWITCH */
+/* TAB / FACTION SWITCH */
 function switchTab(tab) {
   activeTab = tab;
-  document.getElementById('panel-mine').classList.toggle('active',  tab === 'mine');
-  document.getElementById('panel-enemy').classList.toggle('active', tab === 'enemy');
-  document.getElementById('tab-mine').className  = 'tab' + (tab === 'mine'  ? ' active-mine'  : '');
-  document.getElementById('tab-enemy').className = 'tab' + (tab === 'enemy' ? ' active-enemy' : '');
+  document.getElementById("panel-mine").classList.toggle("active", tab==="mine");
+  document.getElementById("panel-enemy").classList.toggle("active", tab==="enemy");
+  document.getElementById("tab-mine").className  = "tab"+(tab==="mine"  ? " active-mine"  : "");
+  document.getElementById("tab-enemy").className = "tab"+(tab==="enemy" ? " active-enemy" : "");
 }
-
-function switchMineFaction(faction) {
-  mineFaction = faction;
-  showGrid('mine', faction);
-}
-
-function switchEnemyFaction(faction) {
-  enemyFaction = faction;
-  showGrid('enemy', faction);
-}
+function switchMineFaction(f){ mineFaction=f; showGrid("mine",f); }
+function switchEnemyFaction(f){ enemyFaction=f; showGrid("enemy",f); }
 
 /* INIT */
-showGrid('mine',  'murderwing');
-showGrid('enemy', 'raveners');
-
-['overlay','rules-overlay','eq-overlay'].forEach(function(id){
-  document.getElementById(id).addEventListener('click', function(e){
-    this.classList.remove('open');
-  });
-});
-// Stop propagation on inner content so tapping cards/text doesn't close
-['ov-body','ov-header','ro-body','ro-name','ro-sub','eq-body','eq-name','eq-sub'].forEach(function(id){
-  var el = document.getElementById(id);
-  if (el) el.addEventListener('click', function(e){ e.stopPropagation(); });
-});
+showGrid("mine", "murderwing");
+showGrid("enemy", "raveners");
 </script>
 
 <script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function() {
-    navigator.serviceWorker.register('./sw.js').then(function(reg) {
-      console.log('SW registered:', reg.scope);
-    }).catch(function(err) {
-      console.log('SW failed:', err);
-    });
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function() {
+    navigator.serviceWorker.register("./sw.js");
   });
 }
 </script>
 </body>
-</html
+</html>
