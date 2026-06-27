@@ -1,4 +1,4 @@
-const CACHE_NAME = 'killteam-v1';
+const CACHE_NAME = 'killteam-v2';
 const ASSETS = [
   './',
   './killteam_viewer.html',
