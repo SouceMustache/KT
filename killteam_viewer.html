@@ -203,10 +203,8 @@ const MINE = [
       {name:'Relic lightning claws', atk:5,hit:'3+',dmg:'4/6', wr:'Ceaseless, Lethal 5+, Rending'},
     ],
     abilities:[
-      {name:'Path to Damnation', desc:'Startuje z 1 Damnation Point. Raz na akcję może próbować użyć Boon of Damnation — rzuć k6 i porównaj z liczbą Damnation Points: wyżej = efekt+1DP, równo = nic, niżej = obrażenia równe liczbie DP. Przy 6 DP efekt automatyczny.'},
-      {name:'Boon of Damnation', desc:'(1) Gdy atak dice inflicts ≥3 dmg — ignoruj dmg równy liczbie DP. (2) Gdy Strike — zadaj dodatkowe dmg równe liczbie DP.'},
-      {name:'Jump Pack / BOOST', desc:'Podczas Charge/Fall Back/Reposition: na początku prostego odcinka może BOOST — znika z planszy i pojawia się w ≤x" poziomo (x dodany do ruchu). Nie może kończyć na Vantage terrain.'},
-      {name:'Astartes', desc:'W każdej aktywacji może wykonać 2×Shoot (jedno musi być bolt pistol) LUB 2×Fight. Może counteract niezależnie od order.'},
+      {name:"Path to Damnation", desc:"This operative starts the battle with 1 Damnation point. Once per action, you can attempt to use one Boon of Damnation when it specifies. Roll one D6 and compare to the number of Damnation points: Higher = resolve the rule and gain 1 Damnation point; Equal = do not resolve; Less = inflict damage equal to Damnation points. If this operative has 6 Damnation points, resolve the rule without rolling."},
+      {name:"Boons of Damnation", desc:"When an attack dice inflicts damage of 3 or more on this operative, you can ignore an amount of damage equal to its Damnation points. OR: When this operative is fighting or retaliating and you strike with an attack dice, you can inflict additional damage equal to its Damnation points."}
     ]
   },
   {
@@ -221,9 +219,8 @@ const MINE = [
       {name:'Power weapon',        atk:5,hit:'3+',dmg:'4/6', wr:'Lethal 5+'},
     ],
     abilities:[
-      {name:'Chaos Champion', desc:'STRATEGIC GAMBIT: przesuń Challenge token na wybranego wroga. Podczas walki z tokenem wybierz jeden z: Balanced / Brutal / Punishing / Severe / Shock dla swoich broni.'},
-      {name:'Path to Glory', desc:'Gdy inkapacytuje wroga z Challenge token → zyskujesz 1 CP.'},
-      {name:'Jump Pack / BOOST', desc:'Podczas Charge/Fall Back/Reposition może BOOST — przemieszczenie w pionie, nie dotyka Vantage terrain.'},
+      {name:"Chaos Champion", desc:"STRATEGIC GAMBIT: Remove your Challenge token from the enemy operative that has it (if any), then select one enemy operative to gain your Challenge token. Whenever this operative is fighting or retaliating against an enemy operative that has your Challenge token, in the Select Weapons step, you can select one of the following weapon rules for its melee weapons: Balanced, Brutal, Punishing, Severe, Shock."},
+      {name:"Path to Glory", desc:"Whenever this operative incapacitates an enemy operative that has your Challenge token, you gain 1CP."}
     ]
   },
   {
@@ -235,8 +232,8 @@ const MINE = [
       {name:'Mutated claws',  atk:5,hit:'3+',dmg:'4/5', wr:'Rending'},
     ],
     abilities:[
-      {name:'Frenzied Attack', desc:'Jeśli inkapacytowany podczas Fight — może uderzyć wrogiego operatywę jednym nierozwiązanym sukcesem przed usunięciem z planszy.'},
-      {name:'SNATCH (1AP) — BOOST', desc:'Podczas Fall Back/Reposition po BOOST: wybierz wroga w BOOST ZONE — obaj rzucają k6+Wounds. Jeśli Ty wyżej, przesuń wroga w twoją BOOST ZONE lub control range. Jeśli w control range → Fall Back/Reposition kończy się.'},
+      {name:"Frenzied Attack", desc:"If this operative is incapacitated during the Fight action, you can strike the enemy operative in that sequence with one of your unresolved successes before this operative is removed from the killzone."},
+      {name:"SNATCH (1AP)", desc:"BOOST action. Select one enemy operative within this operative's BOOST ZONE. Both players roll one D6 and add their operative's Wounds stat. If your result is higher, remove that enemy operative from the killzone and set it back up within this operative's BOOST ZONE or control range. If set up within control range, the Fall Back or Reposition action ends. Performed during the Fall Back or Reposition action after setting up from a BOOST.", unique: true}
     ]
   },
   {
@@ -248,8 +245,8 @@ const MINE = [
       {name:'Great chainaxe',atk:5,hit:'4+',dmg:'5/7', wr:'Brutal'},
     ],
     abilities:[
-      {name:'Horrifying Dismemberment', desc:'Gdy inkapacytuje wroga w Fight: wybierz innego wroga w 3" od któregoś z nich — ten traci 1 APL do końca swojej następnej aktywacji.'},
-      {name:'CARVING BLOW (1AP)', desc:'Inflict 2D3 dmg na każdego innego operatywę widocznego i w 2" od ciebie (roll oddzielnie). Nie gdy Conceal, po Slice From Above/Clawed Charge lub 2× Fight.', unique:true},
+      {name:"Horrifying Dismemberment", desc:"Whenever this operative incapacitates an enemy operative while fighting or retaliating, select one other enemy operative visible to and within 3\" of either this operative or the incapacitated enemy operative. Subtract 1 from that enemy operative's APL stat until the end of its next activation."},
+      {name:"CARVING BLOW (1AP)", desc:"Inflict 2D3 damage on each other operative visible to and within 2\" of this operative (roll separately for each). Cannot perform this action while it has a Conceal order, or during the same activation in which it performed Slice From Above, Clawed Charge, or two Fight actions.", unique: true}
     ]
   },
   {
@@ -261,8 +258,8 @@ const MINE = [
       {name:'Power weapon', atk:5,hit:'3+',dmg:'4/6', wr:'Lethal 5+'},
     ],
     abilities:[
-      {name:'Pinned Prey', desc:'Gdy wróg w control range próbuje Fall Back i nikt inny nie jest w Twoim control range: rzuć 2k6 (lub 1k6 gdy wróg ma wyższy Wounds). Na 4+ wróg nie może wykonać Fall Back w tej aktywacji.'},
-      {name:'STRIKE FROM ABOVE (1AP) — BOOST', desc:'Podczas Fall Back/Reposition po BOOST: inflict 2D3+1 dmg na jednego wroga w BOOST ZONE.', unique:true},
+      {name:"Pinned Prey", desc:"Whenever an enemy operative would perform the Fall Back action while within control range of this operative, if no other enemy operatives are within this operative's control range, roll two D6 (or one D6 if that enemy operative has a higher Wounds stat). If any result is 4+, that enemy operative cannot perform that action during that activation/counteraction."},
+      {name:"STRIKE FROM ABOVE (1AP)", desc:"BOOST action. Inflict 2D3+1 damage on one enemy operative within this operative's BOOST ZONE. Performed during the Fall Back or Reposition action after setting up from a BOOST.", unique: true}
     ]
   },
   {
@@ -276,7 +273,7 @@ const MINE = [
       {name:'Chainsword',          atk:5,hit:'3+',dmg:'4/5', wr:'—'},
     ],
     abilities:[
-      {name:'Thrill of Flight', desc:'Gdy wykonuje BOOST podczas aktywacji: może usunąć wszelkie zmiany do APL oraz ignorować injury penalties do statystyk (w tym broni) do końca aktywacji.'},
+      {name:"Thrill of Flight", desc:"Whenever this operative does a BOOST during its activation: you can remove any changes to its APL stat; and you can ignore any changes to its stats from being injured (including weapons' stats) until the end of the activation."}
     ]
   },
   {
@@ -288,8 +285,8 @@ const MINE = [
       {name:'Chainsword',  atk:5,hit:'3+',dmg:'4/5', wr:'—'},
     ],
     abilities:[
-      {name:'Modified Vox-casters', desc:'Wróg w 3" od Ciebie musi wydać +1 AP na Pick Up Marker i mission actions. Przy określaniu kontroli markera APL wrogów w 3" od Ciebie jest traktowany jako o 1 niższy.'},
-      {name:'SHRIEK (1AP)', desc:'Wybierz wroga widocznego i w 6" (lub w BOOST ZONE jako BOOST). Inflict D3 dmg i APL -1 do końca jego następnej aktywacji. Nie gdy Conceal order.', unique:true},
+      {name:"Modified Vox-casters", desc:"Whenever an enemy operative is within 3\" of this operative, your opponent must spend 1 additional AP for that enemy operative to perform the Pick Up Marker and mission actions. Whenever determining control of a marker, treat the total APL stat of enemy operatives that contest it as 1 lower if at least one of those enemy operatives is within 3\" of this operative."},
+      {name:"SHRIEK (1AP)", desc:"BOOST action. Select one enemy operative within this operative's BOOST ZONE. Inflict D3 damage on that enemy operative and subtract 1 from its APL stat until the end of its next activation. Performed during the Fall Back or Reposition action after setting up from a BOOST. Cannot perform this action while this operative has a Conceal order.", unique: true}
     ]
   },
   {
@@ -314,7 +311,7 @@ const MINE = [
       {name:'Lightning claws', atk:5,hit:'3+',dmg:'4/5', wr:'Ceaseless, Lethal 5+, Rending'},
     ],
     abilities:[
-      {name:'Slice the Veil', desc:'Przed bitwą: można umieścić w Warp (z boku, nie w killzone). W 1. rundzie: przy aktywacji umieść Warp marker w swoim terytorium i expend. W 2. rundzie: ustaw go przy Warp markerze lub w drop zone — może max 2 akcje i max 4" ruchu. Przez następny Ready step jest Obscured dla wrogów w >3".'},
+      {name:"Slice the Veil", desc:"Before the battle (not in a mission that uses the Infiltrate rule), you can set this operative up in the Warp: place it to one side instead of in the killzone. In the first turning point, when this operative is activated, place a Warp marker in your drop zone, then set this operative up anywhere in the killzone. In the second turning point, when this operative is activated, it can be set up at a Warp marker instead of where it currently is. It can only perform a maximum of 2 actions and cannot use more than 4\" of move distance during that activation. Until the next Ready step, this operative is Obscured to enemy operatives more than 3\" away."}
     ]
   },
 ];
@@ -329,8 +326,8 @@ const RAVENERS = [
       {name:'Scything talons & rending claws',   atk:5,hit:'3+',dmg:'4/5', wr:'Rending'},
     ],
     abilities:[
-      {name:'Neuropredatory Crest', desc:'Wróg w 3": musi +1AP na Pick Up Marker i mission actions; nie może re-rollować ataku/obrony. Przy contestowaniu markera APL wrogów w 3" traktowany jako o 1 niższy.'},
-      {name:'Synaptic Link', desc:'STRATEGIC GAMBIT (gdy żywy): rzuć k6 vs numer rundy. 2× wyżej → +1CP. Niżej → obrażenia równe wynikowi. Inaczej → nic.'},
+      {name:"Neuropredatory Crest", desc:"Whenever determining control of a marker, treat the total APL stat of enemy operatives that contest it as 1 lower if at least one of those enemy operatives is within 3\" of this operative. Whenever an enemy operative is within 3\" of this operative: your opponent must spend 1 additional AP for that enemy operative to perform the Pick Up Marker and mission actions; and your opponent cannot re-roll their attack or defence dice for that operative."},
+      {name:"Synaptic Link", desc:"STRATEGIC GAMBIT if this operative is not incapacitated. Roll one D6 and compare to the current turning point number: twice as high or higher = gain 1CP; equal = nothing; less = inflict damage equal to the D6 result on this operative."}
     ]
   },
   {
@@ -343,8 +340,8 @@ const RAVENERS = [
       {name:'Toxic scythes',  atk:5,hit:'3+',dmg:'4/5', wr:'Lethal 5+, Shock, *Poison'},
     ],
     abilities:[
-      {name:'*Poison', desc:'Gdy critical success zadaje dmg — wróg dostaje Poison token. Przy każdej aktywacji operatywy z Poison tokenem: inflict D3 dmg na niego.'},
-      {name:'TOXIC LUNGE (1AP)', desc:'Wybierz wroga w 2" (lub na TUNNEL gdy underground). Inflict D3+2 dmg + Poison token. Można wykonać gdy underground (wyjątek od Burrow rules).', unique:true},
+      {name:"*Poison", desc:"Whenever a critical success from this weapon inflicts damage on an enemy operative, that enemy operative gains a Poison token. At the start of each of that enemy operative's activations, inflict D3 damage on it."},
+      {name:"TOXIC LUNGE (1AP)", desc:"Select one enemy operative within 2\" of this operative (or on your TUNNEL if this operative is underground). Inflict D3+2 damage on that enemy operative and it gains a Poison token. This operative can perform this action if it is underground (exception to the Burrow rule).", unique: true}
     ]
   },
   {
@@ -356,8 +353,8 @@ const RAVENERS = [
       {name:'Scything talons & rending claws',  atk:5,hit:'3+',dmg:'4/5', wr:'Rending'},
     ],
     abilities:[
-      {name:'Subterranean Ambush', desc:'Raz na rundę: gdy wróg wykonuje akcję z ruchem >2" i kończy w 2" od TUNNEL — jeśli ten operatyw jest underground i ready/nie counteractował — może przerwać i zaatakować/strzelić do tego wroga. Potem wróg kontynuuje aktywację.'},
-      {name:'Hypersensory Hunter', desc:'Może wykonać Charge z Conceal order jeśli wykonał Burrow w tej samej aktywacji.'},
+      {name:"Subterranean Ambush", desc:"Once per turning point, when an enemy operative performs an action involving movement of more than 2\", if it would end that action within 2\" of your TUNNEL and this operative is underground and hasn't expended or counteracted this turning point: interrupt that enemy operative's activation/counteraction with this operative (shoot or fight against it). After resolving, the enemy operative continues its activation."},
+      {name:"Hypersensory Hunter", desc:"This operative can perform the Charge action while it has a Conceal order if it performed the Burrow action during the same activation."}
     ]
   },
   {
@@ -371,8 +368,8 @@ const RAVENERS = [
       {name:'Scything talons',      atk:5,hit:'3+',dmg:'4/5', wr:'—'},
     ],
     abilities:[
-      {name:'*Poison', desc:'Critical success zadaje dmg → Poison token. Przy aktywacji z tokenem → D3 dmg.'},
-      {name:'DISTEND DORSAL SAC (1AP)', desc:'Dopóki nie strzeli z venom bolt / nie użyje ponownie / nie Burrow: wszystkie profile venom bolt mają Lethal 5+, +1 ATK, usunięte Range 8".', unique:true},
+      {name:"*Poison", desc:"Whenever a critical success from this weapon inflicts damage on an enemy operative, that enemy operative gains a Poison token. At the start of each of that enemy operative's activations, inflict D3 damage on it."},
+      {name:"DISTEND DORSAL SAC (1AP)", desc:"Until this operative shoots with a venom bolt weapon, uses this action again, or performs the Burrow action: the venom bolt (blast) and venom bolt (focused) profiles both have the Lethal 5+ weapon rule, +1 to their Atk stat, and the Range characteristic is removed. Place a Distend Dorsal Sac token next to this operative to indicate this.", unique: true}
     ]
   },
   {
@@ -384,7 +381,7 @@ const RAVENERS = [
       {name:'Scything talons',atk:5,hit:'3+',dmg:'4/5', wr:'—'},
     ],
     abilities:[
-      {name:'Instinctive Behaviour', desc:'Gdy atakuje/walczy z ranionym wrogiem LUB z wrogiem który wykonał Fall Back w tej rundzie → broń ma Lethal 5+.'},
+      {name:"Instinctive Behaviour", desc:"Whenever this operative is shooting against or fighting against an enemy operative that is either wounded or that performed the Fall Back action during this turning point, this operative's weapons have the Lethal 5+ weapon rule."}
     ]
   },
   {
@@ -396,8 +393,8 @@ const RAVENERS = [
       {name:'Scything talons & crushing claws',   atk:5,hit:'3+',dmg:'4/5', wr:'*Crush'},
     ],
     abilities:[
-      {name:'Reinforced Carapace', desc:'Normal i Critical Dmg ≥4 inflicts o 1 mniej dmg na tego operatywę.'},
-      {name:'*Crush', desc:'Przy Strike: obaj rzucają off (+1 Tobie jeśli wróg ma ≤9 Wounds). Jeśli wygrasz → dodatkowy dmg równy różnicy wyników (max 3).'},
+      {name:"Reinforced Carapace", desc:"Normal and Critical damage inflicted on this operative by attack dice that have a Dmg stat of 4 or more is reduced by 1."},
+      {name:"*Crush", desc:"When you strike with this weapon: both players roll one D6 and add their operative's Wounds stat (add 1 to your result if the enemy operative's Wounds stat is 9 or less). If your result is higher, inflict additional damage equal to the difference (to a maximum of 3)."}
     ]
   },
 ];
@@ -416,10 +413,9 @@ const XV26 = [
       {name:'Pulse pistol (point-blank)',atk:3,hit:'4+',dmg:'4/5', wr:'Accurate 1'},
     ],
     abilities:[
-      {name:'XV26 Drone Controller', desc:'STRATEGIC GAMBIT gdy w killzone: wybierz jednego Drone — do końca następnej aktywacji ignoruje pierwsze 2 punkty zasady Drone.'},
-      {name:'For the Greater Good', desc:'Gdy ≥2 Shas wrogów (non-drone) jest inkapacytowanych → Kauyon daje +1 do Accurate X (max Accurate 3).'},
-      {name:'Kauyon (faction)', desc:'Podczas strzelania: Accurate X gdzie X = lokalizacja wroga: w 3" od Twego terytorium → Acc 1; w Twoim terytorium → Acc 2; w 3" od drop zone → Acc 3.'},
-      {name:'Stealth Fields (faction)', desc:'Z Conceal order: nie może być widziana przez wrogów w >3". Może Fall Back za -1 AP.'},
+      {name:"XV26 Drone Controller", desc:"STRATEGIC GAMBIT if this operative is in the killzone: select one friendly DRONE operative. Until the end of the next friendly DRONE operative's activation, the first 2 points of the Drone rule do not apply to it."},
+      {name:"For the Greater Good", desc:"Whenever two or more non-DRONE enemy operatives have been incapacitated, the Kauyon rule's Accurate X value is increased by 1 for all friendly XV26 STEALTH BATTLESUIT operatives (to a maximum of Accurate 3)."},
+      {name:"Kauyon", desc:"Whenever a friendly XV26 STEALTH BATTLESUIT operative is shooting an enemy operative, its ranged weapons have Accurate X. X is determined by the enemy's location: within 3\" of your territory = Accurate 1; within your territory = Accurate 2; within 3\" of your drop zone = Accurate 3."}
     ]
   },
   {
@@ -434,8 +430,8 @@ const XV26 = [
       {name:'Fists',                   atk:3,hit:'4+',dmg:'3/4', wr:'—'},
     ],
     abilities:[
-      {name:'Markerlight', desc:'Wróg widoczny dla Designatora lub w 2" od Ambush markera jest "marked". Przyjacielskie XV26 strzelające do marked wroga mają Severe na broniach ranged.'},
-      {name:'FOCUSED MARKERLIGHT (1AP)', desc:'Wybierz widocznego wroga. Raz w tej rundzie: gdy przyjaciel strzela do niego — Hit stat broni ranged o 1 lepszy do końca akcji.', unique:true},
+      {name:"Markerlight", desc:"Whenever a friendly XV26 STEALTH BATTLESUIT operative is shooting against an enemy operative that is visible to this operative or within 2\" of your Ambush marker, that enemy operative is marked. Friendly XV26 STEALTH BATTLESUIT operatives' ranged weapons have the Severe weapon rule when shooting against a marked enemy operative."},
+      {name:"FOCUSED MARKERLIGHT (1AP)", desc:"Select one visible enemy operative. Once during this turning point, when a friendly XV26 STEALTH BATTLESUIT operative is shooting that enemy operative, improve the Hit stat of that friendly operative's ranged weapons by 1 for the duration of that Shoot action.", unique: true}
     ]
   },
   {
@@ -450,7 +446,7 @@ const XV26 = [
       {name:'Fists',                   atk:3,hit:'4+',dmg:'3/4', wr:'—'},
     ],
     abilities:[
-      {name:'Covert Protocols', desc:'Może counteract niezależnie od order. Jeśli ma Conceal order → może tylko Pick Up Marker, Place Marker lub mission actions podczas counteraction.'},
+      {name:"Covert Protocols", desc:"This operative can counteract regardless of its order. If it has a Conceal order when it counteracts, it can only perform the Pick Up Marker, Place Marker or mission actions during that counteraction."}
     ]
   },
   {
@@ -466,7 +462,7 @@ const XV26 = [
       {name:'Fists',                   atk:3,hit:'4+',dmg:'3/4', wr:'—'},
     ],
     abilities:[
-      {name:'Grenadier', desc:'Może używać frag, krak, smoke i stun grenade (nie wlicza się do limitu). Frag/krak: +1 Hit stat.'},
+      {name:"Grenadier", desc:"This operative can use frag grenades, krak grenades, smoke grenades and stun grenades without counting towards the limit for grenades. When it uses frag or krak grenades, improve the Hit stat of those weapons by 1."}
     ]
   },
   {
@@ -481,8 +477,8 @@ const XV26 = [
       {name:'Fists',                   atk:3,hit:'4+',dmg:'3/4', wr:'—'},
     ],
     abilities:[
-      {name:'Electrochaff Launcher', desc:'Raz na rundę gdy wróg strzela (i Ty nie w control range): do końca akcji przyjacielskie XV26 w 3" od Ciebie i >2" od wroga — ignorują Piercing i są Obscured.'},
-      {name:'Homing Beacon', desc:'Niesiesz Homing Beacon marker. Gdy w killzone i >6" od drop zone: rzuć k6 w Ready step. W terytorium wroga: 2k6. W 6" od jego drop zone: 3k6. Na 4+ zyskujesz +1CP.'},
+      {name:"Electrochaff Launcher", desc:"Once per turning point, when an operative is shooting a friendly XV26 STEALTH BATTLESUIT operative and this operative is not within control range of an enemy operative: until the end of that Shoot action, friendly XV26 STEALTH BATTLESUIT operatives within 3\" of this operative and more than 2\" from the shooting operative ignore the Piercing weapon rule and are Obscured."},
+      {name:"Homing Beacon", desc:"This operative carries a Homing Beacon marker. Whenever this operative is in the killzone and more than 6\" from your drop zone, in the Ready step roll one D6 (or 2D6 if in enemy territory; or 3D6 if within 6\" of the enemy drop zone): on one or more 4+, you gain 1CP."}
     ]
   },
   {
@@ -497,8 +493,8 @@ const XV26 = [
       {name:'Fists',                   atk:3,hit:'4+',dmg:'3/4', wr:'—'},
     ],
     abilities:[
-      {name:'Multispectrum Sensor Package', desc:'SUPPORT. Raz na rundę gdy wróg w 8" jest aktywowany: każdy przyjacielski XV26 w 3" od Ciebie może free Dash (nie kończąc w 3" od wroga) LUB zmienić order.'},
-      {name:'SYSTEM JAM (1/2AP)', desc:'Wybierz widocznego wroga — APL -1 do końca następnej aktywacji. Gdy Conceal: +1AP. Nie w control range wroga.', unique:true},
+      {name:"Multispectrum Sensor Package", desc:"SUPPORT. Once per turning point, when an enemy operative within 8\" of this operative is activated: each friendly XV26 STEALTH BATTLESUIT operative within 3\" of this operative can either perform a free Dash action (cannot end within 3\" of an enemy operative) or change its order."},
+      {name:"SYSTEM JAM (1AP or 2AP)", desc:"Select one visible enemy operative. Subtract 1 from its APL stat until the end of its next activation. If this operative has a Conceal order, this action costs 1 additional AP. Cannot perform this action while within control range of an enemy operative.", unique: true}
     ]
   },
   {
@@ -510,8 +506,8 @@ const XV26 = [
       {name:'Ram',                atk:3,hit:'5+',dmg:'2/3', wr:'—'},
     ],
     abilities:[
-      {name:'Drone', desc:'Tylko: Charge, Dash, Fall Back, Fight, Photon Grenade Launcher, Reposition, Shoot. APL o 1 niższy przy contestowaniu objective. Ignorowany przy kill/elimination op i większości victory conditions.'},
-      {name:'PHOTON GRENADE LAUNCHER (1AP)', desc:'Wybierz widocznego wroga — rzuć k6: na 3+ traci 2" Move do końca następnej aktywacji. Nie w control range wroga.', unique:true},
+      {name:"Drone", desc:"This operative can only perform the following actions: Charge, Dash, Fall Back, Fight, Photon Grenade Launcher, Reposition, Shoot. When determining control of an objective marker, subtract 1 from this operative's APL stat. This operative is ignored when determining if operatives from each kill team have been incapacitated or eliminated, and for the purposes of most victory conditions."},
+      {name:"PHOTON GRENADE LAUNCHER (1AP)", desc:"Select one visible enemy operative. Roll one D6: on a 3+, subtract 2\" from that enemy operative's Move stat until the end of its next activation. Cannot perform this action while within control range of an enemy operative.", unique: true}
     ]
   },
   {
@@ -522,8 +518,8 @@ const XV26 = [
       {name:'Ram', atk:3,hit:'5+',dmg:'2/3', wr:'—'},
     ],
     abilities:[
-      {name:'Drone', desc:'Tylko: Charge, Dash, Fall Back, Fight, Reposition, Shoot. APL o 1 niższy przy objective. Ignorowany przy kill/elimination i victory conditions.'},
-      {name:'Markerlight', desc:'Wróg widoczny lub w 2" od Ambush markera jest "marked". Przyjacielskie XV26 strzelające do marked mają Severe na ranged.'},
+      {name:"Drone", desc:"This operative can only perform the following actions: Charge, Dash, Fall Back, Fight, Reposition, Shoot. When determining control of an objective marker, subtract 1 from this operative's APL stat. This operative is ignored when determining if operatives from each kill team have been incapacitated or eliminated, and for the purposes of most victory conditions."},
+      {name:"Markerlight", desc:"Whenever a friendly XV26 STEALTH BATTLESUIT operative is shooting against an enemy operative that is visible to this operative or within 2\" of your Ambush marker, that enemy operative is marked. Friendly XV26 STEALTH BATTLESUIT operatives' ranged weapons have the Severe weapon rule when shooting against a marked enemy operative."}
     ]
   },
 
@@ -545,9 +541,9 @@ const HEARTHKYN = [
       {name:'Plasma weapon',      atk:4,hit:'3+',dmg:'4/6', wr:'Lethal 5+'},
     ],
     abilities:[
-      {name:'Eye of the Ancestors', desc:'STRATEGIC GAMBIT gdy w killzone: wybierz 1 wroga (lub 2 gdy ≥3 przyjaznych jest inkapacytowanych) — każdy dostaje Grudge token.'},
-      {name:'Weavefield Crest', desc:'Raz na bitwę: gdy atak dice inflicts Normal Dmg — możesz zignorować te obrażenia.'},
-      {name:'Grudge (faction)', desc:'Gdy wróg inkapacytuje przyjaznego Hearthkyn → dostaje Grudge token. Przy ataku wroga z tokenem: za każdy token możesz zamienić 1 normalny sukces na critical success.'},
+      {name:"Eye of the Ancestors", desc:"STRATEGIC GAMBIT if this operative is in the killzone: select one enemy operative (or two enemy operatives if three or more friendly HEARTHKYN SALVAGER operatives have been incapacitated during the battle). Each selected enemy operative gains one of your Grudge tokens."},
+      {name:"Weavefield Crest", desc:"Once per battle, when an attack dice would inflict Normal damage on this operative, you can ignore that damage."},
+      {name:"Grudge", desc:"Whenever an enemy operative incapacitates a friendly HEARTHKYN SALVAGER operative, that enemy operative gains one of your Grudge tokens. For each Grudge token an enemy operative has, you can retain one normal success as a critical success when shooting/fighting against it."}
     ]
   },
   {
@@ -559,8 +555,8 @@ const HEARTHKYN = [
       {name:'Concussion knux',    atk:4,hit:'3+',dmg:'4/4', wr:'Ceaseless, Lethal 5+, Shock'},
     ],
     abilities:[
-      {name:'Brawler', desc:'W Fight/Retaliate: wrogowie nie mogą asistować. Gdy inkapacytowany w Fight — może uderzyć wrogiem jednym sukcesem przed usunięciem. Normal Dmg ≥4 inflicts o 1 mniej na nim.'},
-      {name:'KNUX SMASH (1AP)', desc:'Wybierz wroga w control range — możesz go przesunąć do 3". Potem inflict D3+1 dmg. Nie gdy Conceal.', unique:true},
+      {name:"Brawler", desc:"Whenever this operative is fighting or retaliating, your opponent cannot use the assist rule. If this operative is incapacitated during the Fight action, you can strike the enemy operative with one of your unresolved successes before this operative is removed. Normal damage inflicted on this operative by attack dice with a Dmg stat of 4 or more is reduced by 1."},
+      {name:"KNUX SMASH (1AP)", desc:"Select one enemy operative within this operative's control range. You can move that enemy operative up to 3\" (it must end that move further from this operative). Then inflict D3+1 damage on it.", unique: true}
     ]
   },
   {
@@ -572,8 +568,8 @@ const HEARTHKYN = [
       {name:'Plasma knives',      atk:3,hit:'3+',dmg:'3/5', wr:'Lethal 5+'},
     ],
     abilities:[
-      {name:'Combat Surgery', desc:'SUPPORT. Raz na turę gdy przyjazny Hearthkyn w 3" jest aktywowany: może natychmiast odzyskać D3 utracone wounds. Nie podczas counteraction.'},
-      {name:'MEDIKIT (1AP)', desc:'Wybierz przyjaznego Hearthkyn w control range. Odzyska D3+1 wounds. Nie w control range wroga.', unique:true},
+      {name:"Combat Surgery", desc:"SUPPORT. Once per turning point, when a friendly HEARTHKYN SALVAGER operative within 3\" of this operative is activated: that operative can immediately regain up to D3 lost wounds. This cannot be used during a counteraction."},
+      {name:"MEDIKIT (1AP)", desc:"Select one friendly HEARTHKYN SALVAGER operative within this operative's control range. That operative regains up to D3+1 lost wounds. Cannot perform this action while within control range of an enemy operative.", unique: true}
     ]
   },
   {
@@ -588,7 +584,7 @@ const HEARTHKYN = [
       {name:'Fists',              atk:3,hit:'4+',dmg:'2/3', wr:'—'},
     ],
     abilities:[
-      {name:'Vyr-3 Utility Grenade', desc:'Wybierz efekt przy użyciu: (A) jak frag; (B) jak krak; (C) jak stun; (D) jak smoke. Grenadier może użyć raz na bitwę każdego wariantu.'},
+      {name:"Vyr-3 Utility Grenade", desc:"When using the utility grenade, select one of the following effects \u2014 (A) treat as a frag grenade; (B) treat as a krak grenade; (C) treat as a stun grenade; (D) treat as a smoke grenade. This operative can use each variant once per battle."}
     ]
   },
   {
@@ -616,8 +612,8 @@ const HEARTHKYN = [
       {name:'Fists',              atk:3,hit:'4+',dmg:'2/3', wr:'—'},
     ],
     abilities:[
-      {name:'Jump Pack', desc:'Charge/Fall Back/Reposition: może ignorować pionowy dystans podczas jednego wspinania i jednego zeskoku.'},
-      {name:'Force Field', desc:'Gdy operatyw jest strzelany i w 3" od tego operatywa: możesz re-rollować jeden defence dice.'},
+      {name:"Jump Pack", desc:"During the Charge, Fall Back or Reposition action, this operative can ignore vertical distance during one ascent and one descent."},
+      {name:"Force Field", desc:"Whenever a friendly HEARTHKYN SALVAGER operative within 3\" of this operative is being shot, you can re-roll one of your defence dice for that operative."}
     ]
   },
   {
@@ -631,8 +627,8 @@ const HEARTHKYN = [
       {name:'Fists',              atk:3,hit:'4+',dmg:'2/3', wr:'—'},
     ],
     abilities:[
-      {name:'Relay', desc:'SUPPORT. Gdy aktywowany: każdy przyjazny Hearthkyn w 6" może zmienić order (za darmo).'},
-      {name:'SIGNAL (1AP)', desc:'Wybierz jeden objective marker w killzone — do końca rundy przyjazne Hearthkyn w 3" od niego traktują go jak własny (dla control purposes).', unique:true},
+      {name:"Relay", desc:"SUPPORT. Whenever this operative is activated, each friendly HEARTHKYN SALVAGER operative within 6\" of it can immediately change its order."},
+      {name:"SIGNAL (1AP)", desc:"Select one objective marker in the killzone. Until the end of the turning point, when determining control of that marker, treat the total APL stat of friendly HEARTHKYN SALVAGER operatives that contest it as 1 higher.", unique: true}
     ]
   },
   {
@@ -646,8 +642,8 @@ const HEARTHKYN = [
       {name:'Fists',              atk:3,hit:'4+',dmg:'2/3', wr:'—'},
     ],
     abilities:[
-      {name:'Tactician', desc:'STRATEGIC GAMBIT raz na bitwę: po roll-off na initiative możesz re-rollować swój dice.'},
-      {name:'Pan Spectral Scan', desc:'SUPPORT. Gdy aktywowany: wybierz jednego wroga w 9" — do końca rundy jest traktowany jako mający Engage order (nawet gdy ma Conceal).'},
+      {name:"Tactician", desc:"STRATEGIC GAMBIT once per battle: after rolling off to decide initiative, you can re-roll your dice."},
+      {name:"Pan Spectral Scan", desc:"SUPPORT. Whenever this operative is activated, select one enemy operative within 9\" of it. Until the end of the turning point, that enemy operative is treated as having an Engage order (even if it has a Conceal order)."}
     ]
   },
   {
@@ -661,8 +657,8 @@ const HEARTHKYN = [
       {name:'Fists',              atk:3,hit:'4+',dmg:'2/3', wr:'—'},
     ],
     abilities:[
-      {name:'Early Detection', desc:'Gdy wróg rozpoczyna Charge w 9" od Ciebie: możesz go wybrać — do końca akcji przyjazne Hearthkyn mogą go targetować nawet z Conceal.'},
-      {name:'SPOT (1AP)', desc:'Wybierz widocznego wroga w 9". Do końca rundy jest "spotted" — przyjazne Hearthkyn mogą go targetować ignorując cover (nie usuwa cover save).', unique:true},
+      {name:"Early Detection", desc:"Whenever an enemy operative starts performing the Charge action while within 9\" of this operative, you can select that enemy operative. Until the end of that action, friendly HEARTHKYN SALVAGER operatives can target that enemy operative even if they cannot draw line of sight to it."},
+      {name:"SPOT (1AP)", desc:"Select one visible enemy operative within 9\". Until the end of the turning point, that enemy operative is spotted: friendly HEARTHKYN SALVAGER operatives do not gain the benefit of cover when shooting against it (but it still retains cover saves from other sources).", unique: true}
     ]
   },
   {
@@ -676,7 +672,7 @@ const HEARTHKYN = [
       {name:'Fists',              atk:3,hit:'4+',dmg:'2/3', wr:'—'},
     ],
     abilities:[
-      {name:"I've Got It", desc:'Może nosić do 2 markerów jednocześnie (normalnie limit to 1). Nie traci markerów gdy inkapacytowany (zamiast tego odkłada je w swoim miejscu).'},
+      {name:"I've Got It", desc:"This operative can carry up to two markers simultaneously (the normal limit is one). Whenever this operative is incapacitated while carrying markers, do not discard them; instead, leave them in the killzone at the position of this operative."}
     ]
   },
   {
@@ -689,7 +685,7 @@ const HEARTHKYN = [
       {name:'Fists',         atk:3,hit:'4+',dmg:'2/3', wr:'—'},
     ],
     abilities:[
-      {name:'Solid', desc:'Gdy atakujący retains ≤1 success (przed re-rollami) przy strzelaniu do tego operatywa: możesz zachować jeden fail jako normalny sukces.'},
+      {name:"Solid", desc:"Whenever an operative is shooting this operative and the attacker retains one or fewer successes (including any re-rolls) in the Roll Attack Dice step, you can retain one of your fails as a normal success."}
     ]
   },
 ];
@@ -704,10 +700,9 @@ const GOREMONGER = [
       {name:'Chainblade',     atk:4,hit:'3+',dmg:'4/5', wr:'Rending'},
     ],
     abilities:[
-      {name:"Khorne's Favour", desc:'Raz na aktywację: gdy GORE TANK pusty — możesz go zwiększyć.'},
-      {name:'Impending Apotheosis', desc:'Raz na bitwę: gdy atak dice inflicts Normal Dmg — możesz zignorować te obrażenia.'},
-      {name:'Gore Tank (faction)', desc:'Trzy poziomy: pusty / pół / pełny. Start: pół. Rośnie gdy inkapacytujesz wroga w 2". Maleje gdy używasz SANGUAVITAE. Max 8 dmg per Shoot action (Runes of Khorne).'},
-      {name:'Sanguavitae (faction)', desc:'Raz na akcję, max 2× na aktywację: Rejuvenate (D3+1 wounds); Mania (+1APL do nast. aktywacji); Fury (2× Fight, druga gratis — nie z Mania); Rake (po Charge: D3 dmg w control range); Surge (+1" Move); Rage (+1 ATK melee).'},
+      {name:"Khorne's Favour", desc:"Once per activation, when this operative's GORE TANK is empty, you can increase its GORE TANK."},
+      {name:"Impending Apotheosis", desc:"Once per battle, when an attack dice would inflict Normal damage on this operative, you can ignore that damage."},
+      {name:"Gore Tank & Sanguavitae", desc:"See Goremonger faction rules. Starts at half. Increases when incapacitating operatives within control range or visible and within 2\". Must decrease when using a Sanguavitae rule. Options: Rejuvenate (D3+1 wounds), Mania (+1 APL), Fury (2x Fight, second free), Rake (D3 dmg on Charge), Surge (+1\" Move), Rage (+1 Atk melee)."}
     ]
   },
   {
@@ -719,7 +714,7 @@ const GOREMONGER = [
       {name:'Chainglaive', atk:4,hit:'3+',dmg:'4/5', wr:'Rending'},
     ],
     abilities:[
-      {name:'Obsessive Bloodlust', desc:'Raz na aktywację: gdy kończy Fight i nie jest już w control range wrogów — może natychmiast free Charge (max 2" ruchu), nawet jeśli już wykonał Charge.'},
+      {name:"Obsessive Bloodlust", desc:"Once per activation, when this operative ends the Fight action and is no longer within control range of any enemy operatives, it can immediately perform a free Charge action with a maximum move distance of 2\", even if it has already performed the Charge action during that activation."}
     ]
   },
   {
@@ -731,8 +726,8 @@ const GOREMONGER = [
       {name:'Pickrippers',  atk:5,hit:'3+',dmg:'4/5', wr:'Lethal 5+'},
     ],
     abilities:[
-      {name:'*Ritual', desc:'Gdy Strike przy Fight: wybierz jeden efekt rytuału Khorne — Bleeding (D3 dmg na początku każdej aktywacji wroga przez 2 rundy) lub Claim Skull (gdy inkapacytujesz oznaczonego — zyskujesz 1CP).'},
-      {name:'TRANSFUSION RITUAL (1AP)', desc:'Wybierz wroga w control range. Inflict D3+1 dmg i zwiększ swój GORE TANK. Nie podczas counteraction.', unique:true},
+      {name:"*Ritual", desc:"When you strike with this weapon during the Fight action, you can select one of the following: Bleeding \u2014 at the start of each of that enemy operative's next two activations, inflict D3 damage on it; or Claim Skull \u2014 if this operative incapacitates that enemy operative, gain 1CP."},
+      {name:"TRANSFUSION RITUAL (1AP)", desc:"Select one enemy operative within this operative's control range. Inflict D3+1 damage on it, then increase this operative's GORE TANK. Cannot perform this action during a counteraction.", unique: true}
     ]
   },
   {
@@ -744,8 +739,8 @@ const GOREMONGER = [
       {name:'Great chainaxe',atk:5,hit:'4+',dmg:'5/7', wr:'Brutal'},
     ],
     abilities:[
-      {name:'*Drag', desc:'Gdy Strike przy Fight: możesz przesunąć wroga do 2" (musi być bliżej Ciebie na końcu).'},
-      {name:'DASH AND SPRAY (1AP)', desc:'Wykonaj Dash (max 3"), potem Shoot z autopistol przeciwko wszystkim wrogom w 2" od ścieżki ruchu (Torrent 2" efekt). Nie gdy Conceal lub w control range na początku.', unique:true},
+      {name:"*Drag", desc:"When you strike with this weapon during the Fight action, you can move the enemy operative up to 2\" (it must end that move closer to this operative than where it started)."},
+      {name:"DASH AND SPRAY (1AP)", desc:"Perform a Dash action with a maximum move distance of 3\". Then perform a Shoot action with the autopistol against all enemy operatives within 2\" of the path this operative moved along (treat as Torrent 2\"). Cannot perform this action while within control range of an enemy operative at the start of the action, or while it has a Conceal order.", unique: true}
     ]
   },
   {
@@ -757,7 +752,7 @@ const GOREMONGER = [
       {name:'Chainblade',  atk:4,hit:'3+',dmg:'4/5', wr:'Rending'},
     ],
     abilities:[
-      {name:'Incite the Hunt', desc:'SUPPORT. Gdy aktywowany: wybierz jednego przyjaznego Goremonger w 6" — może natychmiast free Charge (max 3"), nawet z Conceal order (zmień na Engage).'},
+      {name:"Incite the Hunt", desc:"SUPPORT. Whenever this operative is activated, select one friendly GOREMONGER operative within 6\". That friendly operative can immediately perform a free Charge action with a maximum move distance of 3\", even if it has a Conceal order (change it to Engage)."}
     ]
   },
   {
@@ -769,8 +764,8 @@ const GOREMONGER = [
       {name:'Chainsword',  atk:5,hit:'3+',dmg:'4/5', wr:'—'},
     ],
     abilities:[
-      {name:'Claim Skull', desc:'STRATEGIC GAMBIT raz na bitwę: wybierz wroga — gdy ten operatyw go inkapacytuje w walce, zyskuje Claim Skull token (1 CP na koniec rundy).'},
-      {name:'Brutish', desc:'Gdy Strike: możesz wybrać odrzucenie efektu Brutal weapon rule wroga (on może blokować normalnie) ale w zamian Twoje melee mają Lethal 5+ do końca sekwencji.'},
+      {name:"Claim Skull", desc:"STRATEGIC GAMBIT once per battle: select one enemy operative. If this operative incapacitates that enemy operative during the Fight action, gain a Claim Skull token (worth 1CP at the end of the turning point)."},
+      {name:"Brutish", desc:"Whenever this operative is fighting, you can use this rule. If you do, your opponent's melee weapons lose the Brutal weapon rule for that sequence, but this operative's melee weapons gain the Lethal 5+ weapon rule for that sequence."}
     ]
   },
   {
@@ -782,9 +777,9 @@ const GOREMONGER = [
       {name:'Chainblade',  atk:4,hit:'3+',dmg:'4/5', wr:'Rending'},
     ],
     abilities:[
-      {name:'*Prey', desc:'Na początku rundy: możesz wyznaczyć jednego widocznego wroga jako Prey. Przy ataku Prey: melee mają Punishing.'},
-      {name:'Rooftop Stalker', desc:'Podczas Charge/Reposition: ignoruje pionowy dystans przy jednym wspinaniu.'},
-      {name:'Climbing Picks', desc:'Gdy wspina się: traktuj pionowy dystans jako 2" (niezależnie od rzeczywistego).'},
+      {name:"*Prey", desc:"At the start of this operative's activation, you can select one visible enemy operative as this operative's Prey. Whenever this operative is shooting against or fighting against its Prey, this operative's weapons have the Punishing weapon rule."},
+      {name:"Rooftop Stalker", desc:"During the Charge or Reposition action, this operative can ignore vertical distance during one ascent."},
+      {name:"Climbing Picks", desc:"Whenever this operative climbs, treat the vertical distance as 2\" regardless of the actual distance."}
     ]
   },
 ];
@@ -798,152 +793,119 @@ const ALL_FACTION_UNITS = {
   goremonger: GOREMONGER,
 };
 
-const FACTION_EQ = {
-  murderwing: [
-    { id:'mw-bladefins',  name:'Bladefins',     desc:'SLICE FROM ABOVE (1AP, BOOST): inflict D3+1 dmg na wroga w BOOST ZONE. Tylko podczas Fall Back/Reposition po BOOST.' },
-    { id:'mw-clawed',     name:'Clawed Armour',  desc:'CLAWED CHARGE (0AP, BOOST): inflict 1 dmg na wroga w control range, kończy Charge. Tylko podczas Charge po BOOST.' },
-    { id:'mw-warpfuel',   name:'Warp Fuel',       desc:'Raz na TP: gdy wróg kończy Fall Back a przyjazny Murderwing był w jego control range na starcie — ten operatyw może natychmiast free Reposition lub Charge (max 3").' },
-    { id:'mw-voxcasters', name:'Vox-Casters',     desc:'VOX-CRY (1AP): każdy wróg w 3" zdaje stun test (k6, na 3+ traci 1 APL do końca następnej aktywacji). Nie z Conceal.' },
-  ],
-  raveners: [
-    { id:'rv-chromato',    name:'Chromatospore Camouflage', desc:'Gdy wróg strzela do Twojego Ravenera i możesz zachować cover save — zachowujesz 1 dodatkowy cover save. Nie kumuluje się z Vantage terrain.' },
-    { id:'rv-acidblood',   name:'Acid Blood',               desc:'Podczas Fight/Retaliate: gdy attack dice inflicts dmg na Twój operatyw — rzuć k6: na 5+ inflict 1 dmg na wroga w tej sekwencji.' },
-    { id:'rv-metamorphic', name:'Metamorphic Flesh',         desc:'Przy każdej aktywacji Ravenera — odzyskuje do D3 utraconych wounds.' },
-    { id:'rv-heightened',  name:'Heightened Senses',         desc:'Raz na bitwę: po roll-off na initiative, jeśli Ravener jest underground a wróg jest w 5" od TUNNEL — możesz re-rollować swój dice.' },
-  ],
-  xv26: [
-    { id:'xv-multitrackers', name:'XV26 Multitrackers',        desc:'Raz na TP: gdy wykonujesz Shoot i wybierasz burst cannon (sweeping) — do końca akcji ta broń ma Torrent 2".' },
-    { id:'xv-blacksun',      name:'Advanced Blacksun Filters', desc:'Gdy strzelasz do Obscured celu — nie musisz odrzucać 1 sukcesu z tytułu Obscured. Inne efekty Obscured nadal obowiązują.' },
-    { id:'xv-jammers',       name:'Counter-Network Jammers',    desc:'STRATEGIC GAMBIT: wybierz 1 objective lub mission marker. Do końca TP: APL wrogów contestujących go traktowany jako o 1 niższy jeśli co najmniej 1 jest w 3" od przyjaznego XV26.' },
-    { id:'xv-targetlocks',   name:'Hardwired Target Locks',     desc:'Gdy counteractujesz: możesz użyć XV26 z Conceal order w >3" od wrogów — zmień na Engage, ale może tylko Shoot podczas counteraction.' },
-  ],
-  hearthkyn: [
-    { id:'hk-plasmaknives', name:'Plasma Knives',    desc:'Dodatkowa broń melee: ATK 3, HIT 4+, DMG 3/5, Lethal 5+. Field Medic ma lepszą wersję — użyj lepszej.' },
-    { id:'hk-excavation',   name:'Excavation Tools', desc:'Pick Up Marker kosztuje o 1 AP mniej. Nie musisz kontrolować markera żeby go podnieść — wystarczy contestować.' },
-    { id:'hk-climbing',     name:'Climbing Rigs',     desc:'W każdej aktywacji: przy wspinaniu traktuj pionowy dystans jako 2" LUB przy zeskoku ignoruj pionowy dystans.' },
-    { id:'hk-writ',         name:'Writ of Claim',     desc:'Raz na bitwę: jeśli contestujesz ≥2 objective markers, po roll-off na initiative możesz re-rollować swój dice.' },
-  ],
-  goremonger: [
-    { id:'gm-gorytotem',   name:'Gory Totem',    desc:'Przed bitwą: postaw Gory Totem marker w Twoim terytorium (>2" od innych markerów). Wrogowie w 3" od niego nie mogą re-rollować attack dice.' },
-    { id:'gm-cadaver',     name:'Bloody Cadaver', desc:'Przed bitwą: postaw Bloody Cadaver marker w Twoim terytorium. W Ready step każdej rundy: możesz zwiększyć Gore Tank operatywa który go kontroluje (nie w control range wroga).' },
-    { id:'gm-chaossigil',  name:'Chaos Sigil',    desc:'Raz na TP: gdy wróg strzela do Twojego Goremonger — pogorsz x reguły Piercing o 1 (Piercing 1 → ignorowane).' },
-    { id:'gm-wristchains', name:'Wrist Chains',   desc:'Raz na TP: gdy Goremonger wykonuje Shoot — następujące melee traktowane jako ranged z Range 2": chainblade, chainglaive, great chainaxe (bez Brutal), pickrippers.' },
-  ],
-};
-
 const FACTION_RULES = {
-  mine: {
-    name: 'Murderwing',
-    subtitle: 'Chaos Space Marines',
-    color: 'var(--accent)',
+  "mine": {
+    name: "Murderwing",
+    subtitle: "Chaos Space Marines",
+    color: "var(--accent)",
     rules: [
-      { name:'Jump Pack', desc:'Podczas Charge/Fall Back/Reposition: na początku prostego odcinka może BOOST — operatyw znika i pojawia się w ≤X" poziomo (X dodany do ruchu). Nie może startować ani lądować na Vantage terrain.' },
-      { name:'Boost Actions', desc:'Akcje BOOST wykonywane są w trakcie innych akcji gdy użyto BOOST. Max 1 BOOST action na aktywację/counteraction. Większość BOOST actions działa w BOOST ZONE — obszarze między obecną pozycją a miejscem startu BOOST. Wrogowie na Vantage terrain nie są w BOOST ZONE.' },
-      { name:'Astartes', desc:'W każdej aktywacji może wykonać 2× Shoot (przynajmniej jeden bolt pistol) LUB 2× Fight. Każdy przyjazny Murderwing może counteract niezależnie od order.' },
+      { name:"Jump Pack", desc:"Whenever a friendly MURDERWING operative is performing the Charge, Fall Back or Reposition action, at the start of any straight-line increment, as long as no part of its base is underneath Vantage terrain, it can do a BOOST for that increment. Remove it from the killzone and set it back up wholly within X\" horizontally of its original location (X added to total move distance). Cannot be set up underneath Vantage terrain or, unless Charging, within control range of an enemy operative." },
+      { name:"Boost Actions", desc:"Some actions are BOOST actions \u2014 performed during other actions when a BOOST is used. Each operative cannot perform more than one BOOST action per activation/counteraction. Most BOOST actions affect enemy operatives within a BOOST ZONE: the horizontal area between the operative's current location and the location from which it used BOOST. Enemy operatives underneath Vantage terrain are not within BOOST ZONEs." },
+      { name:"Astartes", desc:"During each friendly MURDERWING operative's activation, it can perform either two Shoot actions or two Fight actions. If two Shoot actions, a bolt pistol must be selected for at least one. Each friendly MURDERWING operative can counteract regardless of its order." }
     ],
     strat: [
-      { name:'Predators Above', desc:'Gdy operatyw jest ≥2" wyżej niż podłoga killzone LUB wykonał BOOST: jego broń ma Balanced do końca aktywacji.' },
-      { name:'Cull the Weak', desc:'Gdy strzelasz/walczysz z wrogiem który jest ≥2" niżej, ma obniżony APL lub był ranny na początku aktywacji — Twoja broń ma Punishing.' },
-      { name:'Nightmare on High', desc:'Gdy wróg strzela do Twojego operatywa który jest ≥2" wyżej LUB wykonał BOOST w tej rundzie — możesz re-rollować jeden defence dice.' },
-      { name:'Instil Fear', desc:'Podczas Fight: Normal Dmg ≥3 inflicts o 1 mniej dmg na ten operatyw.' },
+      { name:"Predators Above", desc:"Whenever a friendly MURDERWING operative is at least 2\" higher than the killzone floor, its weapons have the Balanced weapon rule. Whenever a friendly MURDERWING operative does a BOOST, its weapons have the Balanced weapon rule until the end of that activation." },
+      { name:"Cull the Weak", desc:"Whenever a friendly MURDERWING operative is shooting or fighting, its weapons have the Punishing weapon rule if any of the following are true for the target: it's at least 2\" lower; its APL stat is less than normal; it was wounded at the start of the activation/counteraction." },
+      { name:"Nightmare on High", desc:"Whenever an operative is shooting a friendly MURDERWING operative that's at least 2\" higher than the killzone floor, or that did a BOOST during this turning point, you can re-roll one of your defence dice." },
+      { name:"Instil Fear", desc:"Whenever a friendly MURDERWING operative is fighting, Normal Dmg of 3 or more inflicts 1 less damage on it." }
     ],
     fight: [
-      { name:'Malicious Narcissism', desc:'Użyj gdy masz tylko 1 gotowego operatywa. Do końca rundy gdy masz mniej gotowych niż przeciwnik możesz pomijać swoje aktywacje (opóźniasz ostatniego do momentu gdy przeciwnik ma 1 gotowego). Nie możesz counteract do czasu wydania tego operatywa.' },
-      { name:'Murderous Descent', desc:'Użyj gdy wróg kończy Charge/Dash/Fall Back/Reposition w 3" poziomo i >2" poniżej Twojego operatywa. Przerwij i wykonaj free Charge do control range tamtego wroga.' },
-      { name:'Long Forgotten Honour', desc:'Użyj podczas Fight/Retaliate gdy reolujesz critical success — zamiast Strike/Block zakończ sekwencję i wykonaj free Fall Back do 3". Operatyw może to zrobić nawet gdy normalnie nie może Fall Back.' },
-      { name:'Wings of Darkness', desc:'Użyj podczas Fall Back/Reposition gdy wykonujesz BOOST. Operatyw może pojawić się o dodatkowe 3" dalej, ale nie może Shoot/Fight/Carving Blow do następnej rundy. Nie w 1. rundzie.' },
+      { name:"Malicious Narcissism", desc:"Use when it's your turn to activate and only one friendly MURDERWING operative is ready. Until end of turning point, whenever you have fewer ready friendly operatives than your opponent, you can skip activations (delay that operative until your opponent has only one ready operative). You cannot counteract until that operative is expended." },
+      { name:"Murderous Descent", desc:"Use when an enemy operative ends the Charge, Dash, Fall Back or Reposition action within 3\" horizontally and more than 2\" lower than a friendly MURDERWING operative. Interrupt and immediately perform a free Charge action \u2014 must end within control range of that enemy operative." },
+      { name:"Long Forgotten Honour", desc:"Use when a friendly MURDERWING operative is fighting or retaliating, when you resolve a critical success. Instead of striking or blocking, end that sequence (remaining attack dice discarded) and immediately perform a free Fall Back action up to 3\". That operative can do so even if normally prevented from performing Fall Back." },
+      { name:"Wings of Darkness", desc:"Use when a friendly MURDERWING operative is performing Fall Back or Reposition, when it does a BOOST. That operative can be set up an additional 3\" away during that BOOST, but cannot perform Shoot, Fight or Carving Blow until the next turning point. Cannot be used during the first turning point." }
     ]
   },
-  raveners: {
-    name: 'Raveners',
-    subtitle: 'Tyranid Kill Team',
-    color: 'var(--teal)',
+  "raveners": {
+    name: "Raveners",
+    subtitle: "Tyranid Kill Team",
+    color: "var(--teal)",
     rules: [
-      { name:'Burrow', desc:'Przy setupie: pierwsze 2 operatywów stawiasz normalnie, pozostałe mogą być underground (obok planszy). Underground mogą tylko BURROW. Na końcu bitwy — incapacitated. BURROW (1AP): jeśli underground — postaw na TUNNEL (Move -2" do końca aktywacji). Jeśli na TUNNEL — wróć underground. Nie gdy niesiesz marker.' },
-      { name:'Tunnel', desc:'Na końcu Set Up: postaw Tunnel marker "0" w drop zone przy krawędzi planszy. STRATEGIC GAMBIT w rundach 1-4: postaw kolejny marker w 5" od poprzedniego. Twój TUNNEL = markery + obszar między kolejnymi.' },
-      { name:'Predatory Instincts', desc:'Każdy Ravener może wykonać 2× Fight w aktywacji. Każdy Ravener może counteract niezależnie od order. Podczas counteraction: możesz zmienić order LUB zamiast akcji zmienić order (i tak liczy jako counteraction). Podczas counteraction (bez mission action): free Burrow action.' },
+      { name:"Burrow", desc:"When setting up, your first two operatives must be set up normally. Each other RAVENER operative can be set up underground (placed to one side). Underground operatives can only perform Burrow. At the end of the battle, each underground operative is incapacitated. BURROW (1AP): if underground, set up on your TUNNEL (Move -2\" until end of activation); if on TUNNEL, go underground. Cannot be performed while carrying a marker." },
+      { name:"Tunnel", desc:"At end of Set Up Operatives, place Tunnel marker \"0\" wholly within your drop zone touching your killzone edge. As a STRATEGIC GAMBIT in the first four turning points, place the next numbered Tunnel marker wholly within 5\" of the preceding one (max 5 markers). Your TUNNEL is created by the markers and the area between sequentially numbered markers." },
+      { name:"Predatory Instincts", desc:"During each friendly RAVENER operative's activation, it can perform two Fight actions. Each friendly RAVENER operative can counteract regardless of its order. Whenever it counteracts: you can change its order first, or change its order instead of performing an action (still treated as having counteracted). During a counteraction not involving a mission action, it can perform a free Burrow action." }
     ],
     strat: [
-      { name:'Death from Below', desc:'Podczas Fight: jeśli wykonałeś Burrow w tej aktywacji — melee mają Balanced. Jeśli jesteś na TUNNEL — melee mają Ceaseless.' },
-      { name:'Whipcord Emergence', desc:'Gdy wróg strzela do Twojego Ravenera: jeśli ten wykonał Burrow w tej rundzie — re-roll 1 defence dice. Jeśli jest na TUNNEL — re-roll dowolne.' },
-      { name:'Writhe Out of Sight', desc:'Wybierz przyjaznego Ravenera w killzone — może natychmiast free Burrow. Jeśli jest w 2" od TUNNEL — może najpierw free Fall Back lub Reposition.' },
-      { name:'Tunnel Lurkers', desc:'Ravener na TUNNEL jest w cover (Light terrain) chyba że jest w 2" od aktywnego operatywa.' },
+      { name:"Death from Below", desc:"Whenever a friendly RAVENER operative is fighting: if it performed the Burrow action during that activation/counteraction, its melee weapons have the Balanced weapon rule. If it's on your TUNNEL, its melee weapons have the Ceaseless weapon rule." },
+      { name:"Whipcord Emergence", desc:"Whenever an operative is shooting a friendly RAVENER operative: if that friendly operative performed the Burrow action during that turning point, you can re-roll one of your defence dice. If it's on your TUNNEL, you can re-roll any of your defence dice." },
+      { name:"Writhe Out of Sight", desc:"Select one friendly RAVENER operative in the killzone. That operative can immediately perform a free Burrow action. If it's within 2\" of your TUNNEL, it can perform a free Fall Back or Reposition action before doing so." },
+      { name:"Tunnel Lurkers", desc:"Whenever a friendly RAVENER operative is on your TUNNEL it's in cover, unless it's within 2\" of the active operative. Treat as cover provided by Light terrain (affected by rules that prevent this, e.g. Seek and Vantage terrain)." }
     ],
     fight: [
-      { name:'Slithering Evasion', desc:'Podczas aktywacji/counteraction Ravenera: Fall Back kosztuje o 1 AP mniej. Może wykonać Charge gdy jest w control range wroga i może opuścić jego control range.' },
-      { name:'Subterranean Horror', desc:'Użyj gdy wróg walczy z Twoim Ravenerem na TUNNEL — w kroku Resolve Attack Dice Ty rozwiązujesz pierwszy dice (jako defender zamiast attacker).' },
-      { name:'Burrowing Strike', desc:'Użyj gdy Ravener wykonuje Burrow — przed usunięciem lub po postawieniu na TUNNEL: inflict D3+1 dmg każdemu wrogowi w control range (oddzielnie). Nie w Strategy phase ani podczas aktywacji Felltalon jeśli użył Toxic Lunge.' },
-      { name:'Death Frenzy', desc:'Użyj gdy Ravener jest inkapacytowany — inflict D3 dmg każdemu wrogowi w control range (oddzielnie). Venomspitter z aktywnym Distend Dorsal Sac: 2D3 zamiast D3.' },
+      { name:"Slithering Evasion", desc:"Use during a friendly RAVENER operative's activation or counteraction, before or after it performs an action. During that activation/counteraction, that operative can: perform the Fall Back action for 1 less AP; and perform the Charge action while within control range of an enemy operative, leaving that control range to do so." },
+      { name:"Subterranean Horror", desc:"Use when an enemy operative is fighting against a friendly RAVENER operative on your TUNNEL. In the Resolve Attack Dice step of that sequence, you resolve the first attack dice (i.e. you act as defender instead of attacker)." },
+      { name:"Burrowing Strike", desc:"Use when a friendly RAVENER operative performs the Burrow action. Before it's removed from the killzone, or after setting it up on your TUNNEL, inflict D3+1 damage on each enemy operative within its control range (roll separately). Cannot use in Strategy phase, or during a FELLTALON activation/counteraction if it performs Toxic Lunge." },
+      { name:"Death Frenzy", desc:"Use when a friendly RAVENER operative is incapacitated. Before it's removed, inflict D3 damage on each enemy operative within its control range (roll separately). If the operative is a VENOMSPITTER benefitting from Distend Dorsal Sac, inflict 2D3 damage instead." }
     ]
   },
-  xv26: {
-    name: 'XV26 Stealth Battlesuits',
+  "xv26": {
+    name: "XV26 Stealth Battlesuits",
     subtitle: "T'au Empire",
-    color: 'var(--teal)',
+    color: "var(--teal)",
     rules: [
-      { name:'Kauyon', desc:'Podczas strzelania: ranged weapons mają Accurate X gdzie X zależy od lokalizacji wroga: w 3" od Twojego terytorium → Accurate 1; w Twoim terytorium → Accurate 2; w 3" od Twojego drop zone → Accurate 3.' },
-      { name:'Stealth Fields', desc:'Z Conceal order: operatyw nie może być widoczny dla wrogów w >3" (precedence over all). Z Conceal order: Fall Back kosztuje o 1 AP mniej.' },
+      { name:"Kauyon", desc:"Whenever a friendly XV26 STEALTH BATTLESUIT operative is shooting an enemy operative, its ranged weapons have the Accurate X weapon rule. X is determined by the enemy's location: within 3\" of your territory = Accurate 1; within your territory = Accurate 2; within 3\" of your drop zone = Accurate 3." },
+      { name:"Stealth Fields", desc:"Whenever a friendly XV26 STEALTH BATTLESUIT operative has a Conceal order, it cannot be visible to enemy operatives more than 3\" from it (takes precedence over all other rules). Whenever it has a Conceal order, it can perform the Fall Back action for 1 less AP." }
     ],
     strat: [
-      { name:'Patient Hunters', desc:'Gdy strzelasz do/walczysz z expended wrogiem: Twoje bronie mają Balanced i Saturate (ranged).' },
-      { name:'Prepare Ambush', desc:'Postaw Ambush marker w Twoim terytorium (>2" od wrogów). Gdy strzelasz do wroga w 2" od markera: usuń marker i Twoje ranged mają Seek do końca akcji.' },
-      { name:'Bonds of Unity', desc:'Gdy aktywowany (nie DRONE), jeśli widzi przyjaznego XV26 (nie DRONE) w 6": ignoruj zmiany APL i wybierz: ignoruj injury penalty do Move LUB do Hit stat broni — do końca aktywacji.' },
-      { name:'Holowave Countermeasures', desc:'Gdy wróg strzela do Twojego XV26 z >6": w Roll Attack Dice step przeciwnik musi odrzucić 1 normalny sukces (lub critical jeśli brak normalnych). Nie kumuluje się z Obscured.' },
+      { name:"Patient Hunters", desc:"Whenever a friendly XV26 STEALTH BATTLESUIT operative is shooting against or fighting against an expended enemy operative, that friendly operative's weapons have the Balanced weapon rule and its ranged weapons have the Saturate weapon rule." },
+      { name:"Prepare Ambush", desc:"Place one Ambush marker wholly within your territory and more than 2\" from enemy operatives. Whenever a friendly XV26 STEALTH BATTLESUIT operative is shooting an enemy within 2\" of that marker, you can remove the marker and that friendly operative's ranged weapons have the Seek weapon rule until the end of the action." },
+      { name:"Bonds of Unity", desc:"Whenever a friendly XV26 STEALTH BATTLESUIT operative (excluding DRONE) is activated, if it's visible to and within 6\" of another friendly XV26 STEALTH BATTLESUIT operative (excluding DRONE), you can ignore any changes to that operative's APL stat, and select one: ignore changes to its Move stat from injury; or ignore changes to the Hit stat of its weapons from injury until the end of that activation." },
+      { name:"Holowave Countermeasures", desc:"Whenever an operative is shooting a friendly XV26 STEALTH BATTLESUIT operative from more than 6\" away: in the Roll Attack Dice step, your opponent must discard one of their normal successes (or a critical success if no normal successes). Not cumulative with the Obscured rule." }
     ],
     fight: [
-      { name:'Vectored Retro-Thrusters', desc:'Gdy wróg kończy Charge w control range Twojego XV26 (nie DRONE): przerwij i ten operatyw wykonuje free Fall Back (max 3"). Potem wróg może wykonać free Reposition za pozostały dystans.' },
-      { name:'Engage Jet Pack', desc:'Gdy aktywowany/counteract (nie DRONE): możesz ignorować pionowy dystans podczas jednego wspinania i jednego zeskoku w tej aktywacji.' },
-      { name:'Ghostshroud', desc:'Na końcu aktywacji Twojego XV26: zmień Engage na Conceal. Max 1× na operatyw na bitwę.' },
-      { name:'Saviour Protocols', desc:'Gdy wróg wybiera Twojego XV26 (nie DRONE) jako valid target Shoot: wybierz przyjaznego DRONE w 3" jako target zamiast. Ten DRONE ma cover/obscured tylko jeśli miał je oryginalny cel. Nie działa na Blast/Torrent.' },
+      { name:"Vectored Retro-Thrusters", desc:"Use when an enemy operative ends a Charge action within control range of a friendly XV26 STEALTH BATTLESUIT operative (excluding DRONE). Interrupt and that friendly operative immediately performs a free Fall Back action up to 3\". The enemy operative can then perform a free Reposition action for any remaining distance." },
+      { name:"Engage Jet Pack", desc:"Use during a friendly XV26 STEALTH BATTLESUIT operative's (excluding DRONE) activation or counteraction. During that activation/counteraction, that operative can ignore vertical distance during one climb and one descend." },
+      { name:"Ghostshroud", desc:"Use at the end of a friendly XV26 STEALTH BATTLESUIT operative's activation. Change its order from Engage to Conceal. Each operative can only use this once per battle." },
+      { name:"Saviour Protocols", desc:"Use when an enemy operative selects a friendly XV26 STEALTH BATTLESUIT operative (excluding DRONE) as a valid target for the Shoot action. Select a friendly DRONE within 3\" \u2014 that DRONE becomes the target instead. The DRONE only benefits from cover/obscured if the original target would have. Cannot be used against Blast or Torrent weapons." }
     ]
   },
-  hearthkyn: {
-    name: 'Hearthkyn Salvager',
-    subtitle: 'Leagues of Votann',
-    color: 'var(--teal)',
+  "hearthkyn": {
+    name: "Hearthkyn Salvager",
+    subtitle: "Leagues of Votann",
+    color: "var(--teal)",
     rules: [
-      { name:'Grudge', desc:'Gdy wróg inkapacytuje przyjaznego Hearthkyn → ten wróg dostaje Grudge token na całą bitwę. Gdy atakujesz/walczysz z wrogiem z Grudge tokenami: za każdy token możesz zamienić 1 normalny sukces na critical success (w tym z Accurate). Tokeny nie są usuwane po użyciu.' },
+      { name:"Grudge", desc:"Whenever an enemy operative incapacitates a friendly HEARTHKYN SALVAGER operative, that enemy operative gains one of your Grudge tokens for the battle. Whenever a friendly HEARTHKYN SALVAGER operative is shooting against, fighting against or retaliating against an enemy operative, for each Grudge token that enemy operative has, you can retain one normal success as a critical success instead (including any via Accurate). Grudge tokens are not removed when you do this." }
     ],
     strat: [
-      { name:'Need Keeps', desc:'Wybierz 1 objective lub mission marker. Jeśli Twoi Hearthkyn go contestują: total APL traktowany jako o 1 wyższy. Twoi Hearthkyn w 3" od niego mają +1 ATK melee (max 4; jeśli już 4 → Balanced).' },
-      { name:'Wrought Defence', desc:'Gdy wróg strzela do Twojego Hearthkyn i wyrzucił ≤1 sukces (z re-rollami): możesz zachować 1 fail jako normalny sukces.' },
-      { name:'Toil Earns', desc:'Wybierz 1 objective lub mission marker. Wrogowie w 3" od niego traktowani są jakby mieli 1 dodatkowy Grudge token.' },
-      { name:'Proximate Firepower', desc:'Gdy strzelasz do wroga w 6": Hit stat ranged weapons o 1 lepszy (max 3+). Działa dynamicznie podczas akcji.' },
+      { name:"Need Keeps", desc:"Select one objective marker or one of your mission markers. When determining control: treat the total APL stat of friendly HEARTHKYN SALVAGER operatives that contest it as 1 higher if at least one friendly contests it. Whenever a friendly HEARTHKYN SALVAGER operative is within 3\" of that marker, add 1 to the Atk stat of its melee weapons (max 4); if already 4, it has the Balanced weapon rule." },
+      { name:"Wrought Defence", desc:"Whenever an operative is shooting a friendly HEARTHKYN SALVAGER operative, if you rolled one or fewer successes (including any re-rolls), you can retain one of your fails as a normal success instead of discarding it." },
+      { name:"Toil Earns", desc:"Select one objective marker or one of your mission markers. Whenever an enemy operative is within 3\" of that marker, treat it as having one additional Grudge token." },
+      { name:"Proximate Firepower", desc:"Whenever a friendly HEARTHKYN SALVAGER operative is shooting an enemy operative within 6\", improve the Hit stat of that friendly operative's ranged weapons by 1 (to a maximum of 3+). This can apply or remove the Hit stat change during an action." }
     ],
     fight: [
-      { name:'The Ancestors Are Watching', desc:'Podczas aktywacji Hearthkyn: może wykonać free Shoot LUB free Fight.' },
-      { name:'Sturdy', desc:'Gdy wróg strzela do Twojego Hearthkyn: w momencie zbierania defence dice zamień retained critical successes wroga na normalne (efekty już rozwiązane jak Piercing Crits nie są cofane).' },
-      { name:'Worth It', desc:'Gdy Hearthkyn jest inkapacytowany: może wykonać free mission action przed usunięciem z planszy.' },
-      { name:'Engage to Acquire', desc:'Po rzucie ataku przez Twojego Hearthkyn który atakuje wroga kontrolującego objective lub mission marker: możesz re-rollować dowolne attack dice.' },
+      { name:"The Ancestors Are Watching", desc:"Use during a friendly HEARTHKYN SALVAGER operative's activation. That operative can immediately perform a free Shoot or Fight action." },
+      { name:"Sturdy", desc:"Use when an operative is shooting a friendly HEARTHKYN SALVAGER operative, at the start of the Roll Defence Dice step. Your opponent must change any critical successes they retain to normal successes (effects that have already resolved, such as Piercing Crits, are not reversed)." },
+      { name:"Worth It", desc:"Use when a friendly HEARTHKYN SALVAGER operative is incapacitated. Before it's removed from the killzone, that operative can immediately perform a free mission action." },
+      { name:"Engage to Acquire", desc:"Use when a friendly HEARTHKYN SALVAGER operative has rolled its attack dice against an enemy operative that controls an objective or mission marker. You can re-roll any of your attack dice." }
     ]
   },
-  goremonger: {
-    name: 'Goremonger',
-    subtitle: 'World Eaters — Chaos',
-    color: 'var(--teal)',
+  "goremonger": {
+    name: "Goremonger",
+    subtitle: "World Eaters \u2014 Chaos",
+    color: "var(--teal)",
     rules: [
-      { name:'Runes of Khorne', desc:'Każdy Goremonger nie może stracić więcej niż 8 wounds na jedną Shoot action.' },
-      { name:'Gore Tank', desc:'3 poziomy: pusty / pół / pełny. Start: pół. Rośnie (+1 poziom) gdy inkapacytujesz operatywa w control range lub widocznego w 2". Maleje gdy używasz SANGUAVITAE. Nie może przekroczyć pełny ani spaść poniżej pusty.' },
-      { name:'Sanguavitae — Rejuvenate', desc:'KIEDY: przed/po akcji w aktywacji lub counteraction. EFEKT: odzyskaj D3+1 utracone wounds.' },
-      { name:'Sanguavitae — Mania', desc:'KIEDY: przed/po akcji w aktywacji. EFEKT: +1 APL do początku następnej aktywacji. Nie łączyć z Fury w tej samej aktywacji.' },
-      { name:'Sanguavitae — Fury', desc:'KIEDY: przed/po akcji w aktywacji. EFEKT: możesz wykonać 2× Fight w tej aktywacji, druga jest gratis. Nie łączyć z Mania.' },
-      { name:'Sanguavitae — Rake', desc:'KIEDY: podczas Charge action. EFEKT: po zakończeniu ruchu inflict D3 dmg na 1 wroga w control range.' },
-      { name:'Sanguavitae — Surge', desc:'KIEDY: podczas Charge lub Reposition. EFEKT: +1" do Move stat do końca tej akcji.' },
-      { name:'Sanguavitae — Rage', desc:'KIEDY: podczas Fight action. EFEKT: +1 ATK melee do końca tej akcji.' },
+      { name:"Runes of Khorne", desc:"Each friendly GOREMONGER operative cannot lose more than 8 wounds per Shoot action." },
+      { name:"Gore Tanks", desc:"Each friendly GOREMONGER operative has a GORE TANK with three levels: full, half and empty. They start at half. Increasing goes up one level; decreasing goes down one level. Cannot increase when full or decrease when empty. Whenever a GOREMONGER operative incapacitates an operative within its control range, or visible and within 2\", you can increase its GORE TANK. Whenever it uses a SANGUAVITAE rule, you must decrease its GORE TANK." },
+      { name:"Sanguavitae \u2014 Rejuvenate", desc:"WHEN: During activation or counteraction, before or after performing an action. EFFECT: That operative regains up to D3+1 lost wounds." },
+      { name:"Sanguavitae \u2014 Mania", desc:"WHEN: During activation, before or after performing an action. EFFECT: Until the start of that operative's next activation, add 1 to its APL stat. Cannot use Mania and Fury during the same activation." },
+      { name:"Sanguavitae \u2014 Fury", desc:"WHEN: During activation, before or after performing an action. EFFECT: That operative can perform two Fight actions during that activation, and the second is free. Cannot use Fury and Mania during the same activation." },
+      { name:"Sanguavitae \u2014 Rake", desc:"WHEN: When performing the Charge action. EFFECT: When that operative finishes moving, you can inflict D3 damage on one enemy operative within its control range." },
+      { name:"Sanguavitae \u2014 Surge", desc:"WHEN: When performing the Charge or Reposition action. EFFECT: Until the end of that action, add 1\" to that operative's Move stat." },
+      { name:"Sanguavitae \u2014 Rage", desc:"WHEN: When performing the Fight action. EFFECT: Until the end of that action, add 1 to the Atk stat of that operative's melee weapons." }
     ],
     strat: [
-      { name:'Enhanced Violence', desc:'Gore Tank pół: melee mają Balanced. Gore Tank pełny: melee mają Relentless.' },
-      { name:'Augmented Endurance', desc:'Gdy wróg strzela do Twojego Goremonger: Gore Tank pół → re-roll 1 defence dice. Gore Tank pełny → re-roll dowolne.' },
-      { name:'Gory Tenacity', desc:'Podczas Fight/Retaliate: pierwszy raz gdy przeciwnik Strike w sekwencji — dmg na Twoim operatywie jest przepołowiony (zaokrąglenie w górę, min 2).' },
-      { name:'Hunt for Blood', desc:'Wybierz przyjaznego Goremonger: zmień na Engage i wykonaj free Charge (max 3").' },
+      { name:"Enhanced Violence", desc:"Whenever a friendly GOREMONGER operative's GORE TANK is: Half \u2014 its melee weapons have the Balanced weapon rule. Full \u2014 its melee weapons have the Relentless weapon rule." },
+      { name:"Augmented Endurance", desc:"Whenever an operative is shooting a friendly GOREMONGER operative, if that friendly operative's GORE TANK is: Half \u2014 you can re-roll one of your defence dice. Full \u2014 you can re-roll any of your defence dice." },
+      { name:"Gory Tenacity", desc:"Whenever a friendly GOREMONGER operative is fighting or retaliating, the first time your opponent strikes it during that sequence, halve the damage inflicted (rounding up, minimum 2)." },
+      { name:"Hunt for Blood", desc:"Select one friendly GOREMONGER operative. If it has a Conceal order, change it to Engage. Then it can immediately perform a free Charge action, but cannot move more than 3\" during that action." }
     ],
     fight: [
-      { name:'Unbridled Aggression', desc:'Podczas Fight w aktywacji gdzie wykonałeś Charge — na końcu Roll Attack Dice step: Twoje melee mają Severe do końca sekwencji.' },
-      { name:'Gorethirst', desc:'Gdy counteractujesz: możesz użyć Goremonger z Conceal order (zmień na Engage), ale może tylko Charge/Shoot/Fight.' },
-      { name:'Destructive Demise', desc:'Gdy Goremonger jest inkapacytowany: inflict dmg (zależnie od Gore Tank) na 1 wroga w control range: pusty D3 / pół D3+1 / pełny D3+2.' },
-      { name:'Lacerate Flesh', desc:'Gdy Goremonger z pustym Gore Tank jest aktywowany/counteract: zwiększ Gore Tank. Na końcu aktywacji zmniejsz Go Tank (nie możesz użyć tego do Sanguavitae). Jeśli nie możesz zmniejszyć — inflict D3 dmg na siebie.' },
+      { name:"Unbridled Aggression", desc:"Use when a friendly GOREMONGER operative is fighting during an activation in which it performed the Charge action, at the end of the Roll Attack Dice step. Until the end of that sequence, that operative's melee weapons have the Severe weapon rule." },
+      { name:"Gorethirst", desc:"Use when it's your turn to counteract, if a friendly GOREMONGER operative has a Conceal order. Change that operative's order to Engage, then counteract with it. During that counteraction, it can only perform the Charge, Shoot or Fight action." },
+      { name:"Destructive Demise", desc:"Use when a friendly GOREMONGER operative is incapacitated. Before it's removed, inflict damage on one enemy operative within its control range: empty GORE TANK = D3; half = D3+1; full = D3+2." },
+      { name:"Lacerate Flesh", desc:"Use when a friendly GOREMONGER operative with an empty GORE TANK is activated or counteracts. Increase its GORE TANK. At the end of that activation, decrease its GORE TANK (this cannot be used for a Sanguavitae). If you cannot decrease it (already empty), inflict D3 damage on that operative." }
     ]
-  }
+  },
 };
 
 
@@ -1243,4 +1205,4 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 </body>
-</html>
+</html
