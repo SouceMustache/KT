@@ -28,7 +28,7 @@ header{background:linear-gradient(180deg,#07090f 0%,var(--bg) 100%);border-botto
 .tab.active-enemy{color:var(--teal);border-color:var(--teal)}
 .tab.active-enemy .dot{background:var(--teal)}
 .panel{display:none}.panel.active{display:block}
-.panel-toolbar{display:flex;align-items:center;gap:7px;padding:10px 10px 6px}
+.panel-toolbar{display:flex;align-items:center;gap:7px;padding:10px 10px 6px;position:sticky;top:var(--tab-h);z-index:15;background:var(--bg);border-bottom:1px solid var(--border)}
 .dropdown-wrap{position:relative;flex:1;min-width:0}
 .faction-select{width:100%;background:var(--surf);border:1px solid var(--border);color:var(--text);font-size:13px;font-weight:600;padding:8px 28px 8px 10px;border-radius:9px;appearance:none;-webkit-appearance:none;cursor:pointer;outline:none}
 .dropdown-arrow{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:10px;pointer-events:none}
@@ -912,6 +912,8 @@ const FACTION_RULES = {
 FACTION_RULES.murderwing = FACTION_RULES.mine;
 FACTION_EQ.murderwing    = FACTION_EQ.mine;
 
+var UNIVERSAL_EQ = [{"id": "ue-ammo", "name": "1x Ammo Cache", "desc": "Before the battle, set up one Ammo Cache marker in your territory. AMMO RESUPPLY (0AP, mission action): one Ammo Cache marker you control is used this turning point. Until the start of the next turning point, when shooting with a weapon from this operative's datacard, you can re-roll one attack dice. Cannot use while within control range of an enemy operative or if the marker has been used this turning point."}, {"id": "ue-razor", "name": "1x Razor Wire", "desc": "Exposed and Obstructing terrain. Set up wholly within your territory before the battle. Obstructing: whenever an operative would cross over this terrain feature within 1\" of it, treat the distance as an additional 1\"."}, {"id": "ue-comms", "name": "1x Comms Device", "desc": "Before the battle, set up one Comms Device marker in your territory. While a friendly operative controls this marker, add 3\" to the distance requirements of its SUPPORT rules that refer to friendly operatives."}, {"id": "ue-mines", "name": "1x Mines", "desc": "Before the battle, set up one Mines marker in your territory, more than 2\" from other markers, access points and Accessible terrain. The first time that marker is within an operative's control range, remove it and inflict D3+3 damage on that operative."}, {"id": "ue-lbarricade", "name": "2x Light Barricades", "desc": "Light terrain (feet are Insignificant and Exposed). Set up wholly within your territory before the battle."}, {"id": "ue-hbarricade", "name": "1x Heavy Barricade", "desc": "Heavy terrain. Set up wholly within 4\" of your drop zone before the battle."}, {"id": "ue-ladders", "name": "2x Ladders", "desc": "Insignificant and Exposed terrain. Set up within your territory, upright against terrain at least 2\" tall, more than 2\" from other equipment terrain features and more than 1\" from doors and access points. Once per action, when an operative is climbing the terrain a ladder is placed against, treat the vertical distance as 1\" if the ladder is within control range during the entire climb."}, {"id": "ue-portable", "name": "1x Portable Barricade", "desc": "Light, Protective and Portable terrain (feet are Insignificant/Exposed). Protective: while in cover from this feature, improve Save stat by 1 (max 2+). Portable: only provides cover while an operative is connected to it and the shield is intervening. MOVE WITH BARRICADE (1AP): like Reposition but max Move -2\" and cannot climb, drop or jump. Cannot perform while in control range of an enemy operative or during same activation as Fall Back or Charge."}, {"id": "ue-utility", "name": "Utility Grenades", "desc": "Select two utility grenades (2 smoke, 2 stun, or 1+1). SMOKE GRENADE (1AP): place a Smoke Grenade marker within 6\" visible to this operative. Creates smoke 1\" horizontally/unlimited height \u2014 operatives wholly within are Obscured to those more than 2\" away; Piercing 2/Crits 2 becomes Piercing 1/Crits 1 within smoke unless within 2\". Removed after D3 activations or end of TP. STUN GRENADE (1AP): select visible enemy within 6\" \u2014 it and each operative within 1\" take a stun test (D6, on 3+ subtract 1 APL until end of next activation). Each effect usable a number of times equal to your selection."}, {"id": "ue-explosive", "name": "Explosive Grenades", "desc": "Select two explosive grenades (2 frag, 2 krak, or 1+1). Frag grenade: ATK 4, HIT 4+, DMG 2/4, Range 6\", Blast 2\", Saturate. Krak grenade: ATK 4, HIT 4+, DMG 4/5, Range 6\", Piercing 1, Saturate. Each usable a number of times equal to your selection."}, {"id": "ue-breach", "name": "Breaching Charge", "desc": "Once per battle, when a friendly operative performs the Breach action, that operative can perform it for 1 less AP (minimum 1AP) as though it had the word \"breach marker\" on its datacard."}];
+
 /* STATE */
 var activeTab      = 'mine';
 var mineFaction    = 'murderwing';
@@ -919,6 +921,8 @@ var enemyFaction   = 'raveners';
 var selected       = {};
 var selectCounter  = 0;
 var eqTaken        = {};
+var eqOrder        = {};
+var eqCounter      = 0;
 var ployTP         = {};
 
 /* BUILD GRID */
@@ -1066,14 +1070,14 @@ function openRules(side) {
     html += '<div class="sec-label neutral">Strategy Ploys</div>';
     data.strat.forEach(function(r,i){
       var uid = 'strat-'+fkey+'-'+i;
-      html += makeRuleItem('rs-'+i, r.name, 'strat', r.desc, uid, isEnemy, 'strat');
+      html += makeRuleItem('rs-'+i, r.name, 'strat', r.desc, uid, true, 'strat');
     });
   }
   if (data.fight && data.fight.length) {
     html += '<div class="sec-label neutral">Firefight Ploys</div>';
     data.fight.forEach(function(r,i){
       var uid = 'fight-'+fkey+'-'+i;
-      html += makeRuleItem('rf-'+i, r.name, 'fight', r.desc, uid, isEnemy, 'fight');
+      html += makeRuleItem('rf-'+i, r.name, 'fight', r.desc, uid, true, 'fight');
     });
   }
   document.getElementById('ro-body').innerHTML = html;
@@ -1143,7 +1147,24 @@ function openEq(side) {
       '<div class="eq-item-body">'+eq.desc+'</div>' +
     '</div>';
   });
+  // Universal EQ section
+  html += '<div class="sec-label neutral">Universal Equipment</div>';
+  UNIVERSAL_EQ.forEach(function(eq, i){
+    var uid    = 'eq-universal-' + i;
+    var taken  = !!eqTaken[uid];
+    html += '<div class="eq-item'+(taken?' taken':'')+'" id="'+uid+'">' +
+      '<div class="eq-item-header" data-uid="'+uid+'" onclick="toggleEqItem(this.dataset.uid)">' +
+        '<div class="eq-check" onclick="toggleEqTaken(event,\''+uid+'\')">&#x2713;</div>' +
+        '<span class="eq-item-name">'+eq.name+'</span>' +
+        '<span class="eq-item-chevron">&#9658;</span>' +
+      '</div>' +
+      '<div class="eq-item-body">'+eq.desc+'</div>' +
+    '</div>';
+  });
   document.getElementById('eq-body').innerHTML = html;
+  // Restore numbers on already-taken items
+  Object.keys(eqOrder).forEach(function(uid){ updateEqBadge(uid); });
+  reorderEqList();
   var ov = document.getElementById('eq-overlay');
   ov.classList.add('open'); ov.scrollTop = 0;
 }
@@ -1152,8 +1173,44 @@ function toggleEqTaken(e, uid) {
   e.stopPropagation();
   var el = document.getElementById(uid);
   if (!el) return;
-  if (eqTaken[uid]) { delete eqTaken[uid]; el.classList.remove('taken'); }
-  else              { eqTaken[uid] = true;  el.classList.add('taken'); }
+  if (eqTaken[uid]) {
+    var removedNum = eqOrder[uid];
+    delete eqTaken[uid];
+    delete eqOrder[uid];
+    eqCounter--;
+    Object.keys(eqOrder).forEach(function(id){
+      if (eqOrder[id] > removedNum) { eqOrder[id]--; updateEqBadge(id); }
+    });
+    el.classList.remove('taken');
+    updateEqBadge(uid);
+    reorderEqList();
+  } else {
+    eqCounter++;
+    eqTaken[uid] = true;
+    eqOrder[uid] = eqCounter;
+    el.classList.add('taken');
+    updateEqBadge(uid);
+    reorderEqList();
+  }
+}
+
+function updateEqBadge(uid) {
+  var el = document.getElementById(uid);
+  if (!el) return;
+  var check = el.querySelector('.eq-check');
+  if (!check) return;
+  check.textContent = eqOrder[uid] !== undefined ? eqOrder[uid] : '\u2713';
+  check.style.color = eqOrder[uid] !== undefined ? '' : 'transparent';
+}
+
+function reorderEqList() {
+  var body = document.getElementById('eq-body');
+  if (!body) return;
+  var items = Array.from(body.children).filter(function(el){ return el.classList.contains('eq-item'); });
+  var taken = items.filter(function(el){ return el.classList.contains('taken'); })
+                   .sort(function(a,b){ return (eqOrder[a.id]||999)-(eqOrder[b.id]||999); });
+  var untaken = items.filter(function(el){ return !el.classList.contains('taken'); });
+  taken.concat(untaken).forEach(function(el){ body.appendChild(el); });
 }
 
 function toggleEqItem(uid) {
@@ -1188,8 +1245,13 @@ showGrid('enemy', 'raveners');
 
 ['overlay','rules-overlay','eq-overlay'].forEach(function(id){
   document.getElementById(id).addEventListener('click', function(e){
-    if (e.target === this) this.classList.remove('open');
+    this.classList.remove('open');
   });
+});
+// Stop propagation on inner content so tapping cards/text doesn't close
+['ov-body','ov-header','ro-body','ro-name','ro-sub','eq-body','eq-name','eq-sub'].forEach(function(id){
+  var el = document.getElementById(id);
+  if (el) el.addEventListener('click', function(e){ e.stopPropagation(); });
 });
 </script>
 
