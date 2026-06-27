@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kill Team">
+<meta name="theme-color" content="#0b0e15">
+<title>Kill Team - Viewer</title>
+<style>:root{--bg:#0b0e15;--surf:#131720;--card:#181e2c;--border:#252d40;--accent:#e03030;--accent2:#ff6b35;--teal:#3ab8a0;--teal2:#5dd4be;--text:#e8eaf0;--muted:#7a8199;--gold:#d4a843;--blue:#6ab0ff;--orange:#ffb07a;--overlay:rgba(6,8,14,0.97);--tab-h:88px}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;min-height:100vh;overflow-x:hidden;padding-bottom:80px}
+header{background:linear-gradient(180deg,#07090f 0%,var(--bg) 100%);border-bottom:1px solid var(--border);padding:14px 14px 0;position:sticky;top:0;z-index:20}
+.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.header-top h1{font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.tabs{display:flex}
+.tab{flex:1;height:52px;display:flex;align-items:center;justify-content:center;gap:7px;font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;-webkit-user-select:none}
+.tab .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);transition:background .15s}
+.tab.active-mine{color:var(--accent);border-color:var(--accent)}.tab.active-mine .dot{background:var(--accent)}
+.tab.active-enemy{color:var(--teal);border-color:var(--teal)}.tab.active-enemy .dot{background:var(--teal)}
+.panel{display:none}.panel.active{display:block}
+.panel-toolbar{display:flex;align-items:center;gap:7px;padding:10px 10px 6px;position:sticky;top:var(--tab-h);z-index:15;background:var(--bg);border-bottom:1px solid var(--border)}
+.dropdown-wrap{position:relative;flex:1;min-width:0}
+.faction-select{width:100%;background:var(--surf);border:1px solid var(--border);color:var(--text);font-size:13px;font-weight:600;padding:8px 28px 8px 10px;border-radius:9px;appearance:none;-webkit-appearance:none;cursor:pointer;outline:none}
+.dropdown-arrow{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:10px;pointer-events:none}
+.toolbar-btn{background:var(--surf);border:1px solid var(--border);color:var(--muted);border-radius:9px;padding:8px 10px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap;-webkit-user-select:none;display:flex;align-items:center;gap:4px;flex-shrink:0}
+.toolbar-btn:active{border-color:var(--teal);color:var(--teal)}.toolbar-btn.mine:active{border-color:var(--accent);color:var(--accent)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:6px 10px 0}
+.card{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:12px 12px 10px;cursor:pointer;position:relative;overflow:hidden;transition:border-color .15s,transform .1s;-webkit-user-select:none}
+.card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;opacity:0;transition:opacity .15s}
+.card.mine::before{background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.card.enemy::before{background:linear-gradient(90deg,var(--teal),var(--teal2))}
+.card:active{transform:scale(0.97)}
+.card.mine.selected{border-color:var(--accent);background:rgba(224,48,48,.08)}.card.mine.selected::before{opacity:1}
+.card.enemy.selected{border-color:var(--teal);background:rgba(58,184,160,.08)}.card.enemy.selected::before{opacity:1}
+.card-num{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:8px;border:2px solid var(--border);background:var(--surf);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:transparent;transition:all .15s;z-index:2;cursor:pointer}
+.card.mine.selected .card-num{background:var(--accent);border-color:var(--accent);color:#fff}
+.card.enemy.selected .card-num{background:var(--teal);border-color:var(--teal);color:#fff}
+.card-role{font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+.card-name{font-size:15px;font-weight:800;line-height:1.15;letter-spacing:-.01em;color:var(--text);padding-right:34px}
+.card-name.long{font-size:12px}
+.stat-row{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}
+.sm{font-size:10px;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:22px}
+.sm span:first-child{font-size:8px;font-weight:700;letter-spacing:.05em;color:var(--accent)}
+.card.enemy .sm span:first-child{color:var(--teal)}
+.sm span:last-child{font-size:13px;font-weight:800;color:var(--text)}
+.card-pills{display:flex;gap:6px;margin-top:8px}
+.pill{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:var(--surf);color:var(--muted)}
+.pill.w{color:#e07070}.pill.sv{color:var(--gold)}
+.overlay{position:fixed;inset:0;background:var(--overlay);z-index:100;overflow-y:auto;-webkit-overflow-scrolling:touch;opacity:0;pointer-events:none;transition:opacity .2s}
+.overlay.open{opacity:1;pointer-events:all}
+.ov-inner{padding:0 0 48px;min-height:100%}
+.ov-header{padding:18px 14px 16px;background:linear-gradient(180deg,#060810 0%,rgba(6,8,16,0) 100%);position:sticky;top:0;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.ov-role{font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;margin-bottom:3px}
+.ov-name{font-size:22px;font-weight:900;letter-spacing:-.02em;line-height:1.1}
+.ov-badges{display:flex;gap:7px;margin-top:7px;flex-wrap:wrap}
+.badge-apl{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(224,48,48,.18);color:#f09090;border:1px solid rgba(224,48,48,.3)}
+.badge-apl.enemy{background:rgba(58,184,160,.15);color:var(--teal2);border-color:rgba(58,184,160,.3)}
+.badge-w{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(212,168,67,.12);color:var(--gold);border:1px solid rgba(212,168,67,.25)}
+.badge-sv{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--border)}
+.close-btn{background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:50%;width:36px;height:36px;min-width:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;-webkit-user-select:none}
+.ov-body{padding:0 14px}
+.sec-label{font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin:16px 0 8px;display:flex;align-items:center;gap:8px}
+.sec-label.enemy{color:var(--teal)}.sec-label.neutral{color:var(--muted)}
+.sec-label::after{content:"";flex:1;height:1px;background:var(--border)}
+.wpn-table{width:100%;border-collapse:collapse}
+.wpn-table th{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;padding:4px 4px;border-bottom:1px solid var(--border)}
+.wpn-table td{font-size:12px;padding:6px 4px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle;color:var(--text)}
+.wpn-table td:nth-child(2){font-weight:700}
+.wpn-table td.num{text-align:center;font-weight:700}
+.wpn-wr{font-size:10px;color:var(--muted)}
+.wpn-table tr:last-child td{border-bottom:none}
+.wpn-row.dimmed td{opacity:.25}
+.wpn-check{width:18px;height:18px;border-radius:5px;border:2px solid var(--border);background:var(--surf);cursor:pointer;display:block;transition:all .15s}
+.wpn-check.on{background:var(--accent);border-color:var(--accent)}
+.abilities{display:flex;flex-direction:column;gap:7px}
+.ability{background:var(--surf);border:1px solid var(--border);border-radius:9px;padding:8px 10px}
+.ability-name{font-size:11px;font-weight:800;color:var(--text);margin-bottom:3px}
+.ability-desc{font-size:11px;line-height:1.5;color:var(--muted)}
+.ability.unique{border-color:#2a3a22}.ability.unique .ability-name{color:#8fcf70}
+.rules-item{background:var(--surf);border:1px solid var(--border);border-radius:9px;margin-bottom:6px;overflow:hidden}
+.rules-item-header{display:flex;align-items:center;padding:10px 12px;cursor:pointer;-webkit-user-select:none;gap:8px}
+.rules-item-name{font-size:12px;font-weight:800;color:var(--text);flex:1}
+.rules-item-name.strat{color:var(--blue)}.rules-item-name.fight{color:var(--orange)}
+.rules-item-chevron{font-size:11px;color:var(--muted);transition:transform .2s;flex-shrink:0}
+.rules-item.open .rules-item-chevron{transform:rotate(90deg)}
+.rules-item-body{display:none;padding:8px 12px 10px;font-size:11px;line-height:1.6;color:var(--muted);border-top:1px solid var(--border)}
+.rules-item.open .rules-item-body{display:block}
+.tp-dots{display:flex;gap:4px;flex-shrink:0}
+.tp-dot{width:22px;height:22px;border-radius:50%;border:2px solid var(--border);background:var(--surf);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:var(--muted);cursor:pointer;transition:all .15s;-webkit-user-select:none}
+.tp-dot.used-strat{background:var(--blue);border-color:var(--blue);color:#fff}
+.tp-dot.used-fight{background:var(--orange);border-color:var(--orange);color:#0b0e15}
+.eq-item{background:var(--surf);border:1px solid var(--border);border-radius:9px;margin-bottom:6px;overflow:hidden}
+.eq-item-header{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;-webkit-user-select:none}
+.eq-num{width:26px;height:26px;min-width:26px;border-radius:7px;border:2px solid var(--border);background:var(--card);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:transparent;transition:all .15s;flex-shrink:0}
+.eq-item.taken .eq-num{color:#fff}
+.eq-item.taken.mine-eq .eq-num{background:var(--accent);border-color:var(--accent)}
+.eq-item.taken.enemy-eq .eq-num{background:var(--teal);border-color:var(--teal)}
+.eq-item-name{font-size:12px;font-weight:800;color:var(--text);flex:1}
+.eq-item-chevron{font-size:11px;color:var(--muted);transition:transform .2s;flex-shrink:0}
+.eq-item.open .eq-item-chevron{transform:rotate(90deg)}
+.eq-item-body{display:none;padding:8px 12px 10px;font-size:11px;line-height:1.6;color:var(--muted);border-top:1px solid var(--border)}
+.eq-item.open .eq-item-body{display:block}</style>
+</head>
+<body>
+<header>
+  <div class="header-top"><h1>Kill Team - Field Viewer</h1></div>
+  <div class="tabs">
+    <div class="tab active-mine" id="tab-mine" onclick="switchTab('mine')"><div class="dot"></div> My Team</div>
+    <div class="tab" id="tab-enemy" onclick="switchTab('enemy')"><div class="dot"></div> Opponent</div>
+  </div>
+</header>
+<div class="panel active" id="panel-mine">
+  <div class="panel-toolbar">
+    <div class="dropdown-wrap">
+      <select class="faction-select" id="mine-select" onchange="switchMineFaction(this.value)">
+        <option value="murderwing" selected>Murderwing</option>
+        <option value="raveners">Raveners</option>
+        <option value="xv26">XV26 Stealth</option>
+        <option value="hearthkyn">Hearthkyn Salvager</option>
+        <option value="goremonger">Goremonger</option>
+      </select>
+      <span class="dropdown-arrow">&#9660;</span>
+    </div>
+    <button class="toolbar-btn mine" onclick="openRules('mine')">Rules</button>
+    <button class="toolbar-btn mine" onclick="openEq('mine')">EQ</button>
+  </div>
+  <div id="mine-grids"></div>
+</div>
+<div class="panel" id="panel-enemy">
+  <div class="panel-toolbar">
+    <div class="dropdown-wrap">
+      <select class="faction-select" id="enemy-select" onchange="switchEnemyFaction(this.value)">
+        <option value="murderwing">Murderwing</option>
+        <option value="raveners" selected>Raveners</option>
+        <option value="xv26">XV26 Stealth</option>
+        <option value="hearthkyn">Hearthkyn Salvager</option>
+        <option value="goremonger">Goremonger</option>
+      </select>
+      <span class="dropdown-arrow">&#9660;</span>
+    </div>
+    <button class="toolbar-btn" onclick="openRules('enemy')">Rules</button>
+    <button class="toolbar-btn" onclick="openEq('enemy')">EQ</button>
+  </div>
+  <div id="enemy-grids"></div>
+</div>
+<div class="overlay" id="overlay">
+  <div class="ov-inner">
+    <div class="ov-header">
+      <div><div class="ov-role" id="ov-role"></div><div class="ov-name" id="ov-name"></div><div class="ov-badges" id="ov-badges"></div></div>
+      <div class="close-btn">&#x2715;</div>
+    </div>
+    <div class="ov-body" id="ov-body"></div>
+  </div>
+</div>
+<div class="overlay" id="rules-overlay">
+  <div class="ov-inner">
+    <div class="ov-header">
+      <div><div class="ov-role" id="ro-sub"></div><div class="ov-name" id="ro-name"></div></div>
+      <div class="close-btn">&#x2715;</div>
+    </div>
+    <div class="ov-body" id="ro-body"></div>
+  </div>
+</div>
+<div class="overlay" id="eq-overlay">
+  <div class="ov-inner">
+    <div class="ov-header">
+      <div><div class="ov-role" id="eq-sub"></div><div class="ov-name" id="eq-name"></div></div>
+      <div class="close-btn">&#x2715;</div>
+    </div>
+    <div class="ov-body" id="eq-body"></div>
+  </div>
+</div>
+<script>
+
+const MINE = [
+  {
+    id:'chaos-lord', side:'mine', role:'Leader',
+    name:'Chaos Lord', shortName:'Chaos Lord',
+    apl:3, move:'6"', save:'3+', wounds:15,
+    weapons:[
+      {name:'Bolt pistol',           atk:4,hit:'3+',dmg:'3/4', wr:'Range 8"'},
+      {name:'Plasma pistol (std)',   atk:4,hit:'3+',dmg:'3/5', wr:'Range 8", Piercing 1'},
+      {name:'Plasma pistol (sup)',   atk:4,hit:'3+',dmg:'4/5', wr:'Range 8", Hot, Lethal 5+, Piercing 1'},
+      {name:'Lightning claw',        atk:5,hit:'3+',dmg:'4/5', wr:'Lethal 5+, Rending'},
+      {name:'Power fist',            atk:4,hit:'3+',dmg:'5/7', wr:'Brutal, Shock'},
+      {name:'Power weapon',          atk:5,hit:'3+',dmg:'4/6', wr:'Lethal 5+'},
+      {name:'Relic lightning claws', atk:5,hit:'3+',dmg:'4/6', wr:'Ceaseless, Lethal 5+, Rending'},
+    ],
+    abilities:[
+      {name:"Path to Damnation", desc:"This operative starts the battle with 1 Damnation point. Once per action, you can attempt to use one Boon of Damnation when it specifies. Roll one D6 and compare to the number of Damnation points: Higher = resolve the rule and gain 1 Damnation point; Equal = do not resolve; Less = inflict damage equal to Damnation points. If this operative has 6 Damnation points, resolve the rule without rolling."},
+      {name:"Boons of Damnation", desc:"When an attack dice inflicts damage of 3 or more on this operative, you can ignore an amount of damage equal to its Damnation points. OR: When this operative is fighting or retaliating and you strike with an attack dice, you can inflict additional damage equal to its Damnation points."}
+    ]
+  },
+  {
+    id:'champion', side:'mine', role:'Champion',
+    name:'Champion', shortName:'Champion',
+    apl:3, move:'6"', save:'3+', wounds:14,
+    weapons:[
+      {name:'Bolt pistol',         atk:4,hit:'3+',dmg:'3/4', wr:'Range 8"'},
+      {name:'Plasma pistol (std)', atk:4,hit:'3+',dmg:'3/5', wr:'Range 8", Piercing 1'},
+      {name:'Plasma pistol (sup)', atk:4,hit:'3+',dmg:'4/5', wr:'Range 8", Hot, Lethal 5+, Piercing 1'},
+      {name:'Power fist',          atk:4,hit:'3+',dmg:'5/7', wr:'Brutal, Shock'},
+      {name:'Power weapon',        atk:5,hit:'3+',dmg:'4/6', wr:'Lethal 5+'},
+    ],
+    abilities:[
+      {name:"Chaos Champion", desc:"STRATEGIC GAMBIT: Remove your Challenge token from the enemy operative that has it (if any), then select one enemy operative to gain your Challenge token. Whenever this operative is fighting or retaliating against an enemy operative that has your Challenge token, in the Select Weapons step, you can select one of the following weapon rules for its melee weapons: Balanced, Brutal, Punishing, Severe, Shock."},
+      {name:"Path to Glory", desc:"Whenever this operative incapacitates an enemy operative that has your Challenge token, you gain 1CP."}
+    ]
+  },
+  {
+    id:'curseclaw', side:'mine', role:'Operative',
+    name:'Curseclaw', shortName:'Curseclaw',
+    apl:3, move:'6"', save:'3+', wounds:14,
+    weapons:[
+      {name:'Bolt pistol',    atk:4,hit:'3+',dmg:'3/4', wr:'Range 8"'},
+      {name:'Mutated claws',  atk:5,hit:'3+',dmg:'4/5', wr:'Rending'},
+    ],
+    abilities:[
+      {name:"Frenzied Attack", desc:"If this operative is incapacitated during the Fight action, you can strike the enemy operative in that sequence with one of your unresolved successes before this operative is removed from the killzone."},
+      {name:"SNATCH (1AP)", desc:"BOOST action. Select one enemy operative within this operative's BOOST ZONE. Both players roll one D6 and add their operative's Wounds stat. If your result is higher, remove that enemy operative from the killzone and set it back up within this operative's BOOST ZONE or control range. If set up within control range, the Fall Back or Reposition action ends. Performed during the Fall Back or Reposition action after setting up from a BOOST.", unique: true}
+    ]
+  },
+  {
+    id:'depredator', side:'mine', role:'Operative',
+    name:'Depredator', shortName:'Depredator',
+    apl:3, move:'6"', save:'3+', wounds:14,
+    weapons:[
+      {name:'Bolt pistol',   atk:4,hit:'3+',dmg:'3/4', wr:'Range 8"'},
+      {name:'Great chainaxe',atk:5,hit:'4+',dmg:'5/7', wr:'Brutal'},
+    ],
+    abilities:[
+      {name:"Horrifying Dismemberment", desc:"Whenever this operative incapacitates an enemy operative while fighting or retaliating, select one other enemy operative visible to and within 3\" of either this operative or the incapacitated enemy operative. Subtract 1 from that enemy operative's APL stat until the end of its next activation."},
+      {name:"CARVING BLOW (1AP)", desc:"Inflict 2D3 damage on each other operative visible to and within 2\" of this operative (roll separately for each). Cannot perform this action while it has a Conceal order, or during the same activation in which it performed Slice From Above, Clawed Charge, or two Fight actions.", unique: true}
+    ]
+  },
+  {
+    id:'huntmaster', side:'mine', role:'Operative',
+    name:'Huntmaster', shortName:'Huntmaster',
+    apl:3, move:'6"', save:'3+', wounds:14,
+    weapons:[
+      {name:'Bolt pistol', atk:4,hit:'3+',dmg:'3/4', wr:'Range 8"'},
+      {name:'Power weapon', atk:5,hit:'3+',dmg:'4/6', wr:'Lethal 5+'},
+    ],
+    abilities:[
+      {name:"Pinned Prey", desc:"Whenever an enemy operative would perform the Fall Back action while within control range of this operative, if no other enemy operatives are within this operative's control range, roll two D6 (or one D6 if that enemy operative has a higher Wounds stat). If any result is 4+, that enemy operative cannot perform that action during that activation/counteraction."},
+      {name:"STRIKE FROM ABOVE (1AP)", desc:"BOOST action. Inflict 2D3+1 damage on one enemy operative within this operative's BOOST ZONE. Performed during the Fall Back or Reposition action after setting up from a BOOST.", unique: true}
+    ]
+  },
+  {
+    id:'raptor', side:'mine', role:'Operative',
+    name:'Raptor', shortName:'Raptor',
+    apl:3, move:'6"', save:'3+', wounds:14,
+    weapons:[
+      {name:'Bolt pistol',         atk:4,hit:'3+',dmg:'3/4', wr:'Range 8"'},
+      {name:'Plasma pistol (std)', atk:4,hit:'3+',dmg:'3/5', wr:'Range 8", Piercing 1'},
+      {name:'Plasma pistol (sup)', atk:4,hit:'3+',dmg:'4/5', wr:'Range 8", Hot, Lethal 5+, Piercing 1'},
+      {name:'Chainsword',          atk:5,hit:'3+',dmg:'4/5', wr:'—'},
+    ],
+    abilities:[
+      {name:"Thrill of Flight", desc:"Whenever this operative does a BOOST during its activation: you can remove any changes to its APL stat; and you can ignore any changes to its stats from being injured (including weapons' stats) until the end of the activation."}
+    ]
+  },
+  {
+    id:'shrieker', side:'mine', role:'Operative',
+    name:'Shrieker', shortName:'Shrieker',
+    apl:3, move:'6"', save:'3+', wounds:14,
+    weapons:[
+      {name:'Bolt pistol', atk:4,hit:'3+',dmg:'3/4', wr:'Range 8"'},
+      {name:'Chainsword',  atk:5,hit:'3+',dmg:'4/5', wr:'—'},
+    ],
+    abilities:[
+      {name:"Modified Vox-casters", desc:"Whenever an enemy operative is within 3\" of this operative, your opponent must spend 1 additional AP for that enemy operative to perform the Pick Up Marker and mission actions. Whenever determining control of a marker, treat the total APL stat of enemy operatives that contest it as 1 lower if at least one of those enemy operatives is within 3\" of this operative."},
+      {name:"SHRIEK (1AP)", desc:"BOOST action. Select one enemy operative within this operative's BOOST ZONE. Inflict D3 damage on that enemy operative and subtract 1 from its APL stat until the end of its next activation. Performed during the Fall Back or Reposition action after setting up from a BOOST. Cannot perform this action while this operative has a Conceal order.", unique: true}
+    ]
+  },
+  {
+    id:'skysear', side:'mine', role:'Operative',
+    name:'Skysear', shortName:'Skysear',
+    apl:3, move:'6"', save:'3+', wounds:14,
+    weapons:[
+      {name:'Bolt pistol',       atk:4,hit:'3+',dmg:'3/4', wr:'Range 8"'},
+      {name:'Flamer',            atk:4,hit:'2+',dmg:'3/3', wr:'Range 8", Saturate, Torrent 2"'},
+      {name:'Meltagun',          atk:4,hit:'3+',dmg:'6/3', wr:'Range 6", Devastating 4, Piercing 2'},
+      {name:'Plasma gun (std)',  atk:4,hit:'3+',dmg:'4/6', wr:'Piercing 1'},
+      {name:'Plasma gun (sup)',  atk:4,hit:'3+',dmg:'5/6', wr:'Hot, Lethal 5+, Piercing 1'},
+      {name:'Fists',             atk:4,hit:'3+',dmg:'3/4', wr:'—'},
+    ],
+    abilities:[]
+  },
+  {
+    id:'warp-talon', side:'mine', role:'Operative',
+    name:'Warp Talon', shortName:'Warp Talon',
+    apl:3, move:'6"', save:'3+', wounds:14,
+    weapons:[
+      {name:'Lightning claws', atk:5,hit:'3+',dmg:'4/5', wr:'Ceaseless, Lethal 5+, Rending'},
+    ],
+    abilities:[
+      {name:"Slice the Veil", desc:"Before the battle (not in a mission that uses the Infiltrate rule), you can set this operative up in the Warp: place it to one side instead of in the killzone. In the first turning point, when this operative is activated, place a Warp marker in your drop zone, then set this operative up anywhere in the killzone. In the second turning point, when this operative is activated, it can be set up at a Warp marker instead of where it currently is. It can only perform a maximum of 2 actions and cannot use more than 4\" of move distance during that activation. Until the next Ready step, this operative is Obscured to enemy operatives more than 3\" away."}
+    ]
+  },
+];
+const RAVENERS = [
+  {
+    id:'rv-prime', side:'enemy', faction:'raveners', role:'Leader',
+    name:'Ravener Prime', shortName:'Prime',
+    apl:3, move:'7"', save:'5+', wounds:21,
+    weapons:[
+      {name:'Tail blade',                        atk:4,hit:'3+',dmg:'3/4', wr:'Range 3", Rending, Silent'},
+      {name:'Scything talons & rending claws',   atk:5,hit:'3+',dmg:'4/5', wr:'Rending'},
+    ],
+    abilities:[
+      {name:"Neuropredatory Crest", desc:"Whenever determining control of a marker, treat the total APL stat of enemy operatives that contest it as 1 lower if at least one of those enemy operatives is within 3\" of this operative. Whenever an enemy operative is within 3\" of this operative: your opponent must spend 1 additional AP for that enemy operative to perform the Pick Up Marker and mission actions; and your opponent cannot re-roll their attack or defence dice for that operative."},
+      {name:"Synaptic Link", desc:"STRATEGIC GAMBIT if this operative is not incapacitated. Roll one D6 and compare to the current turning point number: twice as high or higher = gain 1CP; equal = nothing; less = inflict damage equal to the D6 result on this operative."}
+    ]
+  },
+  {
+    id:'rv-felltalon', side:'enemy', faction:'raveners', role:'Operative',
+    name:'Ravener Felltalon', shortName:'Felltalon',
+    apl:3, move:'7"', save:'5+', wounds:20,
+    weapons:[
+      {name:'Pincer tail',    atk:4,hit:'3+',dmg:'3/4', wr:'Range 3", Silent'},
+      {name:'Toxic glands',   atk:4,hit:'3+',dmg:'3/4', wr:'Range 6", Silent, *Poison'},
+      {name:'Toxic scythes',  atk:5,hit:'3+',dmg:'4/5', wr:'Lethal 5+, Shock, *Poison'},
+    ],
+    abilities:[
+      {name:"*Poison", desc:"Whenever a critical success from this weapon inflicts damage on an enemy operative, that enemy operative gains a Poison token. At the start of each of that enemy operative's activations, inflict D3 damage on it."},
+      {name:"TOXIC LUNGE (1AP)", desc:"Select one enemy operative within 2\" of this operative (or on your TUNNEL if this operative is underground). Inflict D3+2 damage on that enemy operative and it gains a Poison token. This operative can perform this action if it is underground (exception to the Burrow rule).", unique: true}
+    ]
+  },
+  {
+    id:'rv-tremorscythe', side:'enemy', faction:'raveners', role:'Operative',
+    name:'Ravener Tremorscythe', shortName:'Tremorscythe',
+    apl:3, move:'7"', save:'5+', wounds:20,
+    weapons:[
+      {name:'Pincer tail',                      atk:4,hit:'3+',dmg:'3/4', wr:'Range 3", Silent'},
+      {name:'Scything talons & rending claws',  atk:5,hit:'3+',dmg:'4/5', wr:'Rending'},
+    ],
+    abilities:[
+      {name:"Subterranean Ambush", desc:"Once per turning point, when an enemy operative performs an action involving movement of more than 2\", if it would end that action within 2\" of your TUNNEL and this operative is underground and hasn't expended or counteracted this turning point: interrupt that enemy operative's activation/counteraction with this operative (shoot or fight against it). After resolving, the enemy operative continues its activation."},
+      {name:"Hypersensory Hunter", desc:"This operative can perform the Charge action while it has a Conceal order if it performed the Burrow action during the same activation."}
+    ]
+  },
+  {
+    id:'rv-venomspitter', side:'enemy', faction:'raveners', role:'Operative',
+    name:'Ravener Venomspitter', shortName:'Venomspitter',
+    apl:3, move:'7"', save:'5+', wounds:20,
+    weapons:[
+      {name:'Pincer tail',          atk:4,hit:'3+',dmg:'3/4', wr:'Range 3", Silent'},
+      {name:'Venom bolt (blast)',   atk:4,hit:'3+',dmg:'3/5', wr:'Range 8", Blast 2", *Poison'},
+      {name:'Venom bolt (focused)', atk:4,hit:'3+',dmg:'4/5', wr:'Range 8", Piercing 1, *Poison'},
+      {name:'Scything talons',      atk:5,hit:'3+',dmg:'4/5', wr:'—'},
+    ],
+    abilities:[
+      {name:"*Poison", desc:"Whenever a critical success from this weapon inflicts damage on an enemy operative, that enemy operative gains a Poison token. At the start of each of that enemy operative's activations, inflict D3 damage on it."},
+      {name:"DISTEND DORSAL SAC (1AP)", desc:"Until this operative shoots with a venom bolt weapon, uses this action again, or performs the Burrow action: the venom bolt (blast) and venom bolt (focused) profiles both have the Lethal 5+ weapon rule, +1 to their Atk stat, and the Range characteristic is removed. Place a Distend Dorsal Sac token next to this operative to indicate this.", unique: true}
+    ]
+  },
+  {
+    id:'rv-warrior', side:'enemy', faction:'raveners', role:'Operative',
+    name:'Ravener Warrior', shortName:'Warrior',
+    apl:3, move:'7"', save:'5+', wounds:20,
+    weapons:[
+      {name:'Pincer tail',   atk:4,hit:'3+',dmg:'3/4', wr:'Range 3", Silent'},
+      {name:'Scything talons',atk:5,hit:'3+',dmg:'4/5', wr:'—'},
+    ],
+    abilities:[
+      {name:"Instinctive Behaviour", desc:"Whenever this operative is shooting against or fighting against an enemy operative that is either wounded or that performed the Fall Back action during this turning point, this operative's weapons have the Lethal 5+ weapon rule."}
+    ]
+  },
+  {
+    id:'rv-wrecker', side:'enemy', faction:'raveners', role:'Operative',
+    name:'Ravener Wrecker', shortName:'Wrecker',
+    apl:3, move:'7"', save:'4+', wounds:20,
+    weapons:[
+      {name:'Bone mace',                          atk:4,hit:'3+',dmg:'3/4', wr:'Range 3", Piercing 1, Silent'},
+      {name:'Scything talons & crushing claws',   atk:5,hit:'3+',dmg:'4/5', wr:'*Crush'},
+    ],
+    abilities:[
+      {name:"Reinforced Carapace", desc:"Normal and Critical damage inflicted on this operative by attack dice that have a Dmg stat of 4 or more is reduced by 1."},
+      {name:"*Crush", desc:"When you strike with this weapon: both players roll one D6 and add their operative's Wounds stat (add 1 to your result if the enemy operative's Wounds stat is 9 or less). If your result is higher, inflict additional damage equal to the difference (to a maximum of 3)."}
+    ]
+  },
+];
+const XV26 = [
+  {
+    id:'xv-shasvre', side:'enemy', faction:'xv26', role:'Leader',
+    name:"XV26 Shas'Vre", shortName:"Shas'Vre",
+    apl:3, move:'6"', save:'3+', wounds:13,
+    weapons:[
+      {name:'Burst cannon (focused)',   atk:5,hit:'4+',dmg:'3/4', wr:'Ceaseless'},
+      {name:'Burst cannon (sweeping)', atk:4,hit:'4+',dmg:'3/4', wr:'Ceaseless, Torrent 1"'},
+      {name:'Fusion blaster (short)',  atk:4,hit:'4+',dmg:'6/3', wr:'Range 6", Devastating 4, Piercing 2'},
+      {name:'Fusion blaster (long)',   atk:4,hit:'4+',dmg:'4/5', wr:'Range 12", Piercing 1'},
+      {name:'Pulse pistol (ranged)',   atk:4,hit:'4+',dmg:'4/5', wr:'Range 8"'},
+      {name:'Pulse pistol (point-blank)',atk:3,hit:'4+',dmg:'4/5', wr:'Accurate 1'},
+    ],
+    abilities:[
+      {name:"XV26 Drone Controller", desc:"STRATEGIC GAMBIT if this operative is in the killzone: select one friendly DRONE operative. Until the end of the next friendly DRONE operative's activation, the first 2 points of the Drone rule do not apply to it."},
+      {name:"For the Greater Good", desc:"Whenever two or more non-DRONE enemy operatives have been incapacitated, the Kauyon rule's Accurate X value is increased by 1 for all friendly XV26 STEALTH BATTLESUIT operatives (to a maximum of Accurate 3)."},
+      {name:"Kauyon", desc:"Whenever a friendly XV26 STEALTH BATTLESUIT operative is shooting an enemy operative, its ranged weapons have Accurate X. X is determined by the enemy's location: within 3\" of your territory = Accurate 1; within your territory = Accurate 2; within 3\" of your drop zone = Accurate 3."}
+    ]
+  },
+  {
+    id:'xv-designator', side:'enemy', faction:'xv26', role:'Operative',
+    name:'XV26 Designator', shortName:'Designator',
+    apl:3, move:'6"', save:'3+', wounds:12,
+    weapons:[
+      {name:'Burst cannon (focused)',   atk:5,hit:'4+',dmg:'3/4', wr:'Ceaseless'},
+      {name:'Burst cannon (sweeping)', atk:4,hit:'4+',dmg:'3/4', wr:'Ceaseless, Torrent 1"'},
+      {name:'Fusion blaster (short)',  atk:4,hit:'4+',dmg:'6/3', wr:'Range 6", Devastating 4, Piercing 2'},
+      {name:'Fusion blaster (long)',   atk:4,hit:'4+',dmg:'4/5', wr:'Range 12", Piercing 1'},
+      {name:'Fists',                   atk:3,hit:'4+',dmg:'3/4', wr:'—'},
+    ],
+    abilities:[
+      {name:"Markerlight", desc:"Whenever a friendly XV26 STEALTH BATTLESUIT operative is shooting against an enemy operative that is visible to this operative or within 2\" of your Ambush marker, that enemy operative is marked. Friendly XV26 STEALTH BATTLESUIT operatives' ranged weapons have the Severe weapon rule when shooting against a marked enemy operative."},
+      {name:"FOCUSED MARKERLIGHT (1AP)", desc:"Select one visible enemy operative. Once during this turning point, when a friendly XV26 STEALTH BATTLESUIT operative is shooting that enemy operative, improve the Hit stat of that friendly operative's ranged weapons by 1 for the duration of that Shoot action.", unique: true}
+    ]
+  },
+  {
+    id:'xv-infiltrator', side:'enemy', faction:'xv26', role:'Operative',
+    name:'XV26 Infiltrator', shortName:'Infiltrator',
+    apl:3, move:'6"', save:'3+', wounds:12,
+    weapons:[
+      {name:'Burst cannon (focused)',   atk:5,hit:'4+',dmg:'3/4', wr:'Ceaseless'},
+      {name:'Burst cannon (sweeping)', atk:4,hit:'4+',dmg:'3/4', wr:'Ceaseless, Torrent 1"'},
+      {name:'Fusion blaster (short)',  atk:4,hit:'4+',dmg:'6/3', wr:'Range 6", Devastating 4, Piercing 2'},
+      {name:'Fusion blaster (long)',   atk:4,hit:'4+',dmg:'4/5', wr:'Range 12", Piercing 1'},
+      {name:'Fists',                   atk:3,hit:'4+',dmg:'3/4', wr:'—'},
+    ],
+    abilities:[
+      {name:"Covert Protocols", desc:"This operative can counteract regardless of its order. If it has a Conceal order when it counteracts, it can only perform the Pick Up Marker, Place Marker or mission actions during that counteraction."}
+    ]
+  },
+  {
+    id:'xv-liberator', side:'enemy', faction:'xv26', role:'Operative',
+    name:'XV26 Liberator', shortName:'Liberator',
+    apl:3, move:'6"', save:'3+', wounds:12,
+    weapons:[
+      {name:'Burst cannon (focused)',   atk:5,hit:'4+',dmg:'3/4', wr:'Ceaseless'},
+      {name:'Burst cannon (sweeping)', atk:4,hit:'4+',dmg:'3/4', wr:'Ceaseless, Torrent 1"'},
+      {name:'EMP bomb', atk:5,hit:'3+',dmg:'2/2', wr:'Range 4", Blast 2", Dev 1, Heavy(Repo), Lethal 4+, Limited 1, Saturate'},
+      {name:'Fusion blaster (short)',  atk:4,hit:'4+',dmg:'6/3', wr:'Range 6", Devastating 4, Piercing 2'},
+      {name:'Fusion blaster (long)',   atk:4,hit:'4+',dmg:'4/5', wr:'Range 12", Piercing 1'},
+      {name:'Fists',                   atk:3,hit:'4+',dmg:'3/4', wr:'—'},
+    ],
+    abilities:[
+      {name:"Grenadier", desc:"This operative can use frag grenades, krak grenades, smoke grenades and stun grenades without counting towards the limit for grenades. When it uses frag or krak grenades, improve the Hit stat of those weapons by 1."}
+    ]
+  },
+  {
+    id:'xv-lodestar', side:'enemy', faction:'xv26', role:'Operative',
+    name:'XV26 Lodestar', shortName:'Lodestar',
+    apl:3, move:'6"', save:'3+', wounds:12,
+    weapons:[
+      {name:'Burst cannon (focused)',   atk:5,hit:'4+',dmg:'3/4', wr:'Ceaseless'},
+      {name:'Burst cannon (sweeping)', atk:4,hit:'4+',dmg:'3/4', wr:'Ceaseless, Torrent 1"'},
+      {name:'Fusion blaster (short)',  atk:4,hit:'4+',dmg:'6/3', wr:'Range 6", Devastating 4, Piercing 2'},
+      {name:'Fusion blaster (long)',   atk:4,hit:'4+',dmg:'4/5', wr:'Range 12", Piercing 1'},
+      {name:'Fists',                   atk:3,hit:'4+',dmg:'3/4', wr:'—'},
+    ],
+    abilities:[
+      {name:"Electrochaff Launcher", desc:"Once per turning point, when an operative is shooting a friendly XV26 STEALTH BATTLESUIT operative and this operative is not within control range of an enemy operative: until the end of that Shoot action, friendly XV26 STEALTH BATTLESUIT operatives within 3\" of this operative and more than 2\" from the shooting operative ignore the Piercing weapon rule and are Obscured."},
+      {name:"Homing Beacon", desc:"This operative carries a Homing Beacon marker. Whenever this operative is in the killzone and more than 6\" from your drop zone, in the Ready step roll one D6 (or 2D6 if in enemy territory; or 3D6 if within 6\" of the enemy drop zone): on one or more 4+, you gain 1CP."}
+    ]
+  },
+  {
+    id:'xv-neutraliser', side:'enemy', faction:'xv26', role:'Operative',
+    name:'XV26 Neutraliser', shortName:'Neutraliser',
+    apl:3, move:'6"', save:'3+', wounds:12,
+    weapons:[
+      {name:'Burst cannon (focused)',   atk:5,hit:'4+',dmg:'3/4', wr:'Ceaseless'},
+      {name:'Burst cannon (sweeping)', atk:4,hit:'4+',dmg:'3/4', wr:'Ceaseless, Torrent 1"'},
+      {name:'Fusion blaster (short)',  atk:4,hit:'4+',dmg:'6/3', wr:'Range 6", Devastating 4, Piercing 2'},
+      {name:'Fusion blaster (long)',   atk:4,hit:'4+',dmg:'4/5', wr:'Range 12", Piercing 1'},
+      {name:'Fists',                   atk:3,hit:'4+',dmg:'3/4', wr:'—'},
+    ],
+    abilities:[
+      {name:"Multispectrum Sensor Package", desc:"SUPPORT. Once per turning point, when an enemy operative within 8\" of this operative is activated: each friendly XV26 STEALTH BATTLESUIT operative within 3\" of this operative can either perform a free Dash action (cannot end within 3\" of an enemy operative) or change its order."},
+      {name:"SYSTEM JAM (1AP or 2AP)", desc:"Select one visible enemy operative. Subtract 1 from its APL stat until the end of its next activation. If this operative has a Conceal order, this action costs 1 additional AP. Cannot perform this action while within control range of an enemy operative.", unique: true}
+    ]
+  },
+  {
+    id:'xv-gun-drone', side:'enemy', faction:'xv26', role:'Drone',
+    name:'MV15 Gun Drone', shortName:'Gun Drone',
+    apl:2, move:'6"', save:'4+', wounds:7,
+    weapons:[
+      {name:'Twin pulse carbine', atk:4,hit:'4+',dmg:'4/5', wr:'Ceaseless'},
+      {name:'Ram',                atk:3,hit:'5+',dmg:'2/3', wr:'—'},
+    ],
+    abilities:[
+      {name:"Drone", desc:"This operative can only perform the following actions: Charge, Dash, Fall Back, Fight, Photon Grenade Launcher, Reposition, Shoot. When determining control of an objective marker, subtract 1 from this operative's APL stat. This operative is ignored when determining if operatives from each kill team have been incapacitated or eliminated, and for the purposes of most victory conditions."},
+      {name:"PHOTON GRENADE LAUNCHER (1AP)", desc:"Select one visible enemy operative. Roll one D6: on a 3+, subtract 2\" from that enemy operative's Move stat until the end of its next activation. Cannot perform this action while within control range of an enemy operative.", unique: true}
+    ]
+  },
+  {
+    id:'xv-marker-drone', side:'enemy', faction:'xv26', role:'Drone',
+    name:'MV75 Marker Drone', shortName:'Marker Drone',
+    apl:2, move:'6"', save:'4+', wounds:7,
+    weapons:[
+      {name:'Ram', atk:3,hit:'5+',dmg:'2/3', wr:'—'},
+    ],
+    abilities:[
+      {name:"Drone", desc:"This operative can only perform the following actions: Charge, Dash, Fall Back, Fight, Reposition, Shoot. When determining control of an objective marker, subtract 1 from this operative's APL stat. This operative is ignored when determining if operatives from each kill team have been incapacitated or eliminated, and for the purposes of most victory conditions."},
+      {name:"Markerlight", desc:"Whenever a friendly XV26 STEALTH BATTLESUIT operative is shooting against an enemy operative that is visible to this operative or within 2\" of your Ambush marker, that enemy operative is marked. Friendly XV26 STEALTH BATTLESUIT operatives' ranged weapons have the Severe weapon rule when shooting against a marked enemy operative."}
+    ]
+  },
+
+];
+const HEARTHKYN = [
+  {
+    id:'hk-theyn', side:'enemy', faction:'hearthkyn', role:'Leader',
+    name:'Hearthkyn Theyn', shortName:'Theyn',
+    apl:2, move:'5"', save:'3+', wounds:9,
+    weapons:[
+      {name:'Autoch bolt pistol', atk:4,hit:'3+',dmg:'3/4', wr:'Range 8", Accurate 1'},
+      {name:'Autoch bolter',      atk:4,hit:'4+',dmg:'3/4', wr:'Accurate 1'},
+      {name:'Bolt revolver',      atk:4,hit:'3+',dmg:'3/5', wr:'Range 8"'},
+      {name:'EtaCarn plasma pistol',atk:4,hit:'4+',dmg:'3/5', wr:'Range 8", Piercing 1'},
+      {name:'Ion blaster',        atk:4,hit:'4+',dmg:'3/4', wr:'Piercing Crits 1'},
+      {name:'Ion pistol',         atk:4,hit:'3+',dmg:'3/4', wr:'Range 8", Piercing Crits 1'},
+      {name:'Concussion gauntlet',atk:4,hit:'4+',dmg:'5/7', wr:'Brutal, Shock'},
+      {name:'Plasma weapon',      atk:4,hit:'3+',dmg:'4/6', wr:'Lethal 5+'},
+    ],
+    abilities:[
+      {name:"Eye of the Ancestors", desc:"STRATEGIC GAMBIT if this operative is in the killzone: select one enemy operative (or two enemy operatives if three or more friendly HEARTHKYN SALVAGER operatives have been incapacitated during the battle). Each selected enemy operative gains one of your Grudge tokens."},
+      {name:"Weavefield Crest", desc:"Once per battle, when an attack dice would inflict Normal damage on this operative, you can ignore that damage."},
+      {name:"Grudge", desc:"Whenever an enemy operative incapacitates a friendly HEARTHKYN SALVAGER operative, that enemy operative gains one of your Grudge tokens. For each Grudge token an enemy operative has, you can retain one normal success as a critical success when shooting/fighting against it."}
+    ]
+  },
+  {
+    id:'hk-dozr', side:'enemy', faction:'hearthkyn', role:'Operative',
+    name:'Hearthkyn Dozr', shortName:'Dozr',
+    apl:2, move:'5"', save:'3+', wounds:8,
+    weapons:[
+      {name:'Autoch bolt pistol', atk:4,hit:'4+',dmg:'3/4', wr:'Range 8", Accurate 1'},
+      {name:'Concussion knux',    atk:4,hit:'3+',dmg:'4/4', wr:'Ceaseless, Lethal 5+, Shock'},
+    ],
+    abilities:[
+      {name:"Brawler", desc:"Whenever this operative is fighting or retaliating, your opponent cannot use the assist rule. If this operative is incapacitated during the Fight action, you can strike the enemy operative with one of your unresolved successes before this operative is removed. Normal damage inflicted on this operative by attack dice with a Dmg stat of 4 or more is reduced by 1."},
+      {name:"KNUX SMASH (1AP)", desc:"Select one enemy operative within this operative's control range. You can move that enemy operative up to 3\" (it must end that move further from this operative). Then inflict D3+1 damage on it.", unique: true}
+    ]
+  },
+  {
+    id:'hk-medic', side:'enemy', faction:'hearthkyn', role:'Operative',
+    name:'Field Medic', shortName:'Medic',
+    apl:2, move:'5"', save:'3+', wounds:8,
+    weapons:[
+      {name:'Autoch bolt pistol', atk:4,hit:'4+',dmg:'3/4', wr:'Range 8", Accurate 1'},
+      {name:'Plasma knives',      atk:3,hit:'3+',dmg:'3/5', wr:'Lethal 5+'},
+    ],
+    abilities:[
+      {name:"Combat Surgery", desc:"SUPPORT. Once per turning point, when a friendly HEARTHKYN SALVAGER operative within 3\" of this operative is activated: that operative can immediately regain up to D3 lost wounds. This cannot be used during a counteraction."},
+      {name:"MEDIKIT (1AP)", desc:"Select one friendly HEARTHKYN SALVAGER operative within this operative's control range. That operative regains up to D3+1 lost wounds. Cannot perform this action while within control range of an enemy operative.", unique: true}
+    ]
+  },
+  {
+    id:'hk-grenadier', side:'enemy', faction:'hearthkyn', role:'Operative',
+    name:'Hearthkyn Grenadier', shortName:'Grenadier',
+    apl:2, move:'5"', save:'3+', wounds:8,
+    weapons:[
+      {name:'Autoch bolt pistol', atk:4,hit:'4+',dmg:'3/4', wr:'Range 8", Accurate 1'},
+      {name:'Autoch bolter',      atk:4,hit:'4+',dmg:'3/4', wr:'Accurate 1'},
+      {name:'Ion blaster',        atk:4,hit:'4+',dmg:'3/4', wr:'Piercing Crits 1'},
+      {name:'Utility grenade',    atk:4,hit:'3+',dmg:'3/4', wr:'Range 6", Blast 2", Saturate, Special'},
+      {name:'Fists',              atk:3,hit:'4+',dmg:'2/3', wr:'—'},
+    ],
+    abilities:[
+      {name:"Vyr-3 Utility Grenade", desc:"When using the utility grenade, select one of the following effects \u2014 (A) treat as a frag grenade; (B) treat as a krak grenade; (C) treat as a stun grenade; (D) treat as a smoke grenade. This operative can use each variant once per battle."}
+    ]
+  },
+  {
+    id:'hk-gunner', side:'enemy', faction:'hearthkyn', role:'Operative',
+    name:'Hearthkyn Gunner', shortName:'Gunner',
+    apl:2, move:'5"', save:'3+', wounds:8,
+    weapons:[
+      {name:'EtaCarn plasma beamer',atk:4,hit:'4+',dmg:'4/5', wr:'Piercing 1, Torrent 2"'},
+      {name:'HYLas auto rifle',     atk:5,hit:'4+',dmg:'3/4', wr:'Lethal 5+'},
+      {name:'HYLas rotary cannon',  atk:6,hit:'4+',dmg:'3/4', wr:'Ceaseless, Heavy (Reposition only)'},
+      {name:'L7 missile launcher',  atk:4,hit:'4+',dmg:'5/7', wr:'Range 12", Blast 2"'},
+      {name:'Magna rail rifle',     atk:3,hit:'3+',dmg:'5/8', wr:'Devastating 3, Piercing 2'},
+      {name:'Fists',                atk:3,hit:'4+',dmg:'2/3', wr:'—'},
+    ],
+    abilities:[]
+  },
+  {
+    id:'hk-jump', side:'enemy', faction:'hearthkyn', role:'Operative',
+    name:'Jump Pack Warrior', shortName:'Jump Pack',
+    apl:2, move:'5"', save:'3+', wounds:8,
+    weapons:[
+      {name:'Autoch bolt pistol', atk:4,hit:'4+',dmg:'3/4', wr:'Range 8", Accurate 1'},
+      {name:'Autoch bolter',      atk:4,hit:'4+',dmg:'3/4', wr:'Accurate 1'},
+      {name:'Ion blaster',        atk:4,hit:'4+',dmg:'3/4', wr:'Piercing Crits 1'},
+      {name:'Fists',              atk:3,hit:'4+',dmg:'2/3', wr:'—'},
+    ],
+    abilities:[
+      {name:"Jump Pack", desc:"During the Charge, Fall Back or Reposition action, this operative can ignore vertical distance during one ascent and one descent."},
+      {name:"Force Field", desc:"Whenever a friendly HEARTHKYN SALVAGER operative within 3\" of this operative is being shot, you can re-roll one of your defence dice for that operative."}
+    ]
+  },
+  {
+    id:'hk-kinlynk', side:'enemy', faction:'hearthkyn', role:'Operative',
+    name:'Hearthkyn Kinlynk', shortName:'Kinlynk',
+    apl:2, move:'5"', save:'3+', wounds:8,
+    weapons:[
+      {name:'Autoch bolt pistol', atk:4,hit:'4+',dmg:'3/4', wr:'Range 8", Accurate 1'},
+      {name:'Autoch bolter',      atk:4,hit:'4+',dmg:'3/4', wr:'Accurate 1'},
+      {name:'Ion blaster',        atk:4,hit:'4+',dmg:'3/4', wr:'Piercing Crits 1'},
+      {name:'Fists',              atk:3,hit:'4+',dmg:'2/3', wr:'—'},
+    ],
+    abilities:[
+      {name:"Relay", desc:"SUPPORT. Whenever this operative is activated, each friendly HEARTHKYN SALVAGER operative within 6\" of it can immediately change its order."},
+      {name:"SIGNAL (1AP)", desc:"Select one objective marker in the killzone. Until the end of the turning point, when determining control of that marker, treat the total APL stat of friendly HEARTHKYN SALVAGER operatives that contest it as 1 higher.", unique: true}
+    ]
+  },
+  {
+    id:'hk-kognitaar', side:'enemy', faction:'hearthkyn', role:'Operative',
+    name:'Hearthkyn Kognitaar', shortName:'Kognitaar',
+    apl:2, move:'5"', save:'3+', wounds:8,
+    weapons:[
+      {name:'Autoch bolt pistol', atk:4,hit:'4+',dmg:'3/4', wr:'Range 8", Accurate 1'},
+      {name:'Autoch bolter',      atk:4,hit:'4+',dmg:'3/4', wr:'Accurate 1'},
+      {name:'Ion blaster',        atk:4,hit:'4+',dmg:'3/4', wr:'Piercing Crits 1'},
+      {name:'Fists',              atk:3,hit:'4+',dmg:'2/3', wr:'—'},
+    ],
+    abilities:[
+      {name:"Tactician", desc:"STRATEGIC GAMBIT once per battle: after rolling off to decide initiative, you can re-roll your dice."},
+      {name:"Pan Spectral Scan", desc:"SUPPORT. Whenever this operative is activated, select one enemy operative within 9\" of it. Until the end of the turning point, that enemy operative is treated as having an Engage order (even if it has a Conceal order)."}
+    ]
+  },
+  {
+    id:'hk-lokattr', side:'enemy', faction:'hearthkyn', role:'Operative',
+    name:'Hearthkyn Lokattr', shortName:'Lokattr',
+    apl:2, move:'5"', save:'3+', wounds:8,
+    weapons:[
+      {name:'Autoch bolt pistol', atk:4,hit:'4+',dmg:'3/4', wr:'Range 8", Accurate 1'},
+      {name:'Autoch bolter',      atk:4,hit:'4+',dmg:'3/4', wr:'Accurate 1'},
+      {name:'Ion blaster',        atk:4,hit:'4+',dmg:'3/4', wr:'Piercing Crits 1'},
+      {name:'Fists',              atk:3,hit:'4+',dmg:'2/3', wr:'—'},
+    ],
+    abilities:[
+      {name:"Early Detection", desc:"Whenever an enemy operative starts performing the Charge action while within 9\" of this operative, you can select that enemy operative. Until the end of that action, friendly HEARTHKYN SALVAGER operatives can target that enemy operative even if they cannot draw line of sight to it."},
+      {name:"SPOT (1AP)", desc:"Select one visible enemy operative within 9\". Until the end of the turning point, that enemy operative is spotted: friendly HEARTHKYN SALVAGER operatives do not gain the benefit of cover when shooting against it (but it still retains cover saves from other sources).", unique: true}
+    ]
+  },
+  {
+    id:'hk-lugger', side:'enemy', faction:'hearthkyn', role:'Operative',
+    name:'Hearthkyn Lugger', shortName:'Lugger',
+    apl:2, move:'5"', save:'3+', wounds:8,
+    weapons:[
+      {name:'Autoch bolt pistol', atk:4,hit:'4+',dmg:'3/4', wr:'Range 8", Accurate 1'},
+      {name:'Autoch bolter',      atk:4,hit:'4+',dmg:'3/4', wr:'Accurate 1'},
+      {name:'Ion blaster',        atk:4,hit:'4+',dmg:'3/4', wr:'Piercing Crits 1'},
+      {name:'Fists',              atk:3,hit:'4+',dmg:'2/3', wr:'—'},
+    ],
+    abilities:[
+      {name:"I've Got It", desc:"This operative can carry up to two markers simultaneously (the normal limit is one). Whenever this operative is incapacitated while carrying markers, do not discard them; instead, leave them in the killzone at the position of this operative."}
+    ]
+  },
+  {
+    id:'hk-warrior', side:'enemy', faction:'hearthkyn', role:'Operative',
+    name:'Hearthkyn Warrior', shortName:'Warrior',
+    apl:2, move:'5"', save:'3+', wounds:8,
+    weapons:[
+      {name:'Autoch bolter', atk:4,hit:'4+',dmg:'3/4', wr:'Accurate 1'},
+      {name:'Ion blaster',   atk:4,hit:'4+',dmg:'3/4', wr:'Piercing Crits 1'},
+      {name:'Fists',         atk:3,hit:'4+',dmg:'2/3', wr:'—'},
+    ],
+    abilities:[
+      {name:"Solid", desc:"Whenever an operative is shooting this operative and the attacker retains one or fewer successes (including any re-rolls) in the Roll Attack Dice step, you can retain one of your fails as a normal success."}
+    ]
+  },
+];
+const GOREMONGER = [
+  {
+    id:'gm-herald', side:'enemy', faction:'goremonger', role:'Leader',
+    name:'Blood Herald', shortName:'Blood Herald',
+    apl:2, move:'7"', save:'5+', wounds:11,
+    weapons:[
+      {name:'Icon of Khorne', atk:4,hit:'2+',dmg:'4/4', wr:'Range 8", Saturate'},
+      {name:'Chainblade',     atk:4,hit:'3+',dmg:'4/5', wr:'Rending'},
+    ],
+    abilities:[
+      {name:"Khorne's Favour", desc:"Once per activation, when this operative's GORE TANK is empty, you can increase its GORE TANK."},
+      {name:"Impending Apotheosis", desc:"Once per battle, when an attack dice would inflict Normal damage on this operative, you can ignore that damage."},
+      {name:"Gore Tank & Sanguavitae", desc:"See Goremonger faction rules. Starts at half. Increases when incapacitating operatives within control range or visible and within 2\". Must decrease when using a Sanguavitae rule. Options: Rejuvenate (D3+1 wounds), Mania (+1 APL), Fury (2x Fight, second free), Rake (D3 dmg on Charge), Surge (+1\" Move), Rage (+1 Atk melee)."}
+    ]
+  },
+  {
+    id:'gm-aspirant', side:'enemy', faction:'goremonger', role:'Operative',
+    name:'Goremonger Aspirant', shortName:'Aspirant',
+    apl:2, move:'7"', save:'5+', wounds:10,
+    weapons:[
+      {name:'Autopistol',  atk:4,hit:'4+',dmg:'2/3', wr:'Range 8"'},
+      {name:'Chainglaive', atk:4,hit:'3+',dmg:'4/5', wr:'Rending'},
+    ],
+    abilities:[
+      {name:"Obsessive Bloodlust", desc:"Once per activation, when this operative ends the Fight action and is no longer within control range of any enemy operatives, it can immediately perform a free Charge action with a maximum move distance of 2\", even if it has already performed the Charge action during that activation."}
+    ]
+  },
+  {
+    id:'gm-bloodtaker', side:'enemy', faction:'goremonger', role:'Operative',
+    name:'Goremonger Bloodtaker', shortName:'Bloodtaker',
+    apl:2, move:'7"', save:'5+', wounds:10,
+    weapons:[
+      {name:'Autopistol',   atk:4,hit:'4+',dmg:'2/3', wr:'Range 8"'},
+      {name:'Pickrippers',  atk:5,hit:'3+',dmg:'4/5', wr:'Lethal 5+'},
+    ],
+    abilities:[
+      {name:"*Ritual", desc:"When you strike with this weapon during the Fight action, you can select one of the following: Bleeding \u2014 at the start of each of that enemy operative's next two activations, inflict D3 damage on it; or Claim Skull \u2014 if this operative incapacitates that enemy operative, gain 1CP."},
+      {name:"TRANSFUSION RITUAL (1AP)", desc:"Select one enemy operative within this operative's control range. Inflict D3+1 damage on it, then increase this operative's GORE TANK. Cannot perform this action during a counteraction.", unique: true}
+    ]
+  },
+  {
+    id:'gm-impaler', side:'enemy', faction:'goremonger', role:'Operative',
+    name:'Goremonger Impaler', shortName:'Impaler',
+    apl:2, move:'7"', save:'5+', wounds:10,
+    weapons:[
+      {name:'Autopistol',    atk:4,hit:'4+',dmg:'2/3', wr:'Range 8"'},
+      {name:'Great chainaxe',atk:5,hit:'4+',dmg:'5/7', wr:'Brutal'},
+    ],
+    abilities:[
+      {name:"*Drag", desc:"When you strike with this weapon during the Fight action, you can move the enemy operative up to 2\" (it must end that move closer to this operative than where it started)."},
+      {name:"DASH AND SPRAY (1AP)", desc:"Perform a Dash action with a maximum move distance of 3\". Then perform a Shoot action with the autopistol against all enemy operatives within 2\" of the path this operative moved along (treat as Torrent 2\"). Cannot perform this action while within control range of an enemy operative at the start of the action, or while it has a Conceal order.", unique: true}
+    ]
+  },
+  {
+    id:'gm-inciter', side:'enemy', faction:'goremonger', role:'Operative',
+    name:'Goremonger Inciter', shortName:'Inciter',
+    apl:2, move:'7"', save:'5+', wounds:10,
+    weapons:[
+      {name:'Autopistol',  atk:4,hit:'4+',dmg:'2/3', wr:'Range 8"'},
+      {name:'Chainblade',  atk:4,hit:'3+',dmg:'4/5', wr:'Rending'},
+    ],
+    abilities:[
+      {name:"Incite the Hunt", desc:"SUPPORT. Whenever this operative is activated, select one friendly GOREMONGER operative within 6\". That friendly operative can immediately perform a free Charge action with a maximum move distance of 3\", even if it has a Conceal order (change it to Engage)."}
+    ]
+  },
+  {
+    id:'gm-skullclaimer', side:'enemy', faction:'goremonger', role:'Operative',
+    name:'Goremonger Skullclaimer', shortName:'Skullclaimer',
+    apl:2, move:'7"', save:'5+', wounds:10,
+    weapons:[
+      {name:'Autopistol',  atk:4,hit:'4+',dmg:'2/3', wr:'Range 8"'},
+      {name:'Chainsword',  atk:5,hit:'3+',dmg:'4/5', wr:'—'},
+    ],
+    abilities:[
+      {name:"Claim Skull", desc:"STRATEGIC GAMBIT once per battle: select one enemy operative. If this operative incapacitates that enemy operative during the Fight action, gain a Claim Skull token (worth 1CP at the end of the turning point)."},
+      {name:"Brutish", desc:"Whenever this operative is fighting, you can use this rule. If you do, your opponent's melee weapons lose the Brutal weapon rule for that sequence, but this operative's melee weapons gain the Lethal 5+ weapon rule for that sequence."}
+    ]
+  },
+  {
+    id:'gm-stalker', side:'enemy', faction:'goremonger', role:'Operative',
+    name:'Goremonger Stalker', shortName:'Stalker',
+    apl:2, move:'7"', save:'5+', wounds:10,
+    weapons:[
+      {name:'Autopistol',  atk:4,hit:'4+',dmg:'2/3', wr:'Range 8"'},
+      {name:'Chainblade',  atk:4,hit:'3+',dmg:'4/5', wr:'Rending'},
+    ],
+    abilities:[
+      {name:"*Prey", desc:"At the start of this operative's activation, you can select one visible enemy operative as this operative's Prey. Whenever this operative is shooting against or fighting against its Prey, this operative's weapons have the Punishing weapon rule."},
+      {name:"Rooftop Stalker", desc:"During the Charge or Reposition action, this operative can ignore vertical distance during one ascent."},
+      {name:"Climbing Picks", desc:"Whenever this operative climbs, treat the vertical distance as 2\" regardless of the actual distance."}
+    ]
+  },
+];
+const FACTION_RULES = {
+  "mine": {
+    name: "Murderwing",
+    subtitle: "Chaos Space Marines",
+    color: "var(--accent)",
+    rules: [
+      { name:"Jump Pack", desc:"Whenever a friendly MURDERWING operative is performing the Charge, Fall Back or Reposition action, at the start of any straight-line increment, as long as no part of its base is underneath Vantage terrain, it can do a BOOST for that increment. Remove it from the killzone and set it back up wholly within X\" horizontally of its original location (X added to total move distance). Cannot be set up underneath Vantage terrain or, unless Charging, within control range of an enemy operative." },
+      { name:"Boost Actions", desc:"Some actions are BOOST actions \u2014 performed during other actions when a BOOST is used. Each operative cannot perform more than one BOOST action per activation/counteraction. Most BOOST actions affect enemy operatives within a BOOST ZONE: the horizontal area between the operative's current location and the location from which it used BOOST. Enemy operatives underneath Vantage terrain are not within BOOST ZONEs." },
+      { name:"Astartes", desc:"During each friendly MURDERWING operative's activation, it can perform either two Shoot actions or two Fight actions. If two Shoot actions, a bolt pistol must be selected for at least one. Each friendly MURDERWING operative can counteract regardless of its order." }
+    ],
+    strat: [
+      { name:"Predators Above", desc:"Whenever a friendly MURDERWING operative is at least 2\" higher than the killzone floor, its weapons have the Balanced weapon rule. Whenever a friendly MURDERWING operative does a BOOST, its weapons have the Balanced weapon rule until the end of that activation." },
+      { name:"Cull the Weak", desc:"Whenever a friendly MURDERWING operative is shooting or fighting, its weapons have the Punishing weapon rule if any of the following are true for the target: it's at least 2\" lower; its APL stat is less than normal; it was wounded at the start of the activation/counteraction." },
+      { name:"Nightmare on High", desc:"Whenever an operative is shooting a friendly MURDERWING operative that's at least 2\" higher than the killzone floor, or that did a BOOST during this turning point, you can re-roll one of your defence dice." },
+      { name:"Instil Fear", desc:"Whenever a friendly MURDERWING operative is fighting, Normal Dmg of 3 or more inflicts 1 less damage on it." }
+    ],
+    fight: [
+      { name:"Malicious Narcissism", desc:"Use when it's your turn to activate and only one friendly MURDERWING operative is ready. Until end of turning point, whenever you have fewer ready friendly operatives than your opponent, you can skip activations (delay that operative until your opponent has only one ready operative). You cannot counteract until that operative is expended." },
+      { name:"Murderous Descent", desc:"Use when an enemy operative ends the Charge, Dash, Fall Back or Reposition action within 3\" horizontally and more than 2\" lower than a friendly MURDERWING operative. Interrupt and immediately perform a free Charge action \u2014 must end within control range of that enemy operative." },
+      { name:"Long Forgotten Honour", desc:"Use when a friendly MURDERWING operative is fighting or retaliating, when you resolve a critical success. Instead of striking or blocking, end that sequence (remaining attack dice discarded) and immediately perform a free Fall Back action up to 3\". That operative can do so even if normally prevented from performing Fall Back." },
+      { name:"Wings of Darkness", desc:"Use when a friendly MURDERWING operative is performing Fall Back or Reposition, when it does a BOOST. That operative can be set up an additional 3\" away during that BOOST, but cannot perform Shoot, Fight or Carving Blow until the next turning point. Cannot be used during the first turning point." }
+    ]
+  },
+  "raveners": {
+    name: "Raveners",
+    subtitle: "Tyranid Kill Team",
+    color: "var(--teal)",
+    rules: [
+      { name:"Burrow", desc:"When setting up, your first two operatives must be set up normally. Each other RAVENER operative can be set up underground (placed to one side). Underground operatives can only perform Burrow. At the end of the battle, each underground operative is incapacitated. BURROW (1AP): if underground, set up on your TUNNEL (Move -2\" until end of activation); if on TUNNEL, go underground. Cannot be performed while carrying a marker." },
+      { name:"Tunnel", desc:"At end of Set Up Operatives, place Tunnel marker \"0\" wholly within your drop zone touching your killzone edge. As a STRATEGIC GAMBIT in the first four turning points, place the next numbered Tunnel marker wholly within 5\" of the preceding one (max 5 markers). Your TUNNEL is created by the markers and the area between sequentially numbered markers." },
+      { name:"Predatory Instincts", desc:"During each friendly RAVENER operative's activation, it can perform two Fight actions. Each friendly RAVENER operative can counteract regardless of its order. Whenever it counteracts: you can change its order first, or change its order instead of performing an action (still treated as having counteracted). During a counteraction not involving a mission action, it can perform a free Burrow action." }
+    ],
+    strat: [
+      { name:"Death from Below", desc:"Whenever a friendly RAVENER operative is fighting: if it performed the Burrow action during that activation/counteraction, its melee weapons have the Balanced weapon rule. If it's on your TUNNEL, its melee weapons have the Ceaseless weapon rule." },
+      { name:"Whipcord Emergence", desc:"Whenever an operative is shooting a friendly RAVENER operative: if that friendly operative performed the Burrow action during that turning point, you can re-roll one of your defence dice. If it's on your TUNNEL, you can re-roll any of your defence dice." },
+      { name:"Writhe Out of Sight", desc:"Select one friendly RAVENER operative in the killzone. That operative can immediately perform a free Burrow action. If it's within 2\" of your TUNNEL, it can perform a free Fall Back or Reposition action before doing so." },
+      { name:"Tunnel Lurkers", desc:"Whenever a friendly RAVENER operative is on your TUNNEL it's in cover, unless it's within 2\" of the active operative. Treat as cover provided by Light terrain (affected by rules that prevent this, e.g. Seek and Vantage terrain)." }
+    ],
+    fight: [
+      { name:"Slithering Evasion", desc:"Use during a friendly RAVENER operative's activation or counteraction, before or after it performs an action. During that activation/counteraction, that operative can: perform the Fall Back action for 1 less AP; and perform the Charge action while within control range of an enemy operative, leaving that control range to do so." },
+      { name:"Subterranean Horror", desc:"Use when an enemy operative is fighting against a friendly RAVENER operative on your TUNNEL. In the Resolve Attack Dice step of that sequence, you resolve the first attack dice (i.e. you act as defender instead of attacker)." },
+      { name:"Burrowing Strike", desc:"Use when a friendly RAVENER operative performs the Burrow action. Before it's removed from the killzone, or after setting it up on your TUNNEL, inflict D3+1 damage on each enemy operative within its control range (roll separately). Cannot use in Strategy phase, or during a FELLTALON activation/counteraction if it performs Toxic Lunge." },
+      { name:"Death Frenzy", desc:"Use when a friendly RAVENER operative is incapacitated. Before it's removed, inflict D3 damage on each enemy operative within its control range (roll separately). If the operative is a VENOMSPITTER benefitting from Distend Dorsal Sac, inflict 2D3 damage instead." }
+    ]
+  },
+  "xv26": {
+    name: "XV26 Stealth Battlesuits",
+    subtitle: "T'au Empire",
+    color: "var(--teal)",
+    rules: [
+      { name:"Kauyon", desc:"Whenever a friendly XV26 STEALTH BATTLESUIT operative is shooting an enemy operative, its ranged weapons have the Accurate X weapon rule. X is determined by the enemy's location: within 3\" of your territory = Accurate 1; within your territory = Accurate 2; within 3\" of your drop zone = Accurate 3." },
+      { name:"Stealth Fields", desc:"Whenever a friendly XV26 STEALTH BATTLESUIT operative has a Conceal order, it cannot be visible to enemy operatives more than 3\" from it (takes precedence over all other rules). Whenever it has a Conceal order, it can perform the Fall Back action for 1 less AP." }
+    ],
+    strat: [
+      { name:"Patient Hunters", desc:"Whenever a friendly XV26 STEALTH BATTLESUIT operative is shooting against or fighting against an expended enemy operative, that friendly operative's weapons have the Balanced weapon rule and its ranged weapons have the Saturate weapon rule." },
+      { name:"Prepare Ambush", desc:"Place one Ambush marker wholly within your territory and more than 2\" from enemy operatives. Whenever a friendly XV26 STEALTH BATTLESUIT operative is shooting an enemy within 2\" of that marker, you can remove the marker and that friendly operative's ranged weapons have the Seek weapon rule until the end of the action." },
+      { name:"Bonds of Unity", desc:"Whenever a friendly XV26 STEALTH BATTLESUIT operative (excluding DRONE) is activated, if it's visible to and within 6\" of another friendly XV26 STEALTH BATTLESUIT operative (excluding DRONE), you can ignore any changes to that operative's APL stat, and select one: ignore changes to its Move stat from injury; or ignore changes to the Hit stat of its weapons from injury until the end of that activation." },
+      { name:"Holowave Countermeasures", desc:"Whenever an operative is shooting a friendly XV26 STEALTH BATTLESUIT operative from more than 6\" away: in the Roll Attack Dice step, your opponent must discard one of their normal successes (or a critical success if no normal successes). Not cumulative with the Obscured rule." }
+    ],
+    fight: [
+      { name:"Vectored Retro-Thrusters", desc:"Use when an enemy operative ends a Charge action within control range of a friendly XV26 STEALTH BATTLESUIT operative (excluding DRONE). Interrupt and that friendly operative immediately performs a free Fall Back action up to 3\". The enemy operative can then perform a free Reposition action for any remaining distance." },
+      { name:"Engage Jet Pack", desc:"Use during a friendly XV26 STEALTH BATTLESUIT operative's (excluding DRONE) activation or counteraction. During that activation/counteraction, that operative can ignore vertical distance during one climb and one descend." },
+      { name:"Ghostshroud", desc:"Use at the end of a friendly XV26 STEALTH BATTLESUIT operative's activation. Change its order from Engage to Conceal. Each operative can only use this once per battle." },
+      { name:"Saviour Protocols", desc:"Use when an enemy operative selects a friendly XV26 STEALTH BATTLESUIT operative (excluding DRONE) as a valid target for the Shoot action. Select a friendly DRONE within 3\" \u2014 that DRONE becomes the target instead. The DRONE only benefits from cover/obscured if the original target would have. Cannot be used against Blast or Torrent weapons." }
+    ]
+  },
+  "hearthkyn": {
+    name: "Hearthkyn Salvager",
+    subtitle: "Leagues of Votann",
+    color: "var(--teal)",
+    rules: [
+      { name:"Grudge", desc:"Whenever an enemy operative incapacitates a friendly HEARTHKYN SALVAGER operative, that enemy operative gains one of your Grudge tokens for the battle. Whenever a friendly HEARTHKYN SALVAGER operative is shooting against, fighting against or retaliating against an enemy operative, for each Grudge token that enemy operative has, you can retain one normal success as a critical success instead (including any via Accurate). Grudge tokens are not removed when you do this." }
+    ],
+    strat: [
+      { name:"Need Keeps", desc:"Select one objective marker or one of your mission markers. When determining control: treat the total APL stat of friendly HEARTHKYN SALVAGER operatives that contest it as 1 higher if at least one friendly contests it. Whenever a friendly HEARTHKYN SALVAGER operative is within 3\" of that marker, add 1 to the Atk stat of its melee weapons (max 4); if already 4, it has the Balanced weapon rule." },
+      { name:"Wrought Defence", desc:"Whenever an operative is shooting a friendly HEARTHKYN SALVAGER operative, if you rolled one or fewer successes (including any re-rolls), you can retain one of your fails as a normal success instead of discarding it." },
+      { name:"Toil Earns", desc:"Select one objective marker or one of your mission markers. Whenever an enemy operative is within 3\" of that marker, treat it as having one additional Grudge token." },
+      { name:"Proximate Firepower", desc:"Whenever a friendly HEARTHKYN SALVAGER operative is shooting an enemy operative within 6\", improve the Hit stat of that friendly operative's ranged weapons by 1 (to a maximum of 3+). This can apply or remove the Hit stat change during an action." }
+    ],
+    fight: [
+      { name:"The Ancestors Are Watching", desc:"Use during a friendly HEARTHKYN SALVAGER operative's activation. That operative can immediately perform a free Shoot or Fight action." },
+      { name:"Sturdy", desc:"Use when an operative is shooting a friendly HEARTHKYN SALVAGER operative, at the start of the Roll Defence Dice step. Your opponent must change any critical successes they retain to normal successes (effects that have already resolved, such as Piercing Crits, are not reversed)." },
+      { name:"Worth It", desc:"Use when a friendly HEARTHKYN SALVAGER operative is incapacitated. Before it's removed from the killzone, that operative can immediately perform a free mission action." },
+      { name:"Engage to Acquire", desc:"Use when a friendly HEARTHKYN SALVAGER operative has rolled its attack dice against an enemy operative that controls an objective or mission marker. You can re-roll any of your attack dice." }
+    ]
+  },
+  "goremonger": {
+    name: "Goremonger",
+    subtitle: "World Eaters \u2014 Chaos",
+    color: "var(--teal)",
+    rules: [
+      { name:"Runes of Khorne", desc:"Each friendly GOREMONGER operative cannot lose more than 8 wounds per Shoot action." },
+      { name:"Gore Tanks", desc:"Each friendly GOREMONGER operative has a GORE TANK with three levels: full, half and empty. They start at half. Increasing goes up one level; decreasing goes down one level. Cannot increase when full or decrease when empty. Whenever a GOREMONGER operative incapacitates an operative within its control range, or visible and within 2\", you can increase its GORE TANK. Whenever it uses a SANGUAVITAE rule, you must decrease its GORE TANK." },
+      { name:"Sanguavitae \u2014 Rejuvenate", desc:"WHEN: During activation or counteraction, before or after performing an action. EFFECT: That operative regains up to D3+1 lost wounds." },
+      { name:"Sanguavitae \u2014 Mania", desc:"WHEN: During activation, before or after performing an action. EFFECT: Until the start of that operative's next activation, add 1 to its APL stat. Cannot use Mania and Fury during the same activation." },
+      { name:"Sanguavitae \u2014 Fury", desc:"WHEN: During activation, before or after performing an action. EFFECT: That operative can perform two Fight actions during that activation, and the second is free. Cannot use Fury and Mania during the same activation." },
+      { name:"Sanguavitae \u2014 Rake", desc:"WHEN: When performing the Charge action. EFFECT: When that operative finishes moving, you can inflict D3 damage on one enemy operative within its control range." },
+      { name:"Sanguavitae \u2014 Surge", desc:"WHEN: When performing the Charge or Reposition action. EFFECT: Until the end of that action, add 1\" to that operative's Move stat." },
+      { name:"Sanguavitae \u2014 Rage", desc:"WHEN: When performing the Fight action. EFFECT: Until the end of that action, add 1 to the Atk stat of that operative's melee weapons." }
+    ],
+    strat: [
+      { name:"Enhanced Violence", desc:"Whenever a friendly GOREMONGER operative's GORE TANK is: Half \u2014 its melee weapons have the Balanced weapon rule. Full \u2014 its melee weapons have the Relentless weapon rule." },
+      { name:"Augmented Endurance", desc:"Whenever an operative is shooting a friendly GOREMONGER operative, if that friendly operative's GORE TANK is: Half \u2014 you can re-roll one of your defence dice. Full \u2014 you can re-roll any of your defence dice." },
+      { name:"Gory Tenacity", desc:"Whenever a friendly GOREMONGER operative is fighting or retaliating, the first time your opponent strikes it during that sequence, halve the damage inflicted (rounding up, minimum 2)." },
+      { name:"Hunt for Blood", desc:"Select one friendly GOREMONGER operative. If it has a Conceal order, change it to Engage. Then it can immediately perform a free Charge action, but cannot move more than 3\" during that action." }
+    ],
+    fight: [
+      { name:"Unbridled Aggression", desc:"Use when a friendly GOREMONGER operative is fighting during an activation in which it performed the Charge action, at the end of the Roll Attack Dice step. Until the end of that sequence, that operative's melee weapons have the Severe weapon rule." },
+      { name:"Gorethirst", desc:"Use when it's your turn to counteract, if a friendly GOREMONGER operative has a Conceal order. Change that operative's order to Engage, then counteract with it. During that counteraction, it can only perform the Charge, Shoot or Fight action." },
+      { name:"Destructive Demise", desc:"Use when a friendly GOREMONGER operative is incapacitated. Before it's removed, inflict damage on one enemy operative within its control range: empty GORE TANK = D3; half = D3+1; full = D3+2." },
+      { name:"Lacerate Flesh", desc:"Use when a friendly GOREMONGER operative with an empty GORE TANK is activated or counteracts. Increase its GORE TANK. At the end of that activation, decrease its GORE TANK (this cannot be used for a Sanguavitae). If you cannot decrease it (already empty), inflict D3 damage on that operative." }
+    ]
+  },
+};
+const FACTION_EQ = {
+  "murderwing": [
+    {
+      "id": "mw-bladefins",
+      "name": "Bladefins",
+      "desc": "Friendly MURDERWING operatives can perform: SLICE FROM ABOVE (1AP, BOOST action) — Inflict D3+1 damage on one enemy operative within this operative's BOOST ZONE. Performed during the Fall Back or Reposition action after setting up from a BOOST."
+    },
+    {
+      "id": "mw-clawed",
+      "name": "Clawed Armour",
+      "desc": "Friendly MURDERWING operatives can perform: CLAWED CHARGE (0AP, BOOST action) — Inflict 1 damage on one enemy operative within this operative's control range, then the Charge action ends. Performed during the Charge action after setting up from a BOOST."
+    },
+    {
+      "id": "mw-warpfuel",
+      "name": "Warp Fuel",
+      "desc": "Once per turning point, when an enemy operative ends the Fall Back action during its activation, if at least one friendly MURDERWING operative was within its control range at the start of that action, one of those friendly operatives can immediately perform a free Reposition or Charge action, but cannot use more than 3\" of move distance."
+    },
+    {
+      "id": "mw-voxcasters",
+      "name": "Vox-Casters",
+      "desc": "Friendly MURDERWING operatives can perform: VOX-CRY (1AP) — Each enemy operative within 3\" of this operative takes a stun test. Roll one D6: on a 3+, subtract 1 from its APL stat until the end of its next activation. Cannot perform this action while this operative has a Conceal order."
+    }
+  ],
+  "raveners": [
+    {
+      "id": "rv-chromato",
+      "name": "Chromatospore Camouflage",
+      "desc": "Whenever an operative is shooting a friendly RAVENER operative, if you can retain any cover saves, you can retain one additional cover save. This isn't cumulative with improved cover saves from Vantage terrain."
+    },
+    {
+      "id": "rv-acidblood",
+      "name": "Acid Blood",
+      "desc": "Whenever a friendly RAVENER operative is fighting or retaliating, whenever an attack dice inflicts damage on it, roll one D6: on a 5+, inflict 1 damage on the enemy operative in that sequence."
+    },
+    {
+      "id": "rv-metamorphic",
+      "name": "Metamorphic Flesh",
+      "desc": "Whenever a friendly RAVENER operative is activated, it regains up to D3 lost wounds."
+    },
+    {
+      "id": "rv-heightened",
+      "name": "Heightened Senses",
+      "desc": "Once per battle, after rolling off to decide initiative, if a friendly RAVENER operative is underground and an enemy operative is within 5\" of your TUNNEL, you can re-roll your dice."
+    }
+  ],
+  "xv26": [
+    {
+      "id": "xv-multitrackers",
+      "name": "XV26 Multitrackers",
+      "desc": "Once per turning point, when a friendly XV26 STEALTH BATTLESUIT operative is shooting and selects the burst cannon (sweeping) profile, until the end of that action the burst cannon (sweeping) has the Torrent 2\" weapon rule."
+    },
+    {
+      "id": "xv-blacksun",
+      "name": "Advanced Blacksun Filters",
+      "desc": "Whenever a friendly XV26 STEALTH BATTLESUIT operative is shooting an Obscured enemy operative, that friendly operative does not have to discard one of its successes as a result of the Obscured rule. Other effects of the Obscured rule still apply."
+    },
+    {
+      "id": "xv-jammers",
+      "name": "Counter-Network Jammers",
+      "desc": "STRATEGIC GAMBIT: Select one objective marker or mission marker. Until the end of the turning point, when determining control of that marker, treat the total APL stat of enemy operatives that contest it as 1 lower if at least one enemy operative contesting it is within 3\" of a friendly XV26 STEALTH BATTLESUIT operative."
+    },
+    {
+      "id": "xv-targetlocks",
+      "name": "Hardwired Target Locks",
+      "desc": "Whenever it's your turn to counteract with a friendly XV26 STEALTH BATTLESUIT operative that has a Conceal order and is more than 3\" from all enemy operatives, you can counteract with it. If you do, change its order to Engage, but it can only perform the Shoot action during that counteraction."
+    }
+  ],
+  "hearthkyn": [
+    {
+      "id": "hk-plasmaknives",
+      "name": "Plasma Knives",
+      "desc": "All HEARTHKYN SALVAGER operatives gain the following melee weapon: Plasma knives — ATK 3, HIT 4+, DMG 3/5, Lethal 5+. The FIELD MEDIC already has plasma knives on its datacard — use whichever profile is better."
+    },
+    {
+      "id": "hk-excavation",
+      "name": "Excavation Tools",
+      "desc": "Friendly HEARTHKYN SALVAGER operatives can perform the Pick Up Marker action for 1 less AP. In addition, they do not need to control a marker to pick it up — they only need to contest it."
+    },
+    {
+      "id": "hk-climbing",
+      "name": "Climbing Rigs",
+      "desc": "During each friendly HEARTHKYN SALVAGER operative's activation: when it climbs, treat the vertical distance as 2\" regardless of actual distance; or when it descends, it can ignore the vertical distance."
+    },
+    {
+      "id": "hk-writ",
+      "name": "Writ of Claim",
+      "desc": "Once per battle, if friendly HEARTHKYN SALVAGER operatives are contesting two or more objective markers, after rolling off to decide initiative, you can re-roll your dice."
+    }
+  ],
+  "goremonger": [
+    {
+      "id": "gm-gorytotem",
+      "name": "Gory Totem",
+      "desc": "Before the battle, place one Gory Totem marker on the killzone floor, wholly within your territory and more than 2\" from other markers. Enemy operatives within 3\" of that marker cannot re-roll their attack dice."
+    },
+    {
+      "id": "gm-cadaver",
+      "name": "Bloody Cadaver",
+      "desc": "Before the battle, place one Bloody Cadaver marker on the killzone floor, wholly within your territory. GOREMONGER operatives can perform the Pick Up Marker action on it. In the Ready step of each turning point, if a friendly GOREMONGER operative is carrying that marker and is not within control range of an enemy operative, you can increase that operative's GORE TANK."
+    },
+    {
+      "id": "gm-chaossigil",
+      "name": "Chaos Sigil",
+      "desc": "Once per turning point, when an enemy operative is shooting a friendly GOREMONGER operative, at the start of the Roll Defence Dice step, worsen the Piercing weapon rule of each of that enemy operative's weapons by 1 for that shooting action (e.g. Piercing 1 has no effect for that action)."
+    },
+    {
+      "id": "gm-wristchains",
+      "name": "Wrist Chains",
+      "desc": "Once per turning point, when a friendly GOREMONGER operative is performing the Shoot action, select one melee weapon: chainblade, chainglaive, great chainaxe (losing Brutal) or pickrippers. Until the end of that action, that weapon is treated as a ranged weapon with Range 2\"."
+    }
+  ]
+};
+var UNIVERSAL_EQ = [{"id": "ue-ammo", "name": "1x Ammo Cache", "desc": "Before the battle, set up one Ammo Cache marker in your territory. AMMO RESUPPLY (0AP mission action): one Ammo Cache marker you control is used this turning point — until the start of the next turning point, when shooting, you can re-roll one attack dice. Cannot use while in control range of an enemy operative or if the marker has been used this turning point."}, {"id": "ue-razor", "name": "1x Razor Wire", "desc": "Exposed and Obstructing terrain. Set up wholly within your territory before the battle. Obstructing: whenever an operative would cross over this terrain feature within 1\" of it, treat the distance as an additional 1\"."}, {"id": "ue-comms", "name": "1x Comms Device", "desc": "Before the battle, set up one Comms Device marker in your territory. While a friendly operative controls this marker, add 3\" to the distance requirements of its SUPPORT rules that refer to friendly operatives."}, {"id": "ue-mines", "name": "1x Mines", "desc": "Before the battle, set up one Mines marker in your territory, more than 2\" from other markers, access points and Accessible terrain. The first time that marker is within an operative's control range, remove it and inflict D3+3 damage on that operative."}, {"id": "ue-lbarricade", "name": "2x Light Barricades", "desc": "Light terrain (feet are Insignificant and Exposed). Set up wholly within your territory before the battle."}, {"id": "ue-hbarricade", "name": "1x Heavy Barricade", "desc": "Heavy terrain. Set up wholly within 4\" of your drop zone before the battle."}, {"id": "ue-ladders", "name": "2x Ladders", "desc": "Insignificant and Exposed terrain. Set up within your territory, upright against terrain at least 2\" tall, more than 2\" from other equipment terrain features and more than 1\" from doors and access points. Once per action, when an operative is climbing the terrain a ladder is placed against, treat the vertical distance as 1\" if the ladder is within control range during the entire climb."}, {"id": "ue-portable", "name": "1x Portable Barricade", "desc": "Light, Protective and Portable terrain (feet Insignificant/Exposed). Protective: while in cover from this feature, improve Save stat by 1 (max 2+). Portable: only provides cover while an operative is connected and the shield is intervening. MOVE WITH BARRICADE (1AP): like Reposition but max Move -2\", cannot climb/drop/jump. Cannot use while in control range of enemy or during same activation as Fall Back or Charge."}, {"id": "ue-utility", "name": "Utility Grenades", "desc": "Select two utility grenades (2 smoke, 2 stun, or 1+1). SMOKE GRENADE (1AP): place a Smoke Grenade marker within 6\" visible to this operative — creates smoke 1\" horizontally; operatives wholly within are Obscured to those more than 2\" away; Piercing 2 becomes Piercing 1 within smoke unless within 2\". Removed after D3 activations or end of TP. STUN GRENADE (1AP): select visible enemy within 6\" — it and each operative within 1\" take a stun test (D6, on 3+ subtract 1 APL until end of next activation)."}, {"id": "ue-explosive", "name": "Explosive Grenades", "desc": "Select two explosive grenades (2 frag, 2 krak, or 1+1). Frag grenade: ATK 4, HIT 4+, DMG 2/4, Range 6\", Blast 2\", Saturate. Krak grenade: ATK 4, HIT 4+, DMG 4/5, Range 6\", Piercing 1, Saturate. Each usable a number of times equal to your selection."}, {"id": "ue-breach", "name": "Breaching Charge", "desc": "Once per battle, when a friendly operative performs the Breach action, it can perform it for 1 less AP (minimum 1AP) as though it had the word \"breach marker\" on its datacard."}];
+
+FACTION_RULES['murderwing'] = FACTION_RULES['mine'];
+FACTION_EQ['mine'] = FACTION_EQ['murderwing'];
+
+var ALL = {murderwing:MINE, raveners:RAVENERS, xv26:XV26, hearthkyn:HEARTHKYN, goremonger:GOREMONGER};
+var activeTab='mine', mineFac='murderwing', enemyFac='raveners';
+var selected={}, selCnt=0, eqTaken={}, eqOrd={}, eqCnt=0, ployTP={}, wpnOn={};
+
+/* ── EVENT DELEGATION ── */
+document.addEventListener('click', function(e) {
+  var t = e.target;
+
+  // Number badge on unit card
+  if (t.classList.contains('card-num')) {
+    e.stopPropagation();
+    var uid = t.id.replace('n-', '');
+    var u = findUnit(uid);
+    if (u) toggleSel(u, uid);
+    return;
+  }
+  // Close overlays on backdrop
+  if (t.classList.contains('overlay')) {
+    t.classList.remove('open');
+    return;
+  }
+  // Close buttons
+  if (t.classList.contains('close-btn')) {
+    var ov = t.closest('.overlay');
+    if (ov) ov.classList.remove('open');
+    return;
+  }
+  // Stop propagation inside overlay content
+  if (t.closest('.ov-inner')) {
+    // handled below specifically
+  }
+  // Accordion toggle (rules-item-header, eq-item-header)
+  var rh = t.closest('.rules-item-header');
+  if (rh) {
+    e.stopPropagation();
+    var item = rh.closest('.rules-item');
+    if (item) item.classList.toggle('open');
+    return;
+  }
+  var eh = t.closest('.eq-item-header');
+  if (eh) {
+    e.stopPropagation();
+    // If click was on eq-num, handle EQ toggle
+    if (t.classList.contains('eq-num') || t.closest('.eq-num')) {
+      var numEl = t.classList.contains('eq-num') ? t : t.closest('.eq-num');
+      var eqEl = numEl.closest('.eq-item');
+      if (eqEl) togEq(eqEl.id);
+      return;
+    }
+    var eqItem = eh.closest('.eq-item');
+    if (eqItem) eqItem.classList.toggle('open');
+    return;
+  }
+  // TP dot
+  if (t.classList.contains('tp-dot')) {
+    e.stopPropagation();
+    var uid2 = t.getAttribute('data-uid');
+    var tp = parseInt(t.getAttribute('data-tp'));
+    var type = t.getAttribute('data-type');
+    if (!ployTP[uid2]) ployTP[uid2] = {};
+    if (ployTP[uid2][tp]) { delete ployTP[uid2][tp]; t.className = 'tp-dot'; }
+    else { ployTP[uid2][tp] = true; t.className = 'tp-dot used-' + type; }
+    return;
+  }
+  // Weapon checkbox
+  if (t.classList.contains('wpn-check')) {
+    e.stopPropagation();
+    var uid3 = t.getAttribute('data-uid');
+    var idx = parseInt(t.getAttribute('data-i'));
+    wpnOn[uid3][idx] = !wpnOn[uid3][idx];
+    var row = document.getElementById('wr-' + uid3 + '-' + idx);
+    if (wpnOn[uid3][idx]) { if(row) row.classList.remove('dimmed'); t.classList.add('on'); }
+    else { if(row) row.classList.add('dimmed'); t.classList.remove('on'); }
+    return;
+  }
+  // Unit card
+  var card = t.closest('.card');
+  if (card && !t.closest('.card-num')) {
+    var cuid = card.id.replace('c-', '');
+    var cu = findUnit(cuid);
+    if (cu) openUnit(cu);
+    return;
+  }
+});
+
+/* Toolbar buttons use simple onclick strings that don't need ID params — keep those */
+
+function findUnit(uid) {
+  var parts = uid.split('-');
+  var side = parts[0];
+  var id = parts.slice(1).join('-');
+  var fac = side === 'mine' ? mineFac : enemyFac;
+  var units = ALL[fac] || [];
+  for (var i = 0; i < units.length; i++) {
+    if (units[i].id === id) return Object.assign({}, units[i], {side: side});
+  }
+  // Search all factions if not found in current
+  var allKeys = Object.keys(ALL);
+  for (var fi = 0; fi < allKeys.length; fi++) {
+    var fu = ALL[allKeys[fi]] || [];
+    for (var ui = 0; ui < fu.length; ui++) {
+      if (fu[ui].id === id) return Object.assign({}, fu[ui], {side: side});
+    }
+  }
+  return null;
+}
+
+function showGrid(side, fac) {
+  var cont = document.getElementById(side==='mine'?'mine-grids':'enemy-grids');
+  [].forEach.call(cont.children, function(c){ c.style.display='none'; });
+  var ex = document.getElementById('g-'+side+'-'+fac);
+  if (ex) { ex.style.display=''; return; }
+  var g = document.createElement('div');
+  g.className = 'grid'; g.id = 'g-'+side+'-'+fac;
+  (ALL[fac]||[]).forEach(function(u){ g.appendChild(mkCard(Object.assign({},u,{side:side}))); });
+  cont.appendChild(g);
+}
+
+function mkCard(u) {
+  var uid = u.side+'-'+u.id;
+  var d = document.createElement('div');
+  d.className = 'card '+u.side; d.id = 'c-'+uid;
+  var sr = '';
+  ['APL','MOV','SV','W'].forEach(function(k,i){
+    sr += '<div class="sm"><span>'+k+'</span><span>'+[u.apl,u.move,u.save,u.wounds][i]+'</span></div>';
+  });
+  d.innerHTML =
+    '<div class="card-num" id="n-'+uid+'"></div>'+
+    '<div class="card-role">'+u.role+'</div>'+
+    '<div class="card-name'+(u.name.length>15?' long':'')+'">'+u.name+'</div>'+
+    '<div class="stat-row">'+sr+'</div>'+
+    '<div class="card-pills"><span class="pill w">W '+u.wounds+'</span><span class="pill sv">Sv '+u.save+'</span></div>';
+  return d;
+}
+
+function toggleSel(u, uid) {
+  var c = document.getElementById('c-'+uid);
+  if (selected[uid] !== undefined) {
+    var n = selected[uid]; delete selected[uid]; selCnt--;
+    Object.keys(selected).forEach(function(id){ if(selected[id]>n){ selected[id]--; updN(id); } });
+    if(c) c.classList.remove('selected'); updN(uid);
+  } else {
+    selCnt++; selected[uid] = selCnt;
+    if(c) c.classList.add('selected'); updN(uid);
+  }
+  reord(u.side);
+}
+function updN(uid) { var e=document.getElementById('n-'+uid); if(e) e.textContent=selected[uid]!==undefined?selected[uid]:''; }
+function reord(side) {
+  var fac = side==='mine'?mineFac:enemyFac;
+  var g = document.getElementById('g-'+side+'-'+fac); if(!g) return;
+  var cs = Array.from(g.children);
+  var sel = cs.filter(function(c){ return c.classList.contains('selected'); })
+              .sort(function(a,b){ return (selected[a.id.replace('c-','')]||999)-(selected[b.id.replace('c-','')]||999); });
+  var un = cs.filter(function(c){ return !c.classList.contains('selected'); });
+  sel.concat(un).forEach(function(c){ g.appendChild(c); });
+}
+
+function openUnit(u) {
+  var uid = u.side+'-'+u.id;
+  var ac = u.side==='enemy'?'enemy':'';
+  document.getElementById('ov-role').textContent = u.role;
+  document.getElementById('ov-role').style.color = u.side==='enemy'?'var(--teal)':'var(--accent)';
+  document.getElementById('ov-name').textContent = u.name;
+  document.getElementById('ov-badges').innerHTML =
+    '<span class="badge-apl '+ac+'">APL '+u.apl+'</span>'+
+    '<span class="badge-w">W '+u.wounds+'</span>'+
+    '<span class="badge-sv">Sv '+u.save+' / Move '+u.move+'</span>';
+  if (!wpnOn[uid]) { wpnOn[uid]={}; u.weapons.forEach(function(w,i){ wpnOn[uid][i]=true; }); }
+  var h = '<div class="sec-label '+ac+'">Weapons</div><table class="wpn-table">'+
+    '<tr><th></th><th>Name</th><th>ATK</th><th>HIT</th><th>DMG</th><th>Rules</th></tr>';
+  u.weapons.forEach(function(w,i){
+    var on = wpnOn[uid][i]!==false;
+    h += '<tr class="wpn-row'+(on?'':' dimmed')+'" id="wr-'+uid+'-'+i+'">'+
+      '<td><div class="wpn-check'+(on?' on':'')+'" data-uid="'+uid+'" data-i="'+i+'"></div></td>'+
+      '<td>'+w.name+'</td><td class="num">'+w.atk+'</td><td class="num">'+w.hit+
+      '</td><td class="num">'+w.dmg+'</td><td class="wpn-wr">'+w.wr+'</td></tr>';
+  });
+  h += '</table>';
+  if (u.abilities && u.abilities.length) {
+    h += '<div class="sec-label '+ac+'">Abilities</div><div class="abilities">';
+    u.abilities.forEach(function(a){
+      h += '<div class="ability'+(a.unique?' unique':'')+'"><div class="ability-name">'+a.name+'</div><div class="ability-desc">'+a.desc+'</div></div>';
+    });
+    h += '</div>';
+  }
+  document.getElementById('ov-body').innerHTML = h;
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('overlay').scrollTop = 0;
+}
+function closeOverlay(){ document.getElementById('overlay').classList.remove('open'); }
+
+function secLbl(t){ return '<div class="sec-label neutral">'+t+'</div>'; }
+
+function ruleIt(id, name, nc, desc, tpUid, tpType) {
+  var dots = '';
+  if (tpUid) {
+    var used = ployTP[tpUid]||{};
+    dots = '<div class="tp-dots">';
+    for (var tp=1; tp<=4; tp++) {
+      dots += '<div class="tp-dot'+(used[tp]?' used-'+tpType:'')+'" data-uid="'+tpUid+'" data-tp="'+tp+'" data-type="'+tpType+'">'+tp+'</div>';
+    }
+    dots += '</div>';
+  }
+  return '<div class="rules-item" id="'+id+'">'+
+    '<div class="rules-item-header">'+
+      '<span class="rules-item-name '+nc+'">'+name+'</span>'+dots+
+      '<span class="rules-item-chevron">&#9658;</span>'+
+    '</div><div class="rules-item-body">'+desc+'</div></div>';
+}
+
+function openRules(side) {
+  var fkey = side==='mine'?mineFac:enemyFac;
+  var d = FACTION_RULES[fkey]; if(!d) return;
+  document.getElementById('ro-sub').textContent = d.subtitle||'';
+  document.getElementById('ro-sub').style.color = d.color||'var(--muted)';
+  document.getElementById('ro-name').textContent = d.name;
+  var h = '';
+  if(d.rules&&d.rules.length){ h+=secLbl('Faction Rules'); d.rules.forEach(function(r,i){ h+=ruleIt('rr'+i,r.name,'',r.desc,'',''); }); }
+  if(d.strat&&d.strat.length){ h+=secLbl('Strategy Ploys'); d.strat.forEach(function(r,i){ h+=ruleIt('rs'+i,r.name,'strat',r.desc,'sp-'+fkey+'-'+i,'strat'); }); }
+  if(d.fight&&d.fight.length){ h+=secLbl('Firefight Ploys'); d.fight.forEach(function(r,i){ h+=ruleIt('rf'+i,r.name,'fight',r.desc,'fp-'+fkey+'-'+i,'fight'); }); }
+  document.getElementById('ro-body').innerHTML = h;
+  document.getElementById('rules-overlay').classList.add('open');
+  document.getElementById('rules-overlay').scrollTop = 0;
+}
+function closeRules(){ document.getElementById('rules-overlay').classList.remove('open'); }
+
+function eqIt(uid, name, desc, cls) {
+  var taken = !!eqTaken[uid], num = eqOrd[uid]!==undefined?eqOrd[uid]:'';
+  return '<div class="eq-item'+(taken?' taken':'')+' '+cls+'" id="'+uid+'">'+
+    '<div class="eq-item-header">'+
+      '<div class="eq-num">'+num+'</div>'+
+      '<span class="eq-item-name">'+name+'</span>'+
+      '<span class="eq-item-chevron">&#9658;</span>'+
+    '</div><div class="eq-item-body">'+desc+'</div></div>';
+}
+
+function openEq(side) {
+  var fkey = side==='mine'?mineFac:enemyFac;
+  var d = FACTION_EQ[fkey], r = FACTION_RULES[fkey]; if(!d) return;
+  document.getElementById('eq-sub').textContent = r?r.subtitle:'';
+  document.getElementById('eq-sub').style.color = r?r.color:'var(--muted)';
+  document.getElementById('eq-name').textContent = (r?r.name:fkey)+' - Equipment';
+  var cls = side==='mine'?'mine-eq':'enemy-eq';
+  var h = '';
+  d.forEach(function(eq){ h+=eqIt('eq-'+fkey+'-'+eq.id,eq.name,eq.desc,cls); });
+  h += secLbl('Universal Equipment');
+  UNIVERSAL_EQ.forEach(function(eq){ h+=eqIt('ue-'+eq.id,eq.name,eq.desc,cls); });
+  document.getElementById('eq-body').innerHTML = h;
+  Object.keys(eqOrd).forEach(function(uid){ updEq(uid); });
+  reordEq();
+  document.getElementById('eq-overlay').classList.add('open');
+  document.getElementById('eq-overlay').scrollTop = 0;
+}
+function togEq(uid) {
+  var el = document.getElementById(uid); if(!el) return;
+  if (eqTaken[uid]) {
+    var n = eqOrd[uid]; delete eqTaken[uid]; delete eqOrd[uid]; eqCnt--;
+    Object.keys(eqOrd).forEach(function(id){ if(eqOrd[id]>n){ eqOrd[id]--; updEq(id); } });
+    el.classList.remove('taken'); updEq(uid);
+  } else {
+    eqCnt++; eqTaken[uid]=true; eqOrd[uid]=eqCnt;
+    el.classList.add('taken'); updEq(uid);
+  }
+  reordEq();
+}
+function updEq(uid) {
+  var el = document.getElementById(uid); if(!el) return;
+  var b = el.querySelector('.eq-num'); if(b) b.textContent = eqOrd[uid]!==undefined?eqOrd[uid]:'';
+}
+function reordEq() {
+  var b = document.getElementById('eq-body'); if(!b) return;
+  var items = Array.from(b.querySelectorAll('.eq-item'));
+  var tk = items.filter(function(e){ return e.classList.contains('taken'); })
+                .sort(function(a,b){ return (eqOrd[a.id]||999)-(eqOrd[b.id]||999); });
+  var un = items.filter(function(e){ return !e.classList.contains('taken'); });
+  tk.concat(un).forEach(function(e){ b.appendChild(e); });
+}
+function closeEq(){ document.getElementById('eq-overlay').classList.remove('open'); }
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('panel-mine').classList.toggle('active', tab==='mine');
+  document.getElementById('panel-enemy').classList.toggle('active', tab==='enemy');
+  document.getElementById('tab-mine').className = 'tab'+(tab==='mine'?' active-mine':'');
+  document.getElementById('tab-enemy').className = 'tab'+(tab==='enemy'?' active-enemy':'');
+}
+function switchMineFaction(f){ mineFac=f; showGrid('mine',f); }
+function switchEnemyFaction(f){ enemyFac=f; showGrid('enemy',f); }
+
+showGrid('mine','murderwing');
+showGrid('enemy','raveners');
+
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('./sw.js');
+  });
+}
+</script>
+</body>
+</html>
