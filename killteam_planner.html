@@ -4,10 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="KT Planner">
 <title>Kill Team — Field Planner</title>
 <style>
   :root{
@@ -19,12 +15,11 @@
     --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--sans);
-    position:fixed;inset:0;overscroll-behavior:none;-webkit-user-select:none;user-select:none;}
+  html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--sans);}
   #app{position:fixed;inset:0;display:flex;flex-direction:column;}
 
-  #bar{display:flex;align-items:center;gap:6px;padding:8px;padding-top:calc(8px + env(safe-area-inset-top));
-       background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap;z-index:20;}
+  #bar{display:flex;align-items:center;gap:6px;padding:8px;background:var(--panel);
+       border-bottom:1px solid var(--line);flex-wrap:wrap;z-index:20;}
   .brand{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);
          padding-right:6px;font-weight:600;white-space:nowrap;}
   .tool,.mini{border:1px solid var(--line);background:var(--panel2);color:var(--ink);
@@ -52,15 +47,13 @@
     align-items:center;gap:6px;border:1px solid var(--orange);background:rgba(14,18,22,.9);
     color:var(--orange);font:inherit;font-size:12px;padding:8px 11px;border-radius:8px;
     cursor:pointer;backdrop-filter:blur(4px);}
-  #score{position:absolute;left:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:15;display:none;flex-direction:column;gap:6px;
-    background:rgba(10,13,16,.92);border:1px solid var(--line);border-radius:10px;padding:9px 10px;backdrop-filter:blur(4px);}
-  #score .srow2{display:flex;align-items:center;gap:8px;}
-  #score .lbl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);width:30px;}
-  #score .stepS{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:7px;overflow:hidden;}
-  #score .stepS button{border:0;background:var(--panel2);color:var(--ink);width:26px;height:26px;font-size:14px;cursor:pointer;}
-  #score .stepS .sc{font-family:var(--mono);font-size:13px;min-width:18px;text-align:center;color:var(--orange);}
-  #score .stepS.mine{border-color:rgba(227,75,63,.55);} #score .stepS.mine .sc{color:var(--red);}
-  #score .stepS.enemy{border-color:rgba(37,179,179,.55);} #score .stepS.enemy .sc{color:var(--teal);}
+  #score{position:absolute;left:10px;bottom:10px;z-index:15;display:none;flex-direction:column;gap:5px;
+    background:rgba(10,13,16,.9);border:1px solid var(--line);border-radius:10px;padding:9px 10px;backdrop-filter:blur(4px);}
+  #score .scoreRow{display:flex;align-items:center;gap:7px;}
+  #score .lbl{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);width:32px;}
+  #score .sval{font-family:var(--mono);font-size:15px;min-width:20px;text-align:center;color:var(--orange);}
+  #score button{border:1px solid var(--line);background:var(--panel2);color:var(--ink);
+    width:28px;height:28px;border-radius:6px;font-size:15px;cursor:pointer;}
 
   /* selected-item sheet */
   #sheet{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:16;
@@ -163,25 +156,11 @@
     <button id="undoBtn">↶ Undo move</button>
 
     <div id="score">
-      <div class="srow2"><span class="lbl">TP</span>
-        <div class="stepS"><button data-k="tp" data-s="v" data-d="-1">−</button><span class="sc" data-k="tp" data-s="v">1</span><button data-k="tp" data-s="v" data-d="1">+</button></div>
-      </div>
-      <div class="srow2"><span class="lbl">CP</span>
-        <div class="stepS mine"><button data-k="cp" data-s="m" data-d="-1">−</button><span class="sc" data-k="cp" data-s="m">0</span><button data-k="cp" data-s="m" data-d="1">+</button></div>
-        <div class="stepS enemy"><button data-k="cp" data-s="e" data-d="-1">−</button><span class="sc" data-k="cp" data-s="e">0</span><button data-k="cp" data-s="e" data-d="1">+</button></div>
-      </div>
-      <div class="srow2"><span class="lbl">Crit</span>
-        <div class="stepS mine"><button data-k="crit" data-s="m" data-d="-1">−</button><span class="sc" data-k="crit" data-s="m">0</span><button data-k="crit" data-s="m" data-d="1">+</button></div>
-        <div class="stepS enemy"><button data-k="crit" data-s="e" data-d="-1">−</button><span class="sc" data-k="crit" data-s="e">0</span><button data-k="crit" data-s="e" data-d="1">+</button></div>
-      </div>
-      <div class="srow2"><span class="lbl">Tac</span>
-        <div class="stepS mine"><button data-k="tac" data-s="m" data-d="-1">−</button><span class="sc" data-k="tac" data-s="m">0</span><button data-k="tac" data-s="m" data-d="1">+</button></div>
-        <div class="stepS enemy"><button data-k="tac" data-s="e" data-d="-1">−</button><span class="sc" data-k="tac" data-s="e">0</span><button data-k="tac" data-s="e" data-d="1">+</button></div>
-      </div>
-      <div class="srow2"><span class="lbl">Kill</span>
-        <div class="stepS mine"><button data-k="kill" data-s="m" data-d="-1">−</button><span class="sc" data-k="kill" data-s="m">0</span><button data-k="kill" data-s="m" data-d="1">+</button></div>
-        <div class="stepS enemy"><button data-k="kill" data-s="e" data-d="-1">−</button><span class="sc" data-k="kill" data-s="e">0</span><button data-k="kill" data-s="e" data-d="1">+</button></div>
-      </div>
+      <div class="scoreRow" data-key="tp"><span class="lbl">TP</span><button class="sdn">−</button><span class="sval">1</span><button class="sup">+</button></div>
+      <div class="scoreRow" data-key="cp"><span class="lbl">CP</span><button class="sdn">−</button><span class="sval">0</span><button class="sup">+</button></div>
+      <div class="scoreRow" data-key="crit"><span class="lbl">Crit</span><button class="sdn">−</button><span class="sval">0</span><button class="sup">+</button></div>
+      <div class="scoreRow" data-key="tac"><span class="lbl">Tac</span><button class="sdn">−</button><span class="sval">0</span><button class="sup">+</button></div>
+      <div class="scoreRow" data-key="kill"><span class="lbl">Kill</span><button class="sdn">−</button><span class="sval">0</span><button class="sup">+</button></div>
     </div>
 
     <div id="hud">
@@ -302,7 +281,7 @@ const S={
   orient:0, showGrid:true, showTerr:true, mapOp:1, gridInch:1, deployInch:3,
   map:null,                       // dataURL
   items:[], counter:{red:0,teal:0,obj:0}, selected:null, addSub:"heavy", activeTunnel:null,
-  score:{tp:1,cp:{m:0,e:0},crit:{m:0,e:0},tac:{m:0,e:0},kill:{m:0,e:0}},
+  score:{tp:1,cp:0,crit:0,tac:0,kill:0},
   vb:{x:0,y:0,w:1,h:1}
 };
 const TEAM={red:{name:"Mine",fill:"rgba(227,75,63,.85)",stroke:"#ff6a5e"},
@@ -329,7 +308,6 @@ function mk(t){ return document.createElementNS(SVGNS,t); }
 function attr(el,o){ for(const k in o) el.setAttribute(k,o[k]); return el; }
 const gImg=mk("g"),gGrid=mk("g"),gTerr=mk("g"),gLink=mk("g"),gItem=mk("g"),gOvl=mk("g");
 [gTerr,gImg,gGrid,gLink,gItem,gOvl].forEach(g=>svg.appendChild(g));
-[gTerr,gImg,gGrid,gLink,gOvl].forEach(g=>g.setAttribute("pointer-events","none"));
 
 // view
 function syncAspect(){ const r=svg.getBoundingClientRect(); S.vb.h=S.vb.w*((r.height/r.width)||.75); }
@@ -568,13 +546,7 @@ svg.addEventListener("pointerdown",e=>{
     select(t.id); drag={type:"rotate",t}; return; } }
   if(el){ const t=getItem(el.dataset.id); select(t.id);
     drag={type:"item",t,ox:w.x-t.x,oy:w.y-t.y,orig:{x:t.x,y:t.y}}; }
-  else{
-    const near=[...S.items].reverse().find(t=>t.type!=="barricade"
-      && distPx(w,{x:t.x,y:t.y}) < itemR(t)+Math.max(0.3*PPI,12));
-    if(near){ select(near.id);
-      drag={type:"item",t:near,ox:w.x-near.x,oy:w.y-near.y,orig:{x:near.x,y:near.y}}; }
-    else{ select(null); drag={type:"pan",sx:e.clientX,sy:e.clientY,vb:{...S.vb}}; }
-  }
+  else{ select(null); drag={type:"pan",sx:e.clientX,sy:e.clientY,vb:{...S.vb}}; }
 });
 svg.addEventListener("pointermove",e=>{
   if(pointers.has(e.pointerId)) pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
@@ -651,14 +623,13 @@ $("#teamBtn").addEventListener("click",()=>{ S.team=S.team==="red"?"teal":"red";
 $("#baseSel").addEventListener("change",e=>{ S.baseMm=+e.target.value;
   const t=getItem(S.selected); if(t&&t.type==="base"){ t.baseMm=S.baseMm; renderItems(); autosave(); } });
 $("#fitBtn").addEventListener("click",fitView);
-function updateScoreUI(){ document.querySelectorAll("#score .sc").forEach(el=>{
-  const k=el.dataset.k,s=el.dataset.s; el.textContent=s==="v"?S.score.tp:(S.score[k]?S.score[k][s]:0); }); }
+function updateScoreUI(){ document.querySelectorAll("#score .scoreRow").forEach(r=>{
+  r.querySelector(".sval").textContent=S.score[r.dataset.key]??0; }); }
 $("#scoreBtn").addEventListener("click",()=>{ const el=$("#score"),open=el.style.display!=="flex";
   el.style.display=open?"flex":"none"; $("#scoreBtn").classList.toggle("on",open); });
-$("#score").addEventListener("click",e=>{ const b=e.target.closest("button[data-k]"); if(!b)return;
-  const k=b.dataset.k,s=b.dataset.s,d=+b.dataset.d;
-  if(s==="v") S.score.tp=Math.max(0,S.score.tp+d); else S.score[k][s]=Math.max(0,S.score[k][s]+d);
-  updateScoreUI(); autosave(); });
+$("#score").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return;
+  const row=b.closest(".scoreRow"),k=row.dataset.key,d=b.classList.contains("sup")?1:-1;
+  S.score[k]=Math.max(0,(S.score[k]||0)+d); row.querySelector(".sval").textContent=S.score[k]; autosave(); });
 
 // sheet controls
 $("#shRename").addEventListener("click",()=>{ const t=getItem(S.selected); if(!t)return;
@@ -713,14 +684,13 @@ $("#clearAll").addEventListener("click",()=>{ if(confirm("Clear the whole board?
 // persistence
 const LKEY="ktplanner_layouts_v2",AKEY="ktplanner_auto_v2";
 function snap(){ return {orient:S.orient,showGrid:S.showGrid,showTerr:S.showTerr,
-  gridInch:S.gridInch,deployInch:S.deployInch,score:JSON.parse(JSON.stringify(S.score)),
+  gridInch:S.gridInch,deployInch:S.deployInch,score:{...S.score},
   counter:S.counter,items:S.items.map(t=>({...t,status:t.status?{...t.status}:undefined}))}; }
 function restore(d){ if(!d)return;
   S.orient=d.orient||0; S.showGrid=d.showGrid??true; S.showTerr=d.showTerr??true;
   S.counter=d.counter||{red:0,teal:0,obj:0};
   S.gridInch=d.gridInch??1; S.deployInch=d.deployInch??3;
-  const sd=d.score||{}, cell=o=>({m:(o&&o.m)||0,e:(o&&o.e)||0});
-  S.score={tp:sd.tp??1,cp:cell(sd.cp),crit:cell(sd.crit),tac:cell(sd.tac),kill:cell(sd.kill)};
+  S.score=Object.assign({tp:1,cp:0,crit:0,tac:0,kill:0},d.score||{});
   S.items=(d.items||[]).map(t=>({ring:0,elev:0,stance:"ready",...t}));
   $("#gridInch").value=S.gridInch; $("#deployInch").value=S.deployInch; updateScoreUI();
   $("#gridOn").classList.toggle("on",S.showGrid); $("#gridOff").classList.toggle("on",!S.showGrid);
@@ -742,7 +712,6 @@ $("#saveBtn").addEventListener("click",()=>{ const name=($("#saveName").value||"
   $("#saveName").value=""; renderSlots(); });
 
 window.addEventListener("resize",()=>{ syncAspect(); applyVB(); });
-document.addEventListener("touchmove",e=>{ if(!e.target.closest("#drawer")) e.preventDefault(); },{passive:false});
 (function boot(){ restore(JSON.parse(localStorage.getItem(AKEY)||"null"));
   syncAspect(); renderAll(); fitView(); renderSlots(); hud("Ready","—","",true); })();
 </script>
