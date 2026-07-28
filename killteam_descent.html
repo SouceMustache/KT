@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="KT Descent">
+<link rel="icon" type="image/png" sizes="32x32" href="descent-favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="descent-favicon-16.png">
+<link rel="apple-touch-icon" href="descent-apple-touch-icon.png">
+<link rel="manifest" href="manifest-descent.json">
+<meta name="theme-color" content="#0d1013">
+<title>Kill Team — Descent</title>
+<style>
+  /* Design language inherited from Field Planner: same dark token system, mono/sans
+     pairing and orange accent, so the three apps read as one suite. The one thing
+     unique to Descent is the two-board stack — that gets the signature treatment
+     (upper/lower plates with a labelled gutter between them). */
+  :root{--dock:60px;
+    --bg:#0d1013; --board:#12171c; --panel:#161c23; --panel2:#1e262f;
+    --line:#2a333d; --ink:#e7edf3; --muted:#8593a1; --dim:#5a6672;
+    --red:#e5484d; --teal:#2bb8b8; --orange:#f2a03d;
+    --npo:#c05a2b;                 /* NPOs get their own hue, distinct from both players */
+    --upper:#6ea0c8; --lower:#c8a06e;  /* board-identity tints: sky vs tomb */
+    --inj:#ff5a4d; --aplup:#4fd18b; --apldn:#5aa8ff; --elev:#c3ccd6;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;}
+  html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    position:fixed;inset:0;overscroll-behavior:none;-webkit-user-select:none;user-select:none;
+    -webkit-touch-callout:none;-webkit-user-drag:none;}
+  #app{position:fixed;inset:0;display:flex;flex-direction:column;}
+
+  #bar{display:flex;flex-direction:column;gap:7px;padding:8px 10px;padding-top:calc(8px + env(safe-area-inset-top));
+       background:var(--panel);border-bottom:1px solid var(--line);z-index:20;}
+  .barrow{display:flex;align-items:center;gap:6px;}
+  .barrow .spacer{flex:1 1 auto;min-width:0;}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--panel2);}
+  .seg .tool{border:0;border-radius:0;background:transparent;padding:7px 11px;
+    display:inline-flex;align-items:center;justify-content:center;color:var(--ink);}
+  .seg .tool svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.6;
+    stroke-linecap:round;stroke-linejoin:round;}
+  .seg .tool+.tool{border-left:1px solid var(--line);}
+  .seg .tool.on{background:rgba(242,160,61,.14);color:var(--orange);}
+  .tool,.mini{border:1px solid var(--line);background:var(--panel2);color:var(--ink);
+        font:inherit;font-size:12px;padding:8px 11px;border-radius:8px;cursor:pointer;
+        display:inline-flex;align-items:center;gap:6px;user-select:none;-webkit-appearance:none;}
+  .tool.on,.mini.on{border-color:var(--orange);color:var(--orange);background:rgba(242,160,61,.12);}
+  .tool:active,.mini:active{transform:translateY(1px);}
+  .iconbtn{width:30px;height:30px;flex:0 0 auto;display:grid;place-items:center;padding:0;border-radius:8px;
+    border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer;-webkit-appearance:none;}
+  .iconbtn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;}
+  .iconbtn:active{transform:translateY(1px);}
+  .iconbtn.on{color:var(--orange);border-color:var(--orange);background:rgba(242,160,61,.12);}
+  .brand{font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;}
+  .brand b{color:var(--orange);font-weight:600;}
+  .packtag{font-family:var(--mono);font-size:10.5px;color:var(--dim);letter-spacing:.05em;
+    max-width:46vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  #stage{flex:1 1 auto;position:relative;overflow:hidden;background:var(--bg);}
+  #svg{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;}
+
+  /* board plates */
+  .plate{fill:var(--board);stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke;}
+  .kzlabel{fill:var(--dim);font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;}
+  .gutter{fill:rgba(255,255,255,.015);}
+  .gutlink{stroke:var(--orange);stroke-width:1.4;stroke-dasharray:5 5;vector-effect:non-scaling-stroke;opacity:.5;}
+
+  /* HUD readout, bottom-left, mono like the Planner */
+  #hud{position:absolute;left:10px;bottom:calc(10px + env(safe-area-inset-bottom));
+    font-family:var(--mono);font-size:11px;color:var(--muted);pointer-events:none;
+    background:rgba(13,16,19,.72);border:1px solid var(--line);border-radius:8px;padding:6px 9px;line-height:1.5;
+    backdrop-filter:blur(6px);max-width:60vw;}
+  #hud b{color:var(--ink);font-weight:600;}
+  #hud .k{color:var(--dim);}
+
+  /* pack picker — the first screen */
+  #picker{position:fixed;inset:0;z-index:60;background:var(--bg);
+    display:flex;flex-direction:column;padding:0;overflow:hidden;}
+  #picker .phead{padding:calc(22px + env(safe-area-inset-top)) 22px 18px;border-bottom:1px solid var(--line);}
+  #picker .peyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.24em;color:var(--npo);text-transform:uppercase;}
+  #picker h1{margin:.35em 0 0;font-size:26px;letter-spacing:.01em;font-weight:650;}
+  #picker .psub{color:var(--muted);font-size:13px;margin-top:6px;line-height:1.5;max-width:34em;}
+  #packlist{flex:1 1 auto;overflow:auto;padding:16px 16px calc(24px + env(safe-area-inset-bottom));
+    display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch;}
+  .pack{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:15px 16px;cursor:pointer;
+    transition:border-color .12s,transform .05s;}
+  .pack:active{transform:translateY(1px);}
+  .pack.sel{border-color:var(--orange);background:rgba(242,160,61,.06);}
+  .pack .prow{display:flex;align-items:baseline;gap:10px;}
+  .pack .pname{font-size:16px;font-weight:600;}
+  .pack .pkind{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+    padding:2px 7px;border-radius:999px;border:1px solid var(--line);color:var(--muted);}
+  .pack .pkind.pve{color:var(--teal);border-color:rgba(43,184,184,.4);}
+  .pack .pkind.pvp{color:var(--red);border-color:rgba(229,72,77,.4);}
+  .pack .pkind.solo{color:var(--orange);border-color:rgba(242,160,61,.4);}
+  .pack .pdesc{color:var(--muted);font-size:12.5px;margin-top:7px;line-height:1.5;}
+  .pack .pmeta{display:flex;gap:14px;margin-top:11px;flex-wrap:wrap;}
+  .pack .pmeta span{font-family:var(--mono);font-size:10.5px;color:var(--dim);letter-spacing:.04em;}
+  .pack .pmeta b{color:var(--muted);font-weight:600;}
+  .boardchip{display:inline-flex;align-items:center;gap:5px;}
+  .boardchip i{width:8px;height:8px;border-radius:2px;display:inline-block;}
+  .boardchip.up i{background:var(--upper);} .boardchip.lo i{background:var(--lower);}
+  #picker .pfoot{padding:14px 16px calc(16px + env(safe-area-inset-bottom));border-top:1px solid var(--line);
+    display:flex;gap:10px;align-items:center;background:var(--panel);}
+  #picker .pfoot .mini{flex:0 0 auto;}
+  #startBtn{flex:1 1 auto;justify-content:center;padding:12px;border-color:var(--orange);color:var(--orange);
+    background:rgba(242,160,61,.1);font-size:14px;font-weight:600;}
+  #startBtn[disabled]{opacity:.4;pointer-events:none;}
+  .hidden{display:none!important;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="bar">
+    <div class="barrow">
+      <span class="brand">KT&nbsp;<b>Descent</b></span>
+      <span class="spacer"></span>
+      <div class="seg" id="toolseg">
+        <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
+        <button class="tool" data-mode="measure" title="Line" aria-label="Line"><svg viewBox="0 0 20 20"><path d="M3.5 16.5 16.5 3.5"/><path d="M3.5 13.4v3.1h3.1M16.5 6.6V3.5h-3.1"/></svg></button>
+      </div>
+      <button class="iconbtn" id="fitBtn" title="Reset view"><svg viewBox="0 0 20 20"><path d="M3 7V3h4M17 7V3h-4M3 13v4h4M17 13v4h-4"/></svg></button>
+      <button class="iconbtn" id="packBtn" title="Change pack"><svg viewBox="0 0 20 20"><path d="M3 6l7-3 7 3-7 3-7-3z"/><path d="M3 10l7 3 7-3M3 14l7 3 7-3"/></svg></button>
+    </div>
+    <div class="barrow">
+      <span class="packtag" id="packTag">No pack loaded</span>
+    </div>
+  </div>
+
+  <div id="stage">
+    <svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="hud"></div>
+  </div>
+</div>
+
+<!-- Pack picker: the first screen. Pack determines board count, dimensions,
+     killzones and NPO set, so it must be chosen before anything is drawn. -->
+<div id="picker">
+  <div class="phead">
+    <div class="peyebrow">Nemesis Operatives</div>
+    <h1>Choose a mission pack</h1>
+    <div class="psub">Each pack sets its own boards, killzones and adversaries. Descent packs stack an upper and a lower killzone linked by Entryway markers; single-board packs play on one full killzone.</div>
+  </div>
+  <div id="packlist"></div>
+  <div class="pfoot">
+    <button class="mini" id="resumeBtn">Resume last</button>
+    <button id="startBtn" disabled>Load pack</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+const SVGNS="http://www.w3.org/2000/svg";
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+
+/* ------------------------------------------------------------------ constants */
+// Same fixed scale as the Planner so prefabs, bases and distances are interchangeable
+// across the suite. 1 inch = 40 px.
+const PPI=40;
+const GUTTER=2.0;   // inches of empty space drawn between stacked boards
+const AKEY="ktDescentState", PACKKEY="ktDescentPack";
+
+/* ------------------------------------------------------------------ pack registry
+   A pack is pure data. It never carries logic — the engine reads these fields and
+   the (later) ability dictionary supplies behaviour. Board COUNT is a parameter:
+   Descent = 2 boards laid out as a vertical stack with portal links; a single-board
+   pack like Terror on Devlan = 1 board and an empty portal graph. The same renderer
+   and the same pan/zoom/hit-testing serve both because every board lives in one
+   shared world coordinate space, just offset from its neighbour. */
+const PACKS = {
+  "shadowhunt-joint": {
+    name:"Shadowhunt — Joint Ops",
+    kind:"pve",
+    nemesis:"C'tan Shard of the Nightbringer",
+    desc:"Cooperative or solo PvE. Descend through a Necron tomb, scan the sarcophagus, and survive what wakes in the depths.",
+    layout:"stack",           // vertical two-board stack
+    boards:[
+      // Descent killzone: upper = Volkus (30×22 folded to 22×15), lower = Tomb World
+      // close-quarters (≈23.9×16.3, a 6×4 square grid). Dimensions in inches.
+      { id:"upper", name:"Upper — Volkus", w:22, h:15,
+        rules:{ closeQuarters:false }, grid:{mode:"inch",inch:1} },
+      { id:"lower", name:"Lower — Tomb World", w:23.9, h:16.3,
+        rules:{ closeQuarters:true }, grid:{mode:"squares",cols:6,rows:4} },
+    ],
+    portals:{ type:"entryway", note:"Numbered Entryway markers link matching pairs between boards." },
+    missions:["01 Find the Source","02 The Sarcophagus","03 Rising Doom"],
+    npoBudget:110,
+  },
+  "shadowhunt-adversary": {
+    name:"Shadowhunt — Adversary Ops",
+    kind:"pvp",
+    nemesis:"C'tan Shard of the Nightbringer",
+    desc:"Head-to-head PvPvE on the same Descent killzone. Two kill teams race into the tomb while its guardians turn on everyone.",
+    layout:"stack",
+    boards:[
+      { id:"upper", name:"Upper — Volkus", w:22, h:15,
+        rules:{ closeQuarters:false }, grid:{mode:"inch",inch:1} },
+      { id:"lower", name:"Lower — Tomb World", w:23.9, h:16.3,
+        rules:{ closeQuarters:true }, grid:{mode:"squares",cols:6,rows:4} },
+    ],
+    portals:{ type:"entryway", note:"Numbered Entryway markers link matching pairs between boards." },
+    missions:["01 Into the Depths","02 Unlock the Vault","03 Awakening"],
+    npoBudget:110,
+  },
+  "devlan": {
+    name:"Terror on Devlan",
+    kind:"solo",
+    nemesis:"Nemesis operative",
+    desc:"Single full-size killzone — no descent. A placeholder single-board pack to prove the engine handles board-count = 1 with an empty portal graph.",
+    layout:"single",
+    boards:[
+      { id:"main", name:"Volkus", w:30, h:22,
+        rules:{ closeQuarters:false }, grid:{mode:"inch",inch:1} },
+    ],
+    portals:null,
+    missions:["01 Placeholder"],
+    npoBudget:90,
+  },
+};
+
+/* ------------------------------------------------------------------ state */
+const S = {
+  packId:null, pack:null,
+  boards:[],          // resolved board geometry in world coords (see resolveBoards)
+  mode:"move",
+  items:[],           // operatives/markers, each with {board, x, y, ...}
+  selected:null,
+  measure:null,       // {a,b} while the line tool is dragging
+  vb:{x:0,y:0,w:1,h:1},
+};
+
+/* ------------------------------------------------------------------ svg scaffold */
+const svg=$("#svg");
+function mk(t){ return document.createElementNS(SVGNS,t); }
+function attr(el,o){ for(const k in o) el.setAttribute(k,o[k]); return el; }
+// Layer order mirrors the Planner: boards/plates at the back, grid, links, then items,
+// then the transient overlay (selection, measure line).
+const gPlate=mk("g"), gGrid=mk("g"), gLink=mk("g"), gItem=mk("g"), gOvl=mk("g");
+[gPlate,gGrid,gLink,gItem,gOvl].forEach(g=>svg.appendChild(g));
+[gPlate,gGrid,gLink,gOvl].forEach(g=>g.setAttribute("pointer-events","none"));
+
+/* ------------------------------------------------------------------ board layout
+   Turn each pack board into a placed rectangle in the shared world space. A stack
+   lays boards top-to-bottom separated by GUTTER; a single board sits at the origin.
+   Cross-board geometry (portal links, a sightline over the gutter) is then just
+   ordinary geometry in one coordinate system. */
+function resolveBoards(){
+  const bs=S.pack.boards, out=[]; let y=0, maxW=0;
+  for(const b of bs) maxW=Math.max(maxW, b.w);
+  for(const b of bs){
+    const wpx=b.w*PPI, hpx=b.h*PPI, cw=maxW*PPI;
+    out.push({
+      ...b,
+      ox:(cw-wpx)/2,        // centre narrower boards under the widest one
+      oy:y,
+      wpx, hpx,
+    });
+    y += hpx + GUTTER*PPI;
+  }
+  S.boards=out;
+}
+function worldExtent(){
+  let x1=0,y1=0,x0=Infinity,y0=Infinity;
+  for(const b of S.boards){ x0=Math.min(x0,b.ox); y0=Math.min(y0,b.oy);
+    x1=Math.max(x1,b.ox+b.wpx); y1=Math.max(y1,b.oy+b.hpx); }
+  if(!isFinite(x0)){x0=0;y0=0;x1=PPI;y1=PPI;}
+  return {x0,y0,w:x1-x0,h:y1-y0};
+}
+function boardById(id){ return S.boards.find(b=>b.id===id); }
+// which board does a world point fall in? (used to tag placed items)
+function boardAt(x,y){
+  for(const b of S.boards){ if(x>=b.ox&&x<=b.ox+b.wpx&&y>=b.oy&&y<=b.oy+b.hpx) return b; }
+  return null;
+}
+
+/* ------------------------------------------------------------------ view */
+function applyVB(){ svg.setAttribute("viewBox",`${S.vb.x} ${S.vb.y} ${S.vb.w} ${S.vb.h}`); }
+function syncAspect(){ const r=svg.getBoundingClientRect(); if(r.width) S.vb.h=S.vb.w*(r.height/r.width); }
+function fitView(){
+  const r=svg.getBoundingClientRect(); const ar=(r.height/r.width)||1.4;
+  const ext=worldExtent(), pad=1.12;
+  const ew=ext.w*pad, eh=ext.h*pad;
+  let w=ew, h=w*ar;
+  if(h<eh){ h=eh; w=h/ar; }
+  S.vb={ x:ext.x0+ext.w/2-w/2, y:ext.y0+ext.h/2-h/2, w, h };
+  applyVB();
+}
+function clientToWorld(cx,cy){
+  const m=svg.getScreenCTM();
+  if(m){ const p=svg.createSVGPoint(); p.x=cx; p.y=cy; const w=p.matrixTransform(m.inverse()); return {x:w.x,y:w.y}; }
+  const r=svg.getBoundingClientRect();
+  return {x:S.vb.x+(cx-r.left)/r.width*S.vb.w, y:S.vb.y+(cy-r.top)/r.height*S.vb.h};
+}
+function zoomAround(cx,cy,f){ const w=clientToWorld(cx,cy);
+  S.vb.w*=f; S.vb.h*=f; S.vb.x=w.x-(w.x-S.vb.x)*f; S.vb.y=w.y-(w.y-S.vb.y)*f; applyVB(); }
+function panClient(dx,dy){ const r=svg.getBoundingClientRect(),k=S.vb.w/r.width;
+  S.vb.x-=dx*k; S.vb.y-=dy*k; applyVB(); }
+
+/* ------------------------------------------------------------------ render */
+function renderAll(){ renderPlates(); renderGrid(); renderLinks(); renderItems(); renderOverlay(); }
+
+function renderPlates(){
+  gPlate.replaceChildren();
+  for(const b of S.boards){
+    // gutter shading above each board after the first
+    gPlate.appendChild(attr(mk("rect"),{class:"plate",x:b.ox,y:b.oy,width:b.wpx,height:b.hpx,rx:4}));
+    // killzone identity tint down the left edge
+    const tint = b.id==="upper" ? "var(--upper)" : b.id==="lower" ? "var(--lower)" : "var(--orange)";
+    gPlate.appendChild(attr(mk("rect"),{x:b.ox,y:b.oy,width:5,height:b.hpx,fill:tint,opacity:.5}));
+    // label in the top-left of the plate
+    const t=attr(Object.assign(mk("text"),{textContent:b.name.toUpperCase()}),
+      {x:b.ox+12,y:b.oy+18,class:"kzlabel"});
+    gPlate.appendChild(t);
+    // close-quarters boards get a subtle badge
+    if(b.rules&&b.rules.closeQuarters){
+      const cq=attr(Object.assign(mk("text"),{textContent:"CLOSE QUARTERS"}),
+        {x:b.ox+b.wpx-12,y:b.oy+18,class:"kzlabel","text-anchor":"end"});
+      cq.setAttribute("opacity",".7"); gPlate.appendChild(cq);
+    }
+  }
+}
+
+function renderGrid(){
+  gGrid.replaceChildren();
+  for(const b of S.boards){
+    const g=b.grid||{mode:"inch",inch:1};
+    if(g.mode==="squares"){
+      const cols=g.cols||6, rows=g.rows||4;
+      for(let i=1;i<cols;i++){ const x=b.ox+i*b.wpx/cols;
+        gGrid.appendChild(attr(mk("line"),{x1:x,y1:b.oy,x2:x,y2:b.oy+b.hpx,
+          stroke:"#2c3742","stroke-width":1,"vector-effect":"non-scaling-stroke"})); }
+      for(let j=1;j<rows;j++){ const y=b.oy+j*b.hpx/rows;
+        gGrid.appendChild(attr(mk("line"),{x1:b.ox,y1:y,x2:b.ox+b.wpx,y2:y,
+          stroke:"#2c3742","stroke-width":1,"vector-effect":"non-scaling-stroke"})); }
+    }else{
+      const step=Math.max(6,(g.inch||1)*PPI);
+      for(let x=step;x<b.wpx-.5;x+=step)
+        gGrid.appendChild(attr(mk("line"),{x1:b.ox+x,y1:b.oy,x2:b.ox+x,y2:b.oy+b.hpx,
+          stroke:"#242d35","stroke-width":.7,"vector-effect":"non-scaling-stroke"}));
+      for(let y=step;y<b.hpx-.5;y+=step)
+        gGrid.appendChild(attr(mk("line"),{x1:b.ox,y1:b.oy+y,x2:b.ox+b.wpx,y2:b.oy+y,
+          stroke:"#242d35","stroke-width":.7,"vector-effect":"non-scaling-stroke"}));
+    }
+  }
+}
+
+// Portal links: for a stack, draw a faint dashed connector across the gutter between
+// the two boards, a visual placeholder for the Entryway graph built in Phase 1.
+function renderLinks(){
+  gLink.replaceChildren();
+  if(S.pack.layout!=="stack" || S.boards.length<2) return;
+  const a=S.boards[0], b=S.boards[1];
+  const midX=Math.max(a.ox,b.ox)+Math.min(a.wpx,b.wpx)/2;
+  const y1=a.oy+a.hpx, y2=b.oy;
+  gLink.appendChild(attr(mk("line"),{x1:midX,y1:y1,x2:midX,y2:y2,class:"gutlink"}));
+  const lab=attr(Object.assign(mk("text"),{textContent:"ENTRYWAY LINK"}),
+    {x:midX+8,y:(y1+y2)/2+3,class:"kzlabel"});
+  lab.setAttribute("opacity",".5"); gLink.appendChild(lab);
+}
+
+function itemR(t){ return ((t.baseMm||32)/25.4)/2*PPI; }
+function renderItems(){
+  gItem.replaceChildren();
+  for(const t of S.items){
+    const g=attr(mk("g"),{"data-id":t.id});
+    const col = t.side==="npo" ? {fill:"rgba(192,90,43,.9)",stroke:"#e0793f"}
+             : t.side==="enemy" ? {fill:"rgba(43,184,184,.9)",stroke:"#4fdede"}
+             : {fill:"rgba(229,72,77,.9)",stroke:"#ff6b66"};
+    g.appendChild(attr(mk("circle"),{cx:t.x,cy:t.y,r:itemR(t),
+      fill:col.fill,stroke:col.stroke,"stroke-width":2,"vector-effect":"non-scaling-stroke"}));
+    if(t.label){
+      g.appendChild(attr(Object.assign(mk("text"),{textContent:t.label}),
+        {x:t.x,y:t.y+3,"text-anchor":"middle","font-size":10,"font-family":"var(--mono)",
+         fill:"#0d1013","font-weight":700,"pointer-events":"none"}));
+    }
+    gItem.appendChild(g);
+  }
+}
+
+function renderOverlay(){
+  gOvl.replaceChildren();
+  if(S.selected){
+    const t=S.items.find(i=>i.id===S.selected);
+    if(t) gOvl.appendChild(attr(mk("circle"),{cx:t.x,cy:t.y,r:itemR(t)+4,
+      fill:"none",stroke:"var(--orange)","stroke-width":2,"stroke-dasharray":"4 3",
+      "vector-effect":"non-scaling-stroke"}));
+  }
+  if(S.measure){ const m=S.measure;
+    gOvl.appendChild(attr(mk("line"),{x1:m.a.x,y1:m.a.y,x2:m.b.x,y2:m.b.y,
+      stroke:"var(--orange)","stroke-width":1.6,"vector-effect":"non-scaling-stroke"}));
+    const dpx=Math.hypot(m.b.x-m.a.x,m.b.y-m.a.y);
+    // cross-board distances are meaningful here because both boards share world coords
+    const mx=(m.a.x+m.b.x)/2, my=(m.a.y+m.b.y)/2;
+    gOvl.appendChild(attr(Object.assign(mk("text"),{textContent:(dpx/PPI).toFixed(1)+'"'}),
+      {x:mx,y:my-6,"text-anchor":"middle","font-size":12,"font-family":"var(--mono)",
+       fill:"var(--orange)","paint-order":"stroke",stroke:"var(--bg)","stroke-width":3}));
+  }
+}
+
+/* ------------------------------------------------------------------ HUD */
+function hud(msg){
+  const b=boardAt(...(S._lastWorld||[0,0]));
+  const where = b ? `<span class="k">board</span> <b>${b.id}</b>` : `<span class="k">—</span>`;
+  $("#hud").innerHTML = `<b>${msg||"Ready"}</b> · ${where} · <span class="k">items</span> <b>${S.items.length}</b>`;
+}
+
+/* ------------------------------------------------------------------ pointer / pan / zoom
+   Lifted from the Planner: single-pointer drag pans or moves an item; two pointers
+   pinch-zoom. Because there is one world space, none of this needs to know about
+   boards. */
+const pointers=new Map(); let drag=null,lastPinch=null;
+function itemAt(w){
+  for(let i=S.items.length-1;i>=0;i--){ const t=S.items[i];
+    if(Math.hypot(w.x-t.x,w.y-t.y)<=itemR(t)+6) return t; }
+  return null;
+}
+svg.addEventListener("pointerdown",e=>{
+  svg.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pointers.size>=2){ drag=null; lastPinch=null; return; }
+  const w=clientToWorld(e.clientX,e.clientY);
+  S._lastWorld=[w.x,w.y];
+  if(S.mode==="measure"){ drag={type:"line",a:w}; S.measure={a:w,b:w}; renderOverlay(); return; }
+  const t=itemAt(w);
+  if(t){ S.selected=t.id; drag={type:"item",t,ox:w.x-t.x,oy:w.y-t.y,moved:false};
+    renderOverlay(); hud("Selected"); return; }
+  S.selected=null; renderOverlay();
+  drag={type:"pan",sx:e.clientX,sy:e.clientY,vb:{...S.vb}};
+});
+function onMove(e){
+  if(!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pointers.size>=2){ doPinch(); return; }
+  if(!drag) return;
+  const w=clientToWorld(e.clientX,e.clientY); S._lastWorld=[w.x,w.y];
+  if(drag.type==="pan"){ panClient(e.clientX-drag.sx,e.clientY-drag.sy); drag.sx=e.clientX; drag.sy=e.clientY; }
+  else if(drag.type==="item"){ drag.t.x=w.x-drag.ox; drag.t.y=w.y-drag.oy; drag.moved=true;
+    renderItems(); renderOverlay(); }
+  else if(drag.type==="line"){ S.measure.b=w; renderOverlay(); }
+}
+function endP(e){
+  if(!pointers.has(e.pointerId)) return; pointers.delete(e.pointerId);
+  if(pointers.size<2) lastPinch=null;
+  if(drag&&drag.type==="item"&&drag.moved){
+    // re-tag the item to whichever board it now sits in; keep it if dropped in a gutter
+    const b=boardAt(drag.t.x,drag.t.y); if(b) drag.t.board=b.id;
+    save(); hud("Moved");
+  }
+  if(drag&&drag.type==="line"){ S.measure=null; renderOverlay(); }
+  drag=null;
+}
+window.addEventListener("pointermove",onMove,{passive:false});
+window.addEventListener("pointerup",endP);
+window.addEventListener("pointercancel",endP);
+function doPinch(){ const p=[...pointers.values()]; if(p.length<2) return;
+  const dx=p[0].x-p[1].x, dy=p[0].y-p[1].y, d=Math.hypot(dx,dy);
+  const mid={x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2};
+  if(lastPinch){ zoomAround(mid.x,mid.y,lastPinch.d/d); panClient(mid.x-lastPinch.mid.x,mid.y-lastPinch.mid.y); }
+  lastPinch={d,mid}; }
+
+/* ------------------------------------------------------------------ toolbar */
+$("#toolseg").addEventListener("click",e=>{ const b=e.target.closest("[data-mode]"); if(!b) return;
+  S.mode=b.dataset.mode; $$("#toolseg .tool").forEach(x=>x.classList.toggle("on",x===b)); });
+$("#fitBtn").addEventListener("click",fitView);
+$("#packBtn").addEventListener("click",openPicker);
+
+/* ------------------------------------------------------------------ pack picker */
+function renderPackList(){
+  const list=$("#packlist"); list.replaceChildren();
+  for(const [id,p] of Object.entries(PACKS)){
+    const el=document.createElement("div"); el.className="pack"; el.dataset.pack=id;
+    const kindLabel = p.kind==="pve"?"Co-op / Solo · PvE" : p.kind==="pvp"?"Versus · PvPvE" : "Solo";
+    const boardsChips = p.boards.map(b=>{
+      const cls = b.id==="upper"?"up" : b.id==="lower"?"lo" : "up";
+      return `<span class="boardchip ${cls}"><i></i>${b.w}×${b.h}"</span>`;
+    }).join(" ");
+    el.innerHTML=`
+      <div class="prow"><span class="pname">${p.name}</span>
+        <span class="pkind ${p.kind}">${kindLabel}</span></div>
+      <div class="pdesc">${p.desc}</div>
+      <div class="pmeta">
+        <span><b>Boards</b> ${boardsChips}</span>
+        <span><b>Nemesis</b> ${p.nemesis}</span>
+        <span><b>Missions</b> ${p.missions.length}</span>
+      </div>`;
+    list.appendChild(el);
+  }
+}
+let pickSel=null;
+$("#packlist").addEventListener("click",e=>{ const el=e.target.closest(".pack"); if(!el) return;
+  pickSel=el.dataset.pack;
+  $$(".pack").forEach(x=>x.classList.toggle("sel",x===el));
+  $("#startBtn").disabled=false;
+  $("#startBtn").textContent="Load "+PACKS[pickSel].name.split(" — ")[0];
+});
+$("#startBtn").addEventListener("click",()=>{ if(pickSel) loadPack(pickSel); });
+$("#resumeBtn").addEventListener("click",()=>{ if(!restore()) hud("Nothing to resume"); });
+function openPicker(){ renderPackList(); $("#picker").classList.remove("hidden");
+  const saved=localStorage.getItem(PACKKEY);
+  $("#resumeBtn").style.display = saved ? "" : "none";
+}
+
+/* ------------------------------------------------------------------ load / persist */
+function loadPack(id){
+  S.packId=id; S.pack=PACKS[id]; S.items=[]; S.selected=null;
+  resolveBoards();
+  $("#picker").classList.add("hidden");
+  $("#packTag").textContent = S.pack.name + " · " + S.pack.missions[0];
+  syncAspect(); renderAll(); fitView(); hud("Pack loaded");
+  save();
+}
+function save(){
+  try{ localStorage.setItem(PACKKEY,S.packId);
+    localStorage.setItem(AKEY,JSON.stringify({packId:S.packId,items:S.items})); }catch(_){}
+}
+function restore(){
+  let d=null;
+  try{ d=JSON.parse(localStorage.getItem(AKEY)||"null"); }catch(_){}
+  if(!d||!d.packId||!PACKS[d.packId]) return false;
+  S.packId=d.packId; S.pack=PACKS[d.packId]; S.items=d.items||[]; S.selected=null;
+  resolveBoards();
+  $("#picker").classList.add("hidden");
+  $("#packTag").textContent=S.pack.name+" · "+S.pack.missions[0];
+  syncAspect(); renderAll(); fitView(); hud("Resumed");
+  return true;
+}
+
+/* ------------------------------------------------------------------ resize */
+window.addEventListener("resize",()=>{ syncAspect(); applyVB(); });
+if(window.ResizeObserver) new ResizeObserver(()=>{ syncAspect(); applyVB(); }).observe(svg);
+function resetPointers(){ pointers.clear(); drag=null; lastPinch=null; }
+document.addEventListener("visibilitychange",resetPointers);
+window.addEventListener("blur",resetPointers);
+document.addEventListener("touchmove",e=>{ if(!e.target.closest("#picker")) e.preventDefault(); },{passive:false});
+
+/* ------------------------------------------------------------------ dev seed
+   A couple of placeholder tokens so the two-board hull is visibly alive: one player
+   operative up top, one NPO down in the tomb. Removed once real deployment lands. */
+function seed(){
+  const up=boardById(S.boards[0].id), lo=S.boards[S.boards.length-1];
+  S.items.push({id:crypto.randomUUID(),side:"mine",board:up.id,label:"OP",
+    x:up.ox+up.wpx*0.35,y:up.oy+up.hpx*0.6,baseMm:32});
+  S.items.push({id:crypto.randomUUID(),side:"npo",board:lo.id,label:"NPO",
+    x:lo.ox+lo.wpx*0.6,y:lo.oy+lo.hpx*0.5,baseMm:40});
+}
+
+/* ------------------------------------------------------------------ service worker */
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
+}
+
+/* ------------------------------------------------------------------ boot */
+(function boot(){
+  renderPackList();
+  const saved=localStorage.getItem(PACKKEY);
+  $("#resumeBtn").style.display = saved ? "" : "none";
+  // Auto-resume a prior session so a returning player lands straight on their board;
+  // if there's nothing to resume, the picker stays up as the first screen.
+  if(!restore()){
+    // dev convenience: if you want to see the hull immediately without picking,
+    // uncomment the next two lines.
+    // loadPack("shadowhunt-joint"); seed(); renderItems();
+    $("#picker").classList.remove("hidden");
+  }
+})();
+</script>
+</body>
+</html>
