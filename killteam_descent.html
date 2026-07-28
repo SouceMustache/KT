@@ -115,10 +115,12 @@
 
   /* sticky note for blocked/invalid actions */
   #note{position:absolute;left:10px;right:10px;bottom:calc(52px + env(safe-area-inset-bottom));
-    display:flex;align-items:flex-start;gap:10px;z-index:15;
+    display:flex;align-items:flex-start;gap:10px;z-index:30;
     background:rgba(30,38,47,.96);border:1px solid var(--orange);border-radius:10px;
     padding:11px 12px;font-size:13px;line-height:1.45;color:var(--ink);
     box-shadow:0 8px 24px rgba(0,0,0,.4);backdrop-filter:blur(8px);}
+  /* when the operative sheet is open, float the note above it so it's never hidden */
+  #note.lifted{bottom:calc(8px + env(safe-area-inset-bottom) + var(--sheetH, 220px) + 8px);}
   #note.good{border-color:var(--teal);}
   #note #noteText{flex:1 1 auto;}
   #note #noteX{flex:0 0 auto;border:0;background:transparent;color:var(--muted);
@@ -175,6 +177,7 @@
       <span class="subseg hidden" id="markerSub">
         <button class="mini" id="addEntry">＋ Entryway</button>
         <button class="mini" id="addTele">＋ Teleport</button>
+        <button class="mini" id="lockToggle" title="Lock markers in place">🔒 Locked</button>
       </span>
       <!-- op side picker, shown only while the Add-operative tool is active. Tap the board
            to drop an op of the chosen side; tap an existing op (in Move) to edit it. -->
@@ -337,15 +340,17 @@ const S = {
   measure:null,       // {a,b} while the line tool is dragging
   nextPair:1,         // auto-incrementing Entryway pair number
   opSide:"mine",      // currently-picked side for the Add-operative tool
+  locked:true,        // markers locked in place by default (Planner convention: lock=true)
   msg:null,           // {text} sticky note for a blocked/invalid action (clickable dismiss)
   vb:{x:0,y:0,w:1,h:1},
 };
 
-// Keywords that may NOT cross between killzones (pack pg 3). An operative carrying any of
-// these can still use a portal WITHIN its own board's rules elsewhere, but the Descent
-// climb/teleport between upper and lower is barred. Kept as a set so packs/datacards can
-// tag operatives later without touching engine code.
-const CROSS_BAN = new Set(["fly","burrow","shadow_passage","aquilon_drop","raven_tunnel","obelisk_matrix"]);
+// Keywords whose *faction reposition rule* (remove-and-set-up) may NOT cross between
+// killzones (pack pg 3): FLY and SHADOW PASSAGE moves, plus Aquilon Drop / Ravener Tunnel
+// marker placement. This restricts those specific actions when we build them (a Fly move,
+// a tunnel-marker placement) — it does NOT restrict Entryway climbing or teleport pads,
+// which are open to every operative. Kept here so the future Fly/marker actions can consult it.
+const CROSS_BAN = new Set(["fly","shadow_passage","aquilon_drop","raven_tunnel"]);
 const CTRL_DEFAULT = 1.0;   // control range, inches
 const CLIMB_COST = 3.0;     // inches of move spent to climb an Entryway (pack pg 3)
 
@@ -449,9 +454,11 @@ function climbThrough(op, marker){
   const twin=twinOf(marker);
   if(!twin) return {ok:false, reason:`Entryway ${marker.pair} has no twin on the other board. Place its pair first.`};
   if(op.board===twin.board) return {ok:false, reason:"That marker leads back to the same killzone."};
-  // crossing bans — surfaced, not silently dropped
-  const banned=(op.keywords||[]).find(k=>CROSS_BAN.has(k));
-  if(banned) return {ok:false, reason:`${labelKw(banned)} can't move between killzones in a Descent killzone (pack rule). It stays in ${op.board}.`};
+  // NOTE on FLY/BURROW: the Descent rules do NOT bar these from Entryway markers or teleport
+  // pads. The cross-killzone ban applies only to a *faction rule* that removes-and-sets-up an
+  // operative (FLY, SHADOW PASSAGE, Aquilon Drop, Ravener Tunnel) — those can't cross between
+  // upper and lower. Climbing/teleporting is an ordinary move action open to everyone, so no
+  // keyword check belongs here. (The ban lives on the FLY/Shadow-Passage move instead.)
   // move-budget check: climbing costs 3". If the op has a move budget tracked, enforce it;
   // if not (free placement during setup), allow and just report.
   const budget = (op.moveLeft!=null) ? op.moveLeft : (op.move!=null ? op.move : null);
@@ -654,7 +661,12 @@ function hud(msg){
 // clickable sticky note for blocked/invalid actions (or a positive confirmation with good=true)
 function note(text,good){
   const el=$("#note"); $("#noteText").textContent=text;
-  el.classList.toggle("good",!!good); el.classList.remove("hidden");
+  el.classList.toggle("good",!!good);
+  // if the operative sheet is open, lift the note above its real height so it isn't hidden
+  const sheet=$("#opSheet"), open=sheet && !sheet.classList.contains("hidden");
+  if(open){ document.documentElement.style.setProperty("--sheetH", sheet.offsetHeight+"px"); }
+  el.classList.toggle("lifted", open);
+  el.classList.remove("hidden");
   clearTimeout(note._t);
   if(good) note._t=setTimeout(()=>el.classList.add("hidden"),3200);
 }
@@ -688,7 +700,10 @@ svg.addEventListener("pointerdown",e=>{
   // pair); tapping an existing marker lets you drag it to reposition.
   if(S.mode==="marker"){
     const m=markerAt(w);
-    if(m){ drag={type:"marker",m,ox:w.x-m.x,oy:w.y-m.y,moved:false}; return; }
+    if(m){
+      if(S.locked){ note("Markers are locked. Tap 🔒 to unlock before moving them."); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
+      drag={type:"marker",m,ox:w.x-m.x,oy:w.y-m.y,moved:false}; return;
+    }
     drag={type:"pan",sx:e.clientX,sy:e.clientY}; return;
   }
 
@@ -711,12 +726,17 @@ svg.addEventListener("pointerdown",e=>{
     S.traverse=null; updateTraverseChip();
   }
 
-  // Move tool: markers first (so you can grab one), then operatives.
-  const m=markerAt(w);
-  if(m && S.mode==="move"){ drag={type:"marker",m,ox:w.x-m.x,oy:w.y-m.y,moved:false}; return; }
+  // Move tool: operatives take selection priority so you can always grab your model even
+  // when it sits on a portal. To use a marker under an op, arm traverse (the chip) — armed
+  // mode above checks markers first. Unlocked markers on open ground stay draggable.
   const t=itemAt(w);
   if(t){ S.selected=t.id; drag={type:"item",t,ox:w.x-t.x,oy:w.y-t.y,moved:false};
     renderOverlay(); updateTraverseChip(); openOpSheet(t); hud("Selected"); return; }
+  const m=markerAt(w);
+  if(m && S.mode==="move"){
+    if(S.locked){ note(`Markers are locked. Unlock (🔒 in Portals) to move them.`); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
+    drag={type:"marker",m,ox:w.x-m.x,oy:w.y-m.y,moved:false}; return;
+  }
 
   S.selected=null; S.traverse=null; closeOpSheet(); updateTraverseChip(); renderOverlay();
   drag={type:"pan",sx:e.clientX,sy:e.clientY,vb:{...S.vb}};
@@ -765,6 +785,8 @@ $("#toolseg").addEventListener("click",e=>{ const b=e.target.closest("[data-mode
   // the marker submenu only makes sense while the Portals tool is active
   $("#markerSub").classList.toggle("hidden", S.mode!=="marker");
   $("#opSub").classList.toggle("hidden", S.mode!=="op");
+  if(S.mode==="marker"){ const lb=$("#lockToggle");
+    lb.classList.toggle("on",S.locked); lb.textContent=S.locked?"🔒 Locked":"🔓 Unlocked"; }
   if(S.mode!=="move"){ S.traverse=null; closeOpSheet(); }
   updateTraverseChip();
 });
@@ -828,6 +850,11 @@ $("#opDelete").addEventListener("click",()=>{ if(!sheetOp) return;
 
 $("#addEntry").addEventListener("click",()=>{ const w=S._lastWorld||[centreX(),0]; placeEntrywayPair(w[0]); });
 $("#addTele").addEventListener("click",()=>{ const w=S._lastWorld||[centreX(),0]; placeTeleportPair(w[0]); });
+$("#lockToggle").addEventListener("click",()=>{ S.locked=!S.locked;
+  const b=$("#lockToggle"); b.classList.toggle("on",S.locked);
+  b.textContent = S.locked ? "🔒 Locked" : "🔓 Unlocked";
+  note(S.locked?"Markers locked — they won't move by accident.":"Markers unlocked — drag to reposition.",true);
+});
 function centreX(){ const b=S.boards[0]; return b?b.ox+b.wpx/2:0; }
 $("#fitBtn").addEventListener("click",fitView);
 
@@ -914,14 +941,14 @@ function loadPack(id){
 }
 function save(){
   try{ localStorage.setItem(PACKKEY,S.packId);
-    localStorage.setItem(AKEY,JSON.stringify({packId:S.packId,items:S.items,markers:S.markers,nextPair:S.nextPair})); }catch(_){}
+    localStorage.setItem(AKEY,JSON.stringify({packId:S.packId,items:S.items,markers:S.markers,nextPair:S.nextPair,locked:S.locked})); }catch(_){}
 }
 function restore(){
   let d=null;
   try{ d=JSON.parse(localStorage.getItem(AKEY)||"null"); }catch(_){}
   if(!d||!d.packId||!PACKS[d.packId]) return false;
   S.packId=d.packId; S.pack=PACKS[d.packId]; S.items=d.items||[];
-  S.markers=d.markers||[]; S.nextPair=d.nextPair||1; S.selected=null; S.traverse=null;
+  S.markers=d.markers||[]; S.nextPair=d.nextPair||1; S.locked=(d.locked!==false); S.selected=null; S.traverse=null;
   resolveBoards();
   $("#picker").classList.add("hidden");
   $("#packTag").textContent=S.pack.name+" · "+S.pack.missions[0];
