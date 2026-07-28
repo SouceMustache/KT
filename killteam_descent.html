@@ -153,6 +153,38 @@
   #opKw .mini.on{border-color:var(--teal);color:var(--teal);background:rgba(43,184,184,.12);}
   .osval{font-family:var(--mono);font-size:14px;min-width:34px;text-align:center;color:var(--ink);}
   .oshint{font-family:var(--mono);font-size:10.5px;color:var(--dim);margin-left:4px;}
+
+  /* terrain drawer */
+  #drawer{position:absolute;right:8px;top:calc(8px + env(safe-area-inset-top));
+    width:min(340px,calc(100vw - 16px));max-height:calc(100% - 16px - env(safe-area-inset-top));
+    z-index:25;background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.45);overflow:hidden;}
+  .dwhead{display:flex;align-items:center;gap:8px;padding:11px 12px;border-bottom:1px solid var(--line);}
+  .dwhead .spacer{flex:1 1 auto;}
+  .dwbody{overflow:auto;padding:4px 12px 12px;-webkit-overflow-scrolling:touch;}
+  .dwsec{padding:12px 0;border-bottom:1px solid var(--line);}
+  .dwsec:last-child{border-bottom:0;}
+  .dwsec-h{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:9px;}
+  .dwsec-h .mini{font-size:11px;padding:5px 9px;}
+  .dwsec-h .dwhint{margin-left:auto;}
+  .dwsec-sub{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:8px;margin-bottom:9px;flex-wrap:wrap;}
+  .dwhint{font-size:11px;color:var(--dim);line-height:1.45;margin-top:8px;}
+  .dwrow{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;}
+  .mapslot{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:9px;background:var(--panel2);}
+  .mapslot .msh{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .mapslot .mschip{width:9px;height:9px;border-radius:2px;flex:0 0 auto;}
+  .mapslot .msname{font-size:12.5px;font-weight:600;}
+  .mapslot .msstate{font-family:var(--mono);font-size:10px;color:var(--dim);margin-left:auto;}
+  .mapslot .msrow{display:flex;gap:7px;flex-wrap:wrap;}
+  .palette{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;max-height:210px;overflow:auto;}
+  .palette .pf{border:1px solid var(--line);border-radius:8px;background:var(--panel2);
+    padding:8px;font-size:11.5px;cursor:pointer;display:flex;flex-direction:column;gap:3px;}
+  .palette .pf.on{border-color:var(--orange);background:rgba(242,160,61,.12);}
+  .palette .pf .pfn{font-weight:600;line-height:1.2;}
+  .palette .pf .pfd{font-family:var(--mono);font-size:9.5px;color:var(--dim);}
+  #placeBoardPick .mini{padding:5px 9px;font-size:11px;}
+  #placeBoardPick .mini.on{border-color:var(--orange);color:var(--orange);background:rgba(242,160,61,.12);}
 </style>
 </head>
 <body>
@@ -167,6 +199,7 @@
         <button class="tool" data-mode="marker" title="Portals" aria-label="Portals"><svg viewBox="0 0 20 20"><path d="M10 3l3 3-3 3-3-3z"/><path d="M10 11l3 3-3 3-3-3z"/><path d="M10 6.2v4.6"/></svg></button>
         <button class="tool" data-mode="op" title="Add operative" aria-label="Add operative"><svg viewBox="0 0 20 20"><circle cx="10" cy="7.5" r="3.2"/><path d="M4.5 16.5c0-3 2.5-4.8 5.5-4.8s5.5 1.8 5.5 4.8"/></svg></button>
       </div>
+      <button class="iconbtn" id="terrainBtn" title="Maps, objects & rooms"><svg viewBox="0 0 20 20"><path d="M3 6l5-2 4 2 5-2v12l-5 2-4-2-5 2z"/><path d="M8 4v12M12 6v12"/></svg></button>
       <button class="iconbtn" id="fitBtn" title="Reset view"><svg viewBox="0 0 20 20"><path d="M3 7V3h4M17 7V3h-4M3 13v4h4M17 13v4h-4"/></svg></button>
       <button class="iconbtn" id="packBtn" title="Change pack"><svg viewBox="0 0 20 20"><path d="M3 6l7-3 7 3-7 3-7-3z"/><path d="M3 10l7 3 7-3M3 14l7 3 7-3"/></svg></button>
     </div>
@@ -239,6 +272,42 @@
         </div>
       </div>
     </div>
+
+  <!-- Terrain drawer: per-killzone map upload, object-library import + palette, rooms.
+       No drawing editor — objects are built in the Planner and imported here. -->
+  <div id="drawer" class="hidden">
+    <div class="dwhead">
+      <b>Maps, objects &amp; rooms</b><span class="spacer"></span>
+      <button class="iconbtn" id="drawerClose" aria-label="Close"><svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg></button>
+    </div>
+    <div class="dwbody">
+      <div class="dwsec">
+        <div class="dwsec-h">Maps</div>
+        <div id="mapSlots"></div>
+      </div>
+      <div class="dwsec">
+        <div class="dwsec-h">Object library
+          <button class="mini" id="importObjs">Import…</button>
+          <span class="dwhint" id="libCount">none loaded</span>
+        </div>
+        <div class="dwsec-sub">New objects go to: <span class="pick" id="placeBoardPick"></span></div>
+        <div id="palette" class="palette"></div>
+        <div class="dwhint">Tap a piece to arm it, then tap the board to place. Objects lock by default — unlock to move or rotate.</div>
+        <div class="dwrow"><button class="mini" id="lockObjToggle">🔒 Objects locked</button></div>
+      </div>
+      <div class="dwsec">
+        <div class="dwsec-h">Rooms
+          <button class="mini" id="autoRooms">Auto-detect</button>
+          <button class="mini" id="clearRooms">Clear</button>
+        </div>
+        <div class="dwhint">Auto-detect flood-fills the lower killzone grid into rooms, splitting on walls. Tap cells in Edit mode to correct. Needed for Locate Signature and the C'tan spawn.</div>
+        <div class="dwrow"><button class="mini" id="roomPaint">✏︎ Edit rooms: off</button></div>
+      </div>
+    </div>
+  </div>
+
+  <input type="file" id="objFile" accept="application/json" style="display:none">
+  <input type="file" id="mapFileHidden" accept="image/*" style="display:none">
   </div>
 </div>
 
@@ -341,6 +410,14 @@ const S = {
   nextPair:1,         // auto-incrementing Entryway pair number
   opSide:"mine",      // currently-picked side for the Add-operative tool
   locked:true,        // markers locked in place by default (Planner convention: lock=true)
+  lockObj:true,       // terrain objects locked by default too
+  insts:[],           // placed terrain objects {ref,x,y,k,board} — same schema as Planner + board tag
+  prefabs:{},         // object library {name:{w,h,edges,zones}} loaded from kt-objects.json
+  rulers:[],          // persistent measure lines {id,a:{x,y},b:{x,y}}
+  rooms:[],           // detected/tagged rooms on the lower board {id,board,cells:[[c,r]...],label}
+  armedPrefab:null,   // name of prefab armed for placement (tap board to drop)
+  placeBoard:null,    // which board id new objects/rooms attach to (defaults to lower)
+  selInst:null,       // id of selected placed object
   msg:null,           // {text} sticky note for a blocked/invalid action (clickable dismiss)
   vb:{x:0,y:0,w:1,h:1},
 };
@@ -360,9 +437,9 @@ function mk(t){ return document.createElementNS(SVGNS,t); }
 function attr(el,o){ for(const k in o) el.setAttribute(k,o[k]); return el; }
 // Layer order mirrors the Planner: boards/plates at the back, grid, links, then items,
 // then the transient overlay (selection, measure line).
-const gPlate=mk("g"), gGrid=mk("g"), gLink=mk("g"), gMark=mk("g"), gItem=mk("g"), gOvl=mk("g");
-[gPlate,gGrid,gLink,gMark,gItem,gOvl].forEach(g=>svg.appendChild(g));
-[gPlate,gGrid,gLink,gOvl].forEach(g=>g.setAttribute("pointer-events","none"));
+const gPlate=mk("g"), gImg=mk("g"), gGrid=mk("g"), gRoom=mk("g"), gTerr=mk("g"), gLink=mk("g"), gMark=mk("g"), gItem=mk("g"), gRuler=mk("g"), gOvl=mk("g");
+[gPlate,gImg,gGrid,gRoom,gTerr,gLink,gMark,gItem,gRuler,gOvl].forEach(g=>svg.appendChild(g));
+[gPlate,gImg,gGrid,gRoom,gLink,gRuler,gOvl].forEach(g=>g.setAttribute("pointer-events","none"));
 
 /* ------------------------------------------------------------------ board layout
    Turn each pack board into a placed rectangle in the shared world space. A stack
@@ -371,18 +448,24 @@ const gPlate=mk("g"), gGrid=mk("g"), gLink=mk("g"), gMark=mk("g"), gItem=mk("g")
    ordinary geometry in one coordinate system. */
 function resolveBoards(){
   const bs=S.pack.boards, out=[]; let y=0, maxW=0;
+  const prev={}; (S.boards||[]).forEach(b=>prev[b.id]=b);   // keep uploaded maps across re-resolve
   for(const b of bs) maxW=Math.max(maxW, b.w);
   for(const b of bs){
     const wpx=b.w*PPI, hpx=b.h*PPI, cw=maxW*PPI;
+    const p=prev[b.id]||{};
     out.push({
       ...b,
       ox:(cw-wpx)/2,        // centre narrower boards under the widest one
       oy:y,
       wpx, hpx,
+      map:p.map||null, mapOX:p.mapOX||0, mapOY:p.mapOY||0, mapSX:p.mapSX||1, mapSY:p.mapSY||1,
     });
     y += hpx + GUTTER*PPI;
   }
   S.boards=out;
+  // new objects/rooms attach to the lower (close-quarters) board by default, or the only board
+  const lower=out.find(b=>b.rules&&b.rules.closeQuarters)||out[out.length-1];
+  S.placeBoard=lower?lower.id:null;
 }
 function worldExtent(){
   let x1=0,y1=0,x0=Infinity,y0=Infinity;
@@ -478,6 +561,54 @@ function climbThrough(op, marker){
 function labelKw(k){ return ({fly:"FLY",burrow:"BURROW",shadow_passage:"SHADOW PASSAGE",
   aquilon_drop:"Aquilon Drop",raven_tunnel:"Ravener Tunnel",obelisk_matrix:"Obelisk Node matrix"})[k]||k; }
 
+/* ------------------------------------------------------------------ terrain objects
+   Shared with the Planner by DATA, not code: Descent reads the same kt-objects.json
+   prefab library and the same {ref,x,y,k} instance schema, and expands them with a
+   copy of the Planner's instGeom(). Descent does not draw new objects — you build
+   those in the Planner and import them here. Each inst additionally carries a `board`
+   tag (which killzone it sits in), which the Planner ignores. */
+function rot90(x,y,k){ k=((k%4)+4)%4; for(let i=0;i<k;i++){ const t=x; x=-y; y=t; } return [x,y]; }
+
+// The library values in kt-objects.json are stringified arrays ("[{...}]"); parse leniently.
+function parseMaybe(v){ if(Array.isArray(v)) return v; if(v==null) return [];
+  if(typeof v==="string"){ try{ return JSON.parse(v.replace(/'/g,'"')); }catch(_){ return []; } } return v; }
+function normPrefab(def){
+  return { w:+def.w||0, h:+def.h||0, edges:parseMaybe(def.edges), zones:parseMaybe(def.zones) };
+}
+// Accept either a full kt-objects.json ({v,type,prefabs:{...}}) or a layout's embedded
+// `objects` map, and merge into S.prefabs.
+function loadPrefabLibrary(obj){
+  let src=null;
+  if(obj&&obj.prefabs&&typeof obj.prefabs==="object") src=obj.prefabs;
+  else if(obj&&typeof obj==="object") src=obj;         // embedded {name:def} form
+  if(!src) return 0;
+  let n=0; for(const name in src){ if(name==="v"||name==="type") continue;
+    S.prefabs[name]=normPrefab(src[name]); n++; }
+  return n;
+}
+
+// Expand a placed instance to world-space edges/zones. inst.x/inst.y are already world
+// coords (same space as everything else), so this matches the Planner 1:1 aside from the
+// hatch-open handling, which Descent doesn't need yet (kept simple: closed walls).
+function instGeom(inst){ const pf=S.prefabs[inst.ref]; if(!pf) return {edges:[],zones:[]};
+  const k=inst.k||0, cx=inst.x, cy=inst.y, edges=[];
+  (pf.edges||[]).forEach((e,ei)=>{ const a=rot90(e.a[0],e.a[1],k), b=rot90(e.b[0],e.b[1],k);
+    const A=[cx+a[0]*PPI,cy+a[1]*PPI], B=[cx+b[0]*PPI,cy+b[1]*PPI];
+    edges.push({a:A,b:B,los:e.los,cover:e.cover||"heavy",trav:e.trav||"blocked",
+      zBot:e.zBot,zTop:e.zTop,hatch:(e.hatch===true?"panel":(e.hatch||null)),inst,ei}); });
+  const zones=(pf.zones||[]).map(z=>({poly:(z.poly||[]).map(p=>{ const r=rot90(p[0],p[1],k);
+    return [cx+r[0]*PPI,cy+r[1]*PPI]; }),class:z.class,top:z.top}));
+  return {edges,zones};
+}
+// axis-aligned bounds of a placed inst, in world px (for hit-testing + room flood-fill)
+function instBounds(inst){ const pf=S.prefabs[inst.ref]; if(!pf) return null;
+  const g=instGeom(inst); let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  const eat=(p)=>{ x0=Math.min(x0,p[0]);y0=Math.min(y0,p[1]);x1=Math.max(x1,p[0]);y1=Math.max(y1,p[1]); };
+  g.edges.forEach(e=>{eat(e.a);eat(e.b);}); g.zones.forEach(z=>z.poly.forEach(eat));
+  if(!isFinite(x0)){ const w=(pf.w||2)*PPI/2,h=(pf.h||2)*PPI/2; return {x0:inst.x-w,y0:inst.y-h,x1:inst.x+w,y1:inst.y+h}; }
+  return {x0,y0,x1,y1};
+}
+
 /* ------------------------------------------------------------------ view */
 function applyVB(){ svg.setAttribute("viewBox",`${S.vb.x} ${S.vb.y} ${S.vb.w} ${S.vb.h}`); }
 function syncAspect(){ const r=svg.getBoundingClientRect(); if(r.width) S.vb.h=S.vb.w*(r.height/r.width); }
@@ -502,7 +633,93 @@ function panClient(dx,dy){ const r=svg.getBoundingClientRect(),k=S.vb.w/r.width;
   S.vb.x-=dx*k; S.vb.y-=dy*k; applyVB(); }
 
 /* ------------------------------------------------------------------ render */
-function renderAll(){ renderPlates(); renderGrid(); renderLinks(); renderMarkers(); renderItems(); renderOverlay(); }
+function renderAll(){ renderPlates(); renderImg(); renderGrid(); renderRooms(); renderTerr();
+  renderLinks(); renderMarkers(); renderItems(); renderRulers(); renderOverlay(); }
+
+// Per-board map image, clipped to its plate so upper/lower never bleed across the gutter.
+function renderImg(){
+  gImg.replaceChildren();
+  for(const b of S.boards){
+    if(!b.map) continue;
+    const w=b.wpx*(b.mapSX||1), h=b.hpx*(b.mapSY||1);
+    const ox=(b.mapOX||0)*PPI, oy=(b.mapOY||0)*PPI;
+    const cx=b.ox+b.wpx/2, cy=b.oy+b.hpx/2;
+    // clip to the plate rect
+    const clipId="clip_"+b.id;
+    const cp=attr(mk("clipPath"),{id:clipId}); cp.appendChild(attr(mk("rect"),{x:b.ox,y:b.oy,width:b.wpx,height:b.hpx,rx:4}));
+    gImg.appendChild(cp);
+    gImg.appendChild(attr(mk("image"),{href:b.map,x:cx-w/2+ox,y:cy-h/2+oy,width:w,height:h,
+      preserveAspectRatio:"none","clip-path":`url(#${clipId})`,opacity:.96}));
+  }
+}
+
+// Placed terrain objects: walls as lines coloured by LoS, zones as translucent fills.
+function renderTerr(){
+  gTerr.replaceChildren();
+  for(const inst of S.insts){
+    const g=attr(mk("g"),{"data-inst":inst.id});
+    const geo=instGeom(inst);
+    geo.zones.forEach(z=>{ if(z.poly.length<3) return;
+      const d="M"+z.poly.map(p=>p[0]+" "+p[1]).join(" L")+" Z";
+      g.appendChild(attr(mk("path"),{d,fill:"rgba(110,160,200,.10)",stroke:"none"})); });
+    geo.edges.forEach(e=>{
+      const col = e.los==="solid" ? "#8aa0b4" : e.los==="open" ? "#4fd18b" : "#c8a06e";
+      const dash = e.hatch ? "6 4" : null;
+      const ln=attr(mk("line"),{x1:e.a[0],y1:e.a[1],x2:e.b[0],y2:e.b[1],stroke:col,
+        "stroke-width":e.los==="solid"?2.4:1.6,"vector-effect":"non-scaling-stroke","stroke-linecap":"round"});
+      if(dash) ln.setAttribute("stroke-dasharray",dash);
+      g.appendChild(ln);
+    });
+    // selection highlight
+    if(S.selInst===inst.id){ const bb=instBounds(inst);
+      g.appendChild(attr(mk("rect"),{x:bb.x0-4,y:bb.y0-4,width:bb.x1-bb.x0+8,height:bb.y1-bb.y0+8,
+        fill:"none",stroke:"var(--orange)","stroke-width":1.5,"stroke-dasharray":"5 4","vector-effect":"non-scaling-stroke"})); }
+    gTerr.appendChild(g);
+  }
+}
+
+// Rooms: translucent tinted cells over the lower board grid, with an optional label.
+function renderRooms(){
+  gRoom.replaceChildren();
+  const palette=["rgba(242,160,61,.13)","rgba(43,184,184,.13)","rgba(122,162,247,.13)",
+                 "rgba(198,120,110,.13)","rgba(120,198,140,.13)","rgba(200,160,110,.13)"];
+  S.rooms.forEach((room,ri)=>{
+    const b=boardById(room.board); if(!b) return;
+    const cols=(b.grid&&b.grid.cols)||6, rows=(b.grid&&b.grid.rows)||4;
+    const cw=b.wpx/cols, ch=b.hpx/rows, fill=palette[ri%palette.length];
+    room.cells.forEach(([c,r])=>{
+      gRoom.appendChild(attr(mk("rect"),{x:b.ox+c*cw,y:b.oy+r*ch,width:cw,height:ch,fill,
+        stroke:"rgba(255,255,255,.06)","stroke-width":1,"vector-effect":"non-scaling-stroke"}));
+    });
+    // label at the room's centroid
+    if(room.cells.length){
+      const cx=b.ox+(room.cells.reduce((s,[c])=>s+c,0)/room.cells.length+0.5)*cw;
+      const cy=b.oy+(room.cells.reduce((s,[,r])=>s+r,0)/room.cells.length+0.5)*ch;
+      gRoom.appendChild(attr(Object.assign(mk("text"),{textContent:room.label||("R"+(ri+1))}),
+        {x:cx,y:cy+4,"text-anchor":"middle","font-size":12,"font-family":"var(--mono)",
+         fill:"rgba(231,237,243,.5)","font-weight":700}));
+    }
+  });
+}
+
+// Persistent measure lines. Unlike the transient drag preview, these stay on the board
+// until deleted. Each shows its length in inches; tap one (in Line mode) to remove it.
+function renderRulers(){
+  gRuler.replaceChildren();
+  for(const r of S.rulers){
+    const g=attr(mk("g"),{"data-ruler":r.id});
+    g.appendChild(attr(mk("line"),{x1:r.a.x,y1:r.a.y,x2:r.b.x,y2:r.b.y,
+      stroke:"var(--orange)","stroke-width":1.4,opacity:.85,"vector-effect":"non-scaling-stroke"}));
+    [r.a,r.b].forEach(p=>g.appendChild(attr(mk("circle"),{cx:p.x,cy:p.y,r:3,
+      fill:"var(--bg)",stroke:"var(--orange)","stroke-width":1.4,"vector-effect":"non-scaling-stroke"})));
+    const mx=(r.a.x+r.b.x)/2, my=(r.a.y+r.b.y)/2, d=distIn(r.a.x,r.a.y,r.b.x,r.b.y);
+    g.appendChild(attr(Object.assign(mk("text"),{textContent:d.toFixed(1)+'"'}),
+      {x:mx,y:my-6,"text-anchor":"middle","font-size":12,"font-family":"var(--mono)",
+       fill:"var(--orange)","paint-order":"stroke",stroke:"var(--bg)","stroke-width":3}));
+    gRuler.appendChild(g);
+  }
+}
+
 
 function renderPlates(){
   gPlate.replaceChildren();
@@ -687,6 +904,21 @@ function markerAt(w){
     if(Math.hypot(w.x-m.x,w.y-m.y)<=13) return m; }
   return null;
 }
+// distance from a point to a ruler segment (for tap-to-delete)
+function rulerAt(w){
+  for(let i=S.rulers.length-1;i>=0;i--){ const r=S.rulers[i];
+    const dx=r.b.x-r.a.x, dy=r.b.y-r.a.y, L2=dx*dx+dy*dy||1;
+    let t=((w.x-r.a.x)*dx+(w.y-r.a.y)*dy)/L2; t=Math.max(0,Math.min(1,t));
+    const px=r.a.x+t*dx, py=r.a.y+t*dy;
+    if(Math.hypot(w.x-px,w.y-py)<10) return r; }
+  return null;
+}
+// topmost placed object under a point
+function instAt(w){
+  for(let i=S.insts.length-1;i>=0;i--){ const b=instBounds(S.insts[i]); if(!b) continue;
+    if(w.x>=b.x0-6&&w.x<=b.x1+6&&w.y>=b.y0-6&&w.y<=b.y1+6) return S.insts[i]; }
+  return null;
+}
 svg.addEventListener("pointerdown",e=>{
   svg.setPointerCapture(e.pointerId);
   pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
@@ -695,6 +927,27 @@ svg.addEventListener("pointerdown",e=>{
   S._lastWorld=[w.x,w.y];
 
   if(S.mode==="measure"){ drag={type:"line",a:w}; S.measure={a:w,b:w}; renderOverlay(); return; }
+
+  // Room edit: tap a lower-board cell to toggle it into the active room.
+  if(S.mode==="room"){ toggleRoomCell(w); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
+
+  // If a palette piece is armed, a tap on the board drops it (any mode).
+  if(S.armedPrefab){
+    const b=boardAt(w.x,w.y);
+    if(b){ placeArmedPrefab(w); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
+  }
+
+  // Unlocked objects: select/drag with priority just under operatives. In Move mode we
+  // still let operatives win selection (checked later); here we grab an object only if
+  // no operative is under the point.
+  if(!S.lockObj && (S.mode==="move")){
+    const io=instAt(w);
+    if(io && !itemAt(w)){
+      S.selInst=io.id; renderTerr();
+      drag={type:"inst",inst:io,ox:w.x-io.x,oy:w.y-io.y,moved:false,downT:Date.now()};
+      return;
+    }
+  }
 
   // Portals tool: a plain tap on empty space does nothing (use the ＋ buttons to place a
   // pair); tapping an existing marker lets you drag it to reposition.
@@ -752,6 +1005,8 @@ function onMove(e){
     renderItems(); renderOverlay(); }
   else if(drag.type==="marker"){ drag.m.x=w.x-drag.ox; drag.m.y=w.y-drag.oy; drag.moved=true;
     renderMarkers(); renderLinks(); }
+  else if(drag.type==="inst"){ drag.inst.x=w.x-drag.ox; drag.inst.y=w.y-drag.oy; drag.moved=true;
+    renderTerr(); }
   else if(drag.type==="line"){ S.measure.b=w; renderOverlay(); }
 }
 function endP(e){
@@ -767,7 +1022,21 @@ function endP(e){
     const b=nearestBoard(drag.m.x,drag.m.y); if(b) drag.m.board=b.id;
     save(); renderLinks(); hud("Marker moved");
   }
-  if(drag&&drag.type==="line"){ S.measure=null; renderOverlay(); }
+  if(drag&&drag.type==="inst"){
+    if(drag.moved){ const b=nearestBoard(drag.inst.x,drag.inst.y); if(b) drag.inst.board=b.id;
+      save(); hud("Object moved"); }
+    else { rotateInst(drag.inst); }   // a tap (no drag) rotates 90°
+  }
+  if(drag&&drag.type==="line"){
+    const m=S.measure; S.measure=null;
+    if(m){ const len=distIn(m.a.x,m.a.y,m.b.x,m.b.y);
+      if(len>0.15){ S.rulers.push({id:crypto.randomUUID(),a:m.a,b:m.b}); save(); renderRulers(); }
+      else{ // a tap (not a drag) in Line mode: remove a ruler under the point
+        const hit=rulerAt(m.a); if(hit){ S.rulers=S.rulers.filter(r=>r!==hit); save(); renderRulers(); note("Line removed."); }
+      }
+    }
+    renderOverlay();
+  }
   drag=null;
 }
 window.addEventListener("pointermove",onMove,{passive:false});
@@ -782,6 +1051,7 @@ function doPinch(){ const p=[...pointers.values()]; if(p.length<2) return;
 /* ------------------------------------------------------------------ toolbar */
 $("#toolseg").addEventListener("click",e=>{ const b=e.target.closest("[data-mode]"); if(!b) return;
   S.mode=b.dataset.mode; $$("#toolseg .tool").forEach(x=>x.classList.toggle("on",x===b));
+  if(S.roomPaint){ S.roomPaint=false; syncRoomPaintBtn(); }
   // the marker submenu only makes sense while the Portals tool is active
   $("#markerSub").classList.toggle("hidden", S.mode!=="marker");
   $("#opSub").classList.toggle("hidden", S.mode!=="op");
@@ -932,7 +1202,9 @@ function openPicker(){ renderPackList(); $("#picker").classList.remove("hidden")
 /* ------------------------------------------------------------------ load / persist */
 function loadPack(id){
   S.packId=id; S.pack=PACKS[id]; S.items=[]; S.markers=[]; S.nextPair=1;
+  S.insts=[]; S.rulers=[]; S.rooms=[]; S.selInst=null; S.armedPrefab=null; S.activeRoom=null;
   S.selected=null; S.traverse=null;
+  // keep S.prefabs across packs — the imported object library is reusable
   resolveBoards();
   $("#picker").classList.add("hidden");
   $("#packTag").textContent = S.pack.name + " · " + S.pack.missions[0];
@@ -941,15 +1213,23 @@ function loadPack(id){
 }
 function save(){
   try{ localStorage.setItem(PACKKEY,S.packId);
-    localStorage.setItem(AKEY,JSON.stringify({packId:S.packId,items:S.items,markers:S.markers,nextPair:S.nextPair,locked:S.locked})); }catch(_){}
+    const boardMaps={}; (S.boards||[]).forEach(b=>{ if(b.map) boardMaps[b.id]={map:b.map,mapOX:b.mapOX,mapOY:b.mapOY,mapSX:b.mapSX,mapSY:b.mapSY}; });
+    localStorage.setItem(AKEY,JSON.stringify({packId:S.packId,items:S.items,markers:S.markers,
+      nextPair:S.nextPair,locked:S.locked,lockObj:S.lockObj,insts:S.insts,prefabs:S.prefabs,
+      rulers:S.rulers,rooms:S.rooms,boardMaps})); }catch(_){}
 }
 function restore(){
   let d=null;
   try{ d=JSON.parse(localStorage.getItem(AKEY)||"null"); }catch(_){}
   if(!d||!d.packId||!PACKS[d.packId]) return false;
   S.packId=d.packId; S.pack=PACKS[d.packId]; S.items=d.items||[];
-  S.markers=d.markers||[]; S.nextPair=d.nextPair||1; S.locked=(d.locked!==false); S.selected=null; S.traverse=null;
+  S.markers=d.markers||[]; S.nextPair=d.nextPair||1; S.locked=(d.locked!==false);
+  S.lockObj=(d.lockObj!==false); S.insts=d.insts||[]; S.prefabs=d.prefabs||{};
+  S.rulers=d.rulers||[]; S.rooms=d.rooms||[]; S.selected=null; S.traverse=null; S.selInst=null;
   resolveBoards();
+  // reapply per-board maps saved separately (boards are rebuilt from the pack on load)
+  if(d.boardMaps){ for(const b of S.boards){ const m=d.boardMaps[b.id];
+    if(m){ b.map=m.map; b.mapOX=m.mapOX||0; b.mapOY=m.mapOY||0; b.mapSX=m.mapSX||1; b.mapSY=m.mapSY||1; } } }
   $("#picker").classList.add("hidden");
   $("#packTag").textContent=S.pack.name+" · "+S.pack.missions[0];
   syncAspect(); renderAll(); fitView(); hud("Resumed");
@@ -962,7 +1242,7 @@ if(window.ResizeObserver) new ResizeObserver(()=>{ syncAspect(); applyVB(); }).o
 function resetPointers(){ pointers.clear(); drag=null; lastPinch=null; }
 document.addEventListener("visibilitychange",resetPointers);
 window.addEventListener("blur",resetPointers);
-document.addEventListener("touchmove",e=>{ if(!e.target.closest("#picker,#note,#opSheet")) e.preventDefault(); },{passive:false});
+document.addEventListener("touchmove",e=>{ if(!e.target.closest("#picker,#note,#opSheet,#drawer")) e.preventDefault(); },{passive:false});
 
 /* ------------------------------------------------------------------ dev seed
    A couple of placeholder tokens so the two-board hull is visibly alive: one player
@@ -977,6 +1257,172 @@ function seed(){
   S.items.push({id:crypto.randomUUID(),kind:"op",side:"npo",board:lo.id,label:"NPO",
     x:lo.ox+lo.wpx*0.6,y:lo.oy+lo.hpx*0.5,base:"40",baseMm:40,move:6,moveLeft:6,ang:0,guard:false,keywords:[]});
 }
+
+/* ================================================================== PHASE 2: terrain
+   Drawer with per-killzone maps, object library + placement, and rooms. */
+
+/* ---- drawer open/close ---- */
+$("#terrainBtn").addEventListener("click",()=>{ const d=$("#drawer");
+  if(d.classList.contains("hidden")){ buildDrawer(); d.classList.remove("hidden"); }
+  else d.classList.add("hidden"); });
+$("#drawerClose").addEventListener("click",()=>$("#drawer").classList.add("hidden"));
+
+function buildDrawer(){ buildMapSlots(); buildPlaceBoardPick(); buildPalette(); syncLockObjBtn(); syncRoomPaintBtn(); }
+
+/* ---- per-killzone map slots ---- */
+let mapTargetBoard=null;
+function buildMapSlots(){
+  const host=$("#mapSlots"); host.replaceChildren();
+  for(const b of S.boards){
+    const tint = b.id==="upper"?"var(--upper)":b.id==="lower"?"var(--lower)":"var(--orange)";
+    const el=document.createElement("div"); el.className="mapslot";
+    el.innerHTML=`
+      <div class="msh"><span class="mschip" style="background:${tint}"></span>
+        <span class="msname">${b.name}</span>
+        <span class="msstate">${b.map?"loaded":"empty"}</span></div>
+      <div class="msrow">
+        <button class="mini" data-act="upload" data-b="${b.id}">${b.map?"Replace image":"Upload image"}</button>
+        ${b.map?`<button class="mini" data-act="clear" data-b="${b.id}">Remove</button>`:""}
+        ${b.map?`<button class="mini" data-act="fit" data-b="${b.id}">Reset fit</button>`:""}
+      </div>`;
+    host.appendChild(el);
+  }
+  host.querySelectorAll("[data-act]").forEach(btn=>btn.addEventListener("click",()=>{
+    const b=boardById(btn.dataset.b), act=btn.dataset.act;
+    if(act==="upload"){ mapTargetBoard=b.id; $("#mapFileHidden").click(); }
+    else if(act==="clear"){ b.map=null; save(); renderImg(); buildMapSlots(); }
+    else if(act==="fit"){ b.mapOX=0;b.mapOY=0;b.mapSX=1;b.mapSY=1; save(); renderImg(); }
+  }));
+}
+$("#mapFileHidden").addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value="";
+  if(!f||!mapTargetBoard) return; const b=boardById(mapTargetBoard); if(!b) return;
+  const rd=new FileReader(); rd.onload=()=>loadBoardMap(b,rd.result); rd.readAsDataURL(f); });
+// same downscale pipeline as the Planner (max 1600px, JPEG 0.82) so files interchange
+function loadBoardMap(b,dataURL){
+  const img=new Image();
+  img.onload=()=>{ const maxD=1600, s=Math.min(1,maxD/Math.max(img.width,img.height));
+    const cw=Math.max(1,Math.round(img.width*s)), ch=Math.max(1,Math.round(img.height*s));
+    const cvs=document.createElement("canvas"); cvs.width=cw; cvs.height=ch;
+    cvs.getContext("2d").drawImage(img,0,0,cw,ch);
+    b.map=cvs.toDataURL("image/jpeg",0.82);
+    save(); renderImg(); buildMapSlots(); note(`${b.name} map loaded.`,true); };
+  img.onerror=()=>note("Couldn't read that image.");
+  img.src=dataURL;
+}
+
+/* ---- which board new objects attach to ---- */
+function buildPlaceBoardPick(){
+  const host=$("#placeBoardPick"); host.replaceChildren();
+  for(const b of S.boards){ const btn=document.createElement("button");
+    btn.className="mini"+(S.placeBoard===b.id?" on":""); btn.textContent=b.id;
+    btn.addEventListener("click",()=>{ S.placeBoard=b.id; buildPlaceBoardPick(); });
+    host.appendChild(btn); }
+}
+
+/* ---- object library import + palette ---- */
+$("#importObjs").addEventListener("click",()=>$("#objFile").click());
+$("#objFile").addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value="";
+  if(!f) return; const rd=new FileReader();
+  rd.onload=()=>{ try{ const obj=JSON.parse(rd.result); const n=loadPrefabLibrary(obj);
+    if(n>0){ save(); buildPalette(); note(`Imported ${n} objects.`,true); }
+    else note("No objects found in that file."); }
+    catch(_){ note("That isn't a valid objects file."); } };
+  rd.readAsText(f); });
+function buildPalette(){
+  const host=$("#palette"); host.replaceChildren();
+  const names=Object.keys(S.prefabs).sort();
+  $("#libCount").textContent = names.length ? `${names.length} loaded` : "none loaded";
+  for(const name of names){ const pf=S.prefabs[name];
+    const el=document.createElement("div"); el.className="pf"+(S.armedPrefab===name?" on":"");
+    el.innerHTML=`<span class="pfn">${name}</span><span class="pfd">${pf.w}×${pf.h}"</span>`;
+    el.addEventListener("click",()=>{ S.armedPrefab = S.armedPrefab===name?null:name;
+      buildPalette();
+      note(S.armedPrefab?`${name} armed — tap the ${S.placeBoard} board to place it.`:"Disarmed.",true); });
+    host.appendChild(el); }
+  if(!names.length){ host.innerHTML=`<div class="dwhint" style="grid-column:1/-1">Import kt-objects.json (or a layout with embedded objects) to populate the library. Build new pieces in the Planner.</div>`; }
+}
+
+/* ---- lock objects ---- */
+$("#lockObjToggle").addEventListener("click",()=>{ S.lockObj=!S.lockObj; syncLockObjBtn(); save();
+  note(S.lockObj?"Objects locked.":"Objects unlocked — drag to move, tap to rotate.",true); });
+function syncLockObjBtn(){ const b=$("#lockObjToggle");
+  b.classList.toggle("on",S.lockObj); b.textContent=S.lockObj?"🔒 Objects locked":"🔓 Objects unlocked"; }
+
+/* ---- rooms ---- */
+$("#autoRooms").addEventListener("click",()=>{ autoDetectRooms(); });
+$("#clearRooms").addEventListener("click",()=>{ S.rooms=[]; save(); renderRooms(); note("Rooms cleared."); });
+$("#roomPaint").addEventListener("click",()=>{ S.roomPaint=!S.roomPaint; syncRoomPaintBtn();
+  if(S.roomPaint){ S.mode="room"; $$("#toolseg .tool").forEach(x=>x.classList.remove("on"));
+    note("Room edit on — tap grid cells on the lower board to toggle them into the active room.",true); }
+  else { S.mode="move"; $$('#toolseg .tool').forEach(x=>x.classList.toggle('on',x.dataset.mode==='move')); }
+});
+function syncRoomPaintBtn(){ const b=$("#roomPaint"); if(!b) return;
+  b.classList.toggle("on",!!S.roomPaint); b.textContent=`✏︎ Edit rooms: ${S.roomPaint?"on":"off"}`; }
+
+// Flood-fill the lower board's square grid into rooms. A wall between two adjacent cells
+// blocks the flood (unless it's an open hatch); cells fully inside a solid object are skipped.
+function autoDetectRooms(){
+  const b=S.boards.find(x=>x.rules&&x.rules.closeQuarters)||S.boards[S.boards.length-1];
+  if(!b){ note("No lower killzone to detect rooms in."); return; }
+  const cols=(b.grid&&b.grid.cols)||6, rows=(b.grid&&b.grid.rows)||4;
+  const cw=b.wpx/cols, ch=b.hpx/rows;
+  const cellCenter=(c,r)=>[b.ox+(c+0.5)*cw, b.oy+(r+0.5)*ch];
+  // collect solid wall segments from placed objects on this board
+  const walls=[];
+  S.insts.filter(i=>i.board===b.id).forEach(i=>{ instGeom(i).edges.forEach(e=>{
+    if(e.los==="solid" && !(e.hatch)) walls.push(e); }); });
+  const blocked=(c1,r1,c2,r2)=>{ // does a wall cross the segment between two cell centres?
+    const [x1,y1]=cellCenter(c1,r1), [x2,y2]=cellCenter(c2,r2);
+    return walls.some(w=>segInt(x1,y1,x2,y2,w.a[0],w.a[1],w.b[0],w.b[1])); };
+  const seen=Array.from({length:cols},()=>Array(rows).fill(false));
+  const rooms=[];
+  for(let c=0;c<cols;c++) for(let r=0;r<rows;r++){
+    if(seen[c][r]) continue;
+    const cells=[], stack=[[c,r]]; seen[c][r]=true;
+    while(stack.length){ const [cc,rr]=stack.pop(); cells.push([cc,rr]);
+      [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dc,dr])=>{ const nc=cc+dc,nr=rr+dr;
+        if(nc<0||nr<0||nc>=cols||nr>=rows||seen[nc][nr]) return;
+        if(blocked(cc,rr,nc,nr)) return;
+        seen[nc][nr]=true; stack.push([nc,nr]); }); }
+    rooms.push({id:crypto.randomUUID(),board:b.id,cells,label:"R"+(rooms.length+1)});
+  }
+  S.rooms=rooms; S.activeRoom=rooms.length?rooms[0].id:null; save(); renderRooms();
+  note(`Detected ${rooms.length} room${rooms.length===1?"":"s"} from the wall layout. Tap cells in Edit mode to correct.`,true);
+}
+// segment intersection test
+function segInt(ax,ay,bx,by,cx,cy,dx,dy){
+  const d1=cross(cx,cy,dx,dy,ax,ay), d2=cross(cx,cy,dx,dy,bx,by),
+        d3=cross(ax,ay,bx,by,cx,cy), d4=cross(ax,ay,bx,by,dx,dy);
+  return ((d1>0)!==(d2>0))&&((d3>0)!==(d4>0));
+}
+function cross(ox,oy,px,py,qx,qy){ return (px-ox)*(qy-oy)-(py-oy)*(qx-ox); }
+// map a world point to a lower-board grid cell (or null)
+function cellAt(w){
+  const b=S.boards.find(x=>x.rules&&x.rules.closeQuarters)||S.boards[S.boards.length-1];
+  if(!b||w.x<b.ox||w.x>b.ox+b.wpx||w.y<b.oy||w.y>b.oy+b.hpx) return null;
+  const cols=(b.grid&&b.grid.cols)||6, rows=(b.grid&&b.grid.rows)||4;
+  return {b,c:Math.floor((w.x-b.ox)/(b.wpx/cols)),r:Math.floor((w.y-b.oy)/(b.hpx/rows))};
+}
+function toggleRoomCell(w){
+  const cell=cellAt(w); if(!cell) return;
+  let room=S.rooms.find(r=>r.id===S.activeRoom);
+  if(!room){ room={id:crypto.randomUUID(),board:cell.b.id,cells:[],label:"R"+(S.rooms.length+1)};
+    S.rooms.push(room); S.activeRoom=room.id; }
+  // remove the cell from any room, then add to active (so cells are unique)
+  S.rooms.forEach(r=>{ r.cells=r.cells.filter(([c,rr])=>!(c===cell.c&&rr===cell.r)); });
+  room.cells.push([cell.c,cell.r]);
+  S.rooms=S.rooms.filter(r=>r.cells.length);   // drop emptied rooms
+  save(); renderRooms();
+}
+
+/* ---- object placement + selection interactions (called from pointerdown) ---- */
+function placeArmedPrefab(w){
+  const b=boardAt(w.x,w.y)||nearestBoard(w.x,w.y);
+  const inst={id:crypto.randomUUID(),ref:S.armedPrefab,x:w.x,y:w.y,k:0,board:(S.placeBoard||b.id)};
+  S.insts.push(inst); S.selInst=inst.id; save(); renderTerr();
+  note(`Placed ${S.armedPrefab}. It stays armed — tap again to place another, or tap it in the palette to disarm.`,true);
+}
+function rotateInst(inst){ inst.k=((inst.k||0)+1)%4; save(); renderTerr(); note(`Rotated ${inst.ref} to ${inst.k*90}°.`,true); }
 
 /* ------------------------------------------------------------------ service worker */
 if("serviceWorker" in navigator){
