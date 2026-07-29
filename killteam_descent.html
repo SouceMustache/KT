@@ -203,6 +203,18 @@
   .palette .pfrow.armed .pfname{color:var(--orange);font-weight:600;}
   #placeBoardPick .mini{padding:5px 9px;font-size:11px;}
   #placeBoardPick .mini.on{border-color:var(--orange);color:var(--orange);background:rgba(242,160,61,.12);}
+  .roomrow{display:flex;align-items:center;gap:7px;padding:6px 0;}
+  .roomrow.active{}
+  .rswatch{width:12px;height:12px;border-radius:3px;flex:0 0 auto;}
+  .roomrow .rname{flex:1 1 auto;min-width:0;background:var(--panel2);border:1px solid var(--line);
+    border-radius:7px;color:var(--ink);font:inherit;font-size:12px;padding:5px 8px;}
+  .roomrow.active .rname{border-color:var(--orange);}
+  .roomrow .rcount{font-family:var(--mono);font-size:10px;color:var(--dim);
+    border:1px solid var(--line);border-radius:999px;padding:1px 7px;flex:0 0 auto;}
+  .roomrow .mini{padding:5px 8px;font-size:11px;flex:0 0 auto;}
+  .roomrow .rsel{}
+  .roomrow.active .rsel{border-color:var(--orange);color:var(--orange);background:rgba(242,160,61,.12);}
+  .roomrow .rdel{border-color:rgba(229,72,77,.35);color:var(--red);}
 </style>
 </head>
 <body>
@@ -323,17 +335,26 @@
       </div>
       <div class="dwsec">
         <div class="dwsec-h">Rooms
-          <button class="mini" id="autoRooms">Auto-detect</button>
-          <button class="mini" id="clearRooms">Clear</button>
+          <button class="mini" id="addRoom">＋ New room</button>
         </div>
-        <div class="dwhint">Auto-detect flood-fills the lower killzone grid into rooms, splitting on walls. Tap cells in Edit mode to correct. Needed for Locate Signature and the C'tan spawn.</div>
-        <div class="dwrow"><button class="mini" id="roomPaint">✏︎ Edit rooms: off</button></div>
+        <div id="roomList"></div>
+        <div class="dwrow"><button class="mini" id="roomPaint">✏︎ Paint cells: off</button></div>
+        <div class="dwhint">Make a room, then paint grid cells on the lower killzone into it. Each cell belongs to one room; painting moves it. Tap a painted cell again to clear it. Needed for Locate Signature and the C'tan spawn.</div>
+      </div>
+      <div class="dwsec">
+        <div class="dwsec-h">Save / load</div>
+        <div class="dwrow">
+          <button class="mini" id="exportLayout">Export game…</button>
+          <button class="mini" id="importLayout">Import game…</button>
+        </div>
+        <div class="dwhint">Export the current board — maps, objects, markers, operatives and rooms — as a kt-layout.json you can back up, share, or send for analysis. Import restores it. Full library tools (layouts, objects, rosters) come later.</div>
       </div>
     </div>
   </div>
 
   <input type="file" id="objFile" accept="application/json" style="display:none">
   <input type="file" id="mapFileHidden" accept="image/*" style="display:none">
+  <input type="file" id="layoutFile" accept="application/json" style="display:none">
   </div>
 </div>
 
@@ -707,23 +728,23 @@ function renderTerr(){
 // Rooms: translucent tinted cells over the lower board grid, with an optional label.
 function renderRooms(){
   gRoom.replaceChildren();
-  const palette=["rgba(242,160,61,.13)","rgba(43,184,184,.13)","rgba(122,162,247,.13)",
-                 "rgba(198,120,110,.13)","rgba(120,198,140,.13)","rgba(200,160,110,.13)"];
   S.rooms.forEach((room,ri)=>{
     const b=boardById(room.board); if(!b) return;
     const cols=(b.grid&&b.grid.cols)||6, rows=(b.grid&&b.grid.rows)||4;
-    const cw=b.wpx/cols, ch=b.hpx/rows, fill=palette[ri%palette.length];
+    const cw=b.wpx/cols, ch=b.hpx/rows;
+    const base=room.color||"#f2a03d", active=(S.activeRoom===room.id);
     room.cells.forEach(([c,r])=>{
-      gRoom.appendChild(attr(mk("rect"),{x:b.ox+c*cw,y:b.oy+r*ch,width:cw,height:ch,fill,
-        stroke:"rgba(255,255,255,.06)","stroke-width":1,"vector-effect":"non-scaling-stroke"}));
+      gRoom.appendChild(attr(mk("rect"),{x:b.ox+c*cw,y:b.oy+r*ch,width:cw,height:ch,
+        fill:base,"fill-opacity":active?0.24:0.15,
+        stroke:base,"stroke-opacity":active?0.6:0.3,"stroke-width":active?1.5:1,"vector-effect":"non-scaling-stroke"}));
     });
-    // label at the room's centroid
     if(room.cells.length){
       const cx=b.ox+(room.cells.reduce((s,[c])=>s+c,0)/room.cells.length+0.5)*cw;
       const cy=b.oy+(room.cells.reduce((s,[,r])=>s+r,0)/room.cells.length+0.5)*ch;
       gRoom.appendChild(attr(Object.assign(mk("text"),{textContent:room.label||("R"+(ri+1))}),
         {x:cx,y:cy+4,"text-anchor":"middle","font-size":12,"font-family":"var(--mono)",
-         fill:"rgba(231,237,243,.5)","font-weight":700}));
+         fill:"rgba(231,237,243,.7)","font-weight":700,"paint-order":"stroke",
+         stroke:"var(--bg)","stroke-width":3}));
     }
   });
 }
@@ -954,8 +975,8 @@ svg.addEventListener("pointerdown",e=>{
 
   if(S.mode==="measure"){ drag={type:"line",a:w}; S.measure={a:w,b:w}; renderOverlay(); return; }
 
-  // Room edit: tap a lower-board cell to toggle it into the active room.
-  if(S.mode==="room"){ toggleRoomCell(w); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
+  // Room paint: tap toggles a cell in/out of the active room; dragging paints cells in.
+  if(S.mode==="room"){ paintRoomCell(w,"toggle"); drag={type:"room"}; return; }
 
   // If a palette piece is armed, a tap on the board drops it (any mode).
   if(S.armedPrefab){
@@ -1035,6 +1056,7 @@ function onMove(e){
   else if(drag.type==="inst"){ drag.inst.x=w.x-drag.ox; drag.inst.y=w.y-drag.oy; drag.moved=true;
     renderTerr(); }
   else if(drag.type==="line"){ S.measure.b=w; renderOverlay(); }
+  else if(drag.type==="room"){ paintRoomCell(w,"add"); }
 }
 function endP(e){
   if(!pointers.has(e.pointerId)) return; pointers.delete(e.pointerId);
@@ -1295,7 +1317,7 @@ $("#terrainBtn").addEventListener("click",()=>{ const d=$("#drawer");
   else d.classList.add("hidden"); });
 $("#drawerClose").addEventListener("click",()=>$("#drawer").classList.add("hidden"));
 
-function buildDrawer(){ buildMapSlots(); buildPlaceBoardPick(); buildPalette(); syncLockObjBtn(); syncRoomPaintBtn(); }
+function buildDrawer(){ buildMapSlots(); buildPlaceBoardPick(); buildPalette(); buildRoomList(); syncLockObjBtn(); syncRoomPaintBtn(); }
 
 /* ---- per-killzone map slots ---- */
 let mapTargetBoard=null;
@@ -1405,54 +1427,49 @@ $("#lockObjToggle").addEventListener("click",()=>{ S.lockObj=!S.lockObj; syncLoc
 function syncLockObjBtn(){ const b=$("#lockObjToggle");
   b.classList.toggle("on",S.lockObj); b.textContent=S.lockObj?"🔒 Objects locked":"🔓 Objects unlocked"; }
 
-/* ---- rooms ---- */
-$("#autoRooms").addEventListener("click",()=>{ autoDetectRooms(); });
-$("#clearRooms").addEventListener("click",()=>{ S.rooms=[]; save(); renderRooms(); note("Rooms cleared."); });
+/* ---- rooms (manual painter) ----
+   Auto-detection was dropped: real walls are short, gapped segments and a grid flood-fill
+   can't split them reliably. Rooms are painted by hand instead — deterministic, works on
+   any map. A room is {id,board,cells:[[c,r]],label,color}; each cell belongs to one room. */
+const ROOM_COLORS=["#f2a03d","#2bb8b8","#7aa2f7","#c6786e","#78c68c","#c8a06e","#b57edc","#e5686b"];
+$("#addRoom").addEventListener("click",()=>{
+  const b=S.boards.find(x=>x.rules&&x.rules.closeQuarters)||S.boards[S.boards.length-1];
+  if(!b){ note("No lower killzone for rooms."); return; }
+  const room={id:crypto.randomUUID(),board:b.id,cells:[],label:"Room "+(S.rooms.length+1),
+    color:ROOM_COLORS[S.rooms.length%ROOM_COLORS.length]};
+  S.rooms.push(room); S.activeRoom=room.id; save(); renderRooms(); buildRoomList();
+  // arm painting immediately so the new room is ready to fill
+  if(!S.roomPaint){ S.roomPaint=true; S.mode="room"; $$("#toolseg .tool").forEach(x=>x.classList.remove("on")); syncRoomPaintBtn(); }
+  note(`"${room.label}" created — paint cells on the lower board to fill it.`,true);
+});
 $("#roomPaint").addEventListener("click",()=>{ S.roomPaint=!S.roomPaint; syncRoomPaintBtn();
-  if(S.roomPaint){ S.mode="room"; $$("#toolseg .tool").forEach(x=>x.classList.remove("on"));
-    note("Room edit on — tap grid cells on the lower board to toggle them into the active room.",true); }
+  if(S.roomPaint){ if(!S.activeRoom&&S.rooms.length) S.activeRoom=S.rooms[0].id;
+    if(!S.activeRoom){ note("Make a room first, then paint cells into it."); S.roomPaint=false; syncRoomPaintBtn(); return; }
+    S.mode="room"; $$("#toolseg .tool").forEach(x=>x.classList.remove("on"));
+    note("Painting on — tap or drag over grid cells to fill the active room.",true); }
   else { S.mode="move"; $$('#toolseg .tool').forEach(x=>x.classList.toggle('on',x.dataset.mode==='move')); }
 });
 function syncRoomPaintBtn(){ const b=$("#roomPaint"); if(!b) return;
-  b.classList.toggle("on",!!S.roomPaint); b.textContent=`✏︎ Edit rooms: ${S.roomPaint?"on":"off"}`; }
+  b.classList.toggle("on",!!S.roomPaint); b.textContent=`✏︎ Paint cells: ${S.roomPaint?"on":"off"}`; }
 
-// Flood-fill the lower board's square grid into rooms. A wall between two adjacent cells
-// blocks the flood (unless it's an open hatch); cells fully inside a solid object are skipped.
-function autoDetectRooms(){
-  const b=S.boards.find(x=>x.rules&&x.rules.closeQuarters)||S.boards[S.boards.length-1];
-  if(!b){ note("No lower killzone to detect rooms in."); return; }
-  const cols=(b.grid&&b.grid.cols)||6, rows=(b.grid&&b.grid.rows)||4;
-  const cw=b.wpx/cols, ch=b.hpx/rows;
-  const cellCenter=(c,r)=>[b.ox+(c+0.5)*cw, b.oy+(r+0.5)*ch];
-  // collect solid wall segments from placed objects on this board
-  const walls=[];
-  S.insts.filter(i=>i.board===b.id).forEach(i=>{ instGeom(i).edges.forEach(e=>{
-    if(e.los==="solid" && !(e.hatch)) walls.push(e); }); });
-  const blocked=(c1,r1,c2,r2)=>{ // does a wall cross the segment between two cell centres?
-    const [x1,y1]=cellCenter(c1,r1), [x2,y2]=cellCenter(c2,r2);
-    return walls.some(w=>segInt(x1,y1,x2,y2,w.a[0],w.a[1],w.b[0],w.b[1])); };
-  const seen=Array.from({length:cols},()=>Array(rows).fill(false));
-  const rooms=[];
-  for(let c=0;c<cols;c++) for(let r=0;r<rows;r++){
-    if(seen[c][r]) continue;
-    const cells=[], stack=[[c,r]]; seen[c][r]=true;
-    while(stack.length){ const [cc,rr]=stack.pop(); cells.push([cc,rr]);
-      [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dc,dr])=>{ const nc=cc+dc,nr=rr+dr;
-        if(nc<0||nr<0||nc>=cols||nr>=rows||seen[nc][nr]) return;
-        if(blocked(cc,rr,nc,nr)) return;
-        seen[nc][nr]=true; stack.push([nc,nr]); }); }
-    rooms.push({id:crypto.randomUUID(),board:b.id,cells,label:"R"+(rooms.length+1)});
-  }
-  S.rooms=rooms; S.activeRoom=rooms.length?rooms[0].id:null; save(); renderRooms();
-  note(`Detected ${rooms.length} room${rooms.length===1?"":"s"} from the wall layout. Tap cells in Edit mode to correct.`,true);
+function buildRoomList(){
+  const host=$("#roomList"); if(!host) return; host.replaceChildren();
+  if(!S.rooms.length){ host.innerHTML=`<div class="dwhint">No rooms yet. ＋ New room, then paint cells.</div>`; return; }
+  S.rooms.forEach(room=>{
+    const el=document.createElement("div"); el.className="roomrow"+(S.activeRoom===room.id?" active":"");
+    el.innerHTML=`<span class="rswatch" style="background:${room.color}"></span>
+      <input class="rname" value="${esc(room.label)}" maxlength="16">
+      <span class="rcount">${room.cells.length}</span>
+      <button class="mini rsel" title="Set active">${S.activeRoom===room.id?"Active":"Select"}</button>
+      <button class="mini rdel" title="Delete room">✕</button>`;
+    el.querySelector(".rname").addEventListener("input",e=>{ room.label=e.target.value; save(); renderRooms(); });
+    el.querySelector(".rsel").addEventListener("click",()=>{ S.activeRoom=room.id; buildRoomList(); note(`"${room.label}" is active.`,true); });
+    el.querySelector(".rdel").addEventListener("click",()=>{ S.rooms=S.rooms.filter(r=>r!==room);
+      if(S.activeRoom===room.id) S.activeRoom=S.rooms.length?S.rooms[0].id:null;
+      save(); renderRooms(); buildRoomList(); });
+    host.appendChild(el);
+  });
 }
-// segment intersection test
-function segInt(ax,ay,bx,by,cx,cy,dx,dy){
-  const d1=cross(cx,cy,dx,dy,ax,ay), d2=cross(cx,cy,dx,dy,bx,by),
-        d3=cross(ax,ay,bx,by,cx,cy), d4=cross(ax,ay,bx,by,dx,dy);
-  return ((d1>0)!==(d2>0))&&((d3>0)!==(d4>0));
-}
-function cross(ox,oy,px,py,qx,qy){ return (px-ox)*(qy-oy)-(py-oy)*(qx-ox); }
 // map a world point to a lower-board grid cell (or null)
 function cellAt(w){
   const b=S.boards.find(x=>x.rules&&x.rules.closeQuarters)||S.boards[S.boards.length-1];
@@ -1460,15 +1477,16 @@ function cellAt(w){
   const cols=(b.grid&&b.grid.cols)||6, rows=(b.grid&&b.grid.rows)||4;
   return {b,c:Math.floor((w.x-b.ox)/(b.wpx/cols)),r:Math.floor((w.y-b.oy)/(b.hpx/rows))};
 }
-function toggleRoomCell(w){
+// paint a cell into the active room. mode: "toggle" (tap) removes if already in active room;
+// "add" (drag) always assigns to active room. A cell only ever belongs to one room.
+function paintRoomCell(w,mode){
   const cell=cellAt(w); if(!cell) return;
-  let room=S.rooms.find(r=>r.id===S.activeRoom);
-  if(!room){ room={id:crypto.randomUUID(),board:cell.b.id,cells:[],label:"R"+(S.rooms.length+1)};
-    S.rooms.push(room); S.activeRoom=room.id; }
-  // remove the cell from any room, then add to active (so cells are unique)
+  const room=S.rooms.find(r=>r.id===S.activeRoom); if(!room) return;
+  const inActive=room.cells.some(([c,r])=>c===cell.c&&r===cell.r);
+  // remove this cell from every room first
   S.rooms.forEach(r=>{ r.cells=r.cells.filter(([c,rr])=>!(c===cell.c&&rr===cell.r)); });
-  room.cells.push([cell.c,cell.r]);
-  S.rooms=S.rooms.filter(r=>r.cells.length);   // drop emptied rooms
+  if(mode==="toggle" && inActive){ /* leave it cleared */ }
+  else { room.cells.push([cell.c,cell.r]); }
   save(); renderRooms();
 }
 
@@ -1478,6 +1496,50 @@ function placeArmedPrefab(w){
   const inst={id:crypto.randomUUID(),ref:S.armedPrefab,x:w.x,y:w.y,k:0,board:(S.placeBoard||b.id)};
   S.insts.push(inst); S.selInst=inst.id; save(); renderTerr();
   note(`Placed ${S.armedPrefab}. It stays armed — tap again to place another, or tap it in the palette to disarm.`,true);
+}
+
+/* ---- export / import current game (kt-layout.json superset) ----
+   Descent's file is a superset of the Planner's: maps live per-board in boards[], insts
+   carry a killzone tag, and rooms/markers/rulers ride along. Only the prefab defs actually
+   used are embedded, so the file rebuilds without the whole library. The Planner won't read
+   this (it looks for a single top-level map) and that's fine — separate apps by design. */
+function usedPrefabDefs(){ const out={}; S.insts.forEach(i=>{ if(S.prefabs[i.ref]) out[i.ref]=S.prefabs[i.ref]; }); return out; }
+function exportLayout(){
+  const boards=S.boards.map(b=>({id:b.id,map:b.map||null,
+    mapOX:b.mapOX||0,mapOY:b.mapOY||0,mapSX:b.mapSX||1,mapSY:b.mapSY||1}));
+  const data={ v:1, kind:"kt-descent-layout", packId:S.packId,
+    boards, insts:S.insts, markers:S.markers, items:S.items, rooms:S.rooms, rulers:S.rulers,
+    nextPair:S.nextPair, objects:usedPrefabDefs() };
+  const blob=new Blob([JSON.stringify(data)],{type:"application/json"});
+  const url=URL.createObjectURL(blob), a=document.createElement("a");
+  a.href=url; a.download="kt-layout.json"; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+  note("Exported kt-layout.json.",true);
+}
+$("#exportLayout").addEventListener("click",exportLayout);
+$("#importLayout").addEventListener("click",()=>$("#layoutFile").click());
+$("#layoutFile").addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value="";
+  if(!f) return; const rd=new FileReader();
+  rd.onload=()=>{ let d; try{ d=JSON.parse(rd.result); }catch(_){ note("That isn't valid JSON."); return; }
+    importLayout(d); };
+  rd.onerror=()=>note("Couldn't read that file."); rd.readAsText(f); });
+function importLayout(d){
+  if(!d||typeof d!=="object"){ note("Not a layout file."); return; }
+  // switch to the file's pack if specified and known
+  if(d.packId && PACKS[d.packId] && d.packId!==S.packId){ loadPack(d.packId); }
+  // merge any embedded object defs so referenced pieces render
+  if(d.objects) loadPrefabLibrary(d.objects);
+  S.insts=d.insts||[]; S.markers=d.markers||[]; S.items=d.items||[];
+  S.rooms=d.rooms||[]; S.rulers=d.rulers||[]; S.nextPair=d.nextPair||1;
+  S.selected=null; S.selInst=null; S.traverse=null; S.activeRoom=S.rooms[0]?S.rooms[0].id:null;
+  // reapply per-board maps
+  if(Array.isArray(d.boards)){ d.boards.forEach(bd=>{ const b=boardById(bd.id); if(b){
+    b.map=bd.map||null; b.mapOX=bd.mapOX||0; b.mapOY=bd.mapOY||0; b.mapSX=bd.mapSX||1; b.mapSY=bd.mapSY||1; } }); }
+  // warn if the board references objects we still don't have
+  const missing=[...new Set(S.insts.map(i=>i.ref).filter(r=>!S.prefabs[r]))];
+  save(); renderAll(); fitView(); if($("#drawer")) buildDrawer();
+  if(missing.length) note(`Imported — but these objects aren't in the library, so they won't draw: ${missing.join(", ")}. Import kt-objects.json first.`);
+  else note("Game imported.",true);
 }
 function rotateInst(inst){ inst.k=((inst.k||0)+1)%4; save(); renderTerr(); showInstBar(); note(`Rotated ${inst.ref} to ${inst.k*90}°.`,true); }
 
