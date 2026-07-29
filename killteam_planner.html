@@ -184,6 +184,12 @@
   #sheetTab.show{display:flex;}
   #sheetTab::before{content:"";width:3px;height:16px;border-radius:2px;background:var(--orange);flex:0 0 auto;}
   #sheetTabName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .opface{width:38px;height:38px;flex:0 0 auto;padding:0;border-radius:50%;cursor:pointer;
+    border:2px solid var(--line);background:var(--panel2);overflow:hidden;-webkit-appearance:none;
+    display:grid;place-items:center;}
+  .opface:active{transform:translateY(1px);}
+  #shFace{width:100%;height:100%;border-radius:50%;background-size:cover;background-position:center;
+    display:grid;place-items:center;font:700 13px var(--mono);color:var(--ink);}
   #sheet .head{display:flex;flex-direction:column;gap:8px;}
   #sheet .headtop{display:flex;align-items:baseline;gap:8px;min-width:0;}
   #sheet .headacts{display:flex;gap:8px;flex-wrap:wrap;}
@@ -632,7 +638,7 @@
           <span class="tag" id="shTag">R1</span>
           <span class="type" id="shType">Operative</span>
           <span class="spacer"></span>
-          <button class="iconbtn" id="shMin" title="Minimise"><svg viewBox="0 0 20 20"><path d="M5 10h10"/></svg></button>
+          <button class="opface" id="shMin" title="Minimise"><span id="shFace"></span></button>
         </div>
         <div class="headacts">
           <button class="chip" id="shWeapons" style="display:none">Weapons</button>
@@ -1651,6 +1657,13 @@ function select(id){
     t.type==="objective"?"Objective 40mm":t.type==="tunnel"?"Tunnel node":t.type==="smoke"?"Smoke 20mm":((BARR[t.subtype]||{}).name+" barricade");
   // Coordinates apply to anything on the board — objectives and markers need placing just
   // as precisely as operatives do.
+  // Portrait in the header — the same photo used on the board marker, or a coloured
+  // placeholder with the label until a photo is added to the roster.
+  const face=$("#shFace"), photo=rm&&rm.photo;
+  if(photo){ face.style.backgroundImage="url('"+photo+"')"; face.textContent=""; }
+  else { face.style.backgroundImage="none";
+    face.textContent=(t.label||"?").slice(0,3);
+    face.style.background=TEAM[t.team]?TEAM[t.team].fill:"var(--panel2)"; }
   $("#posX").value=(t.x/PPI).toFixed(1); $("#posY").value=(t.y/PPI).toFixed(1);
   const isBase=t.type==="base";
   $("#shBase").style.display=isBase?"block":"none";
