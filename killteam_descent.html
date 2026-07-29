@@ -77,6 +77,14 @@
     font-family:var(--mono);font-size:11px;color:var(--muted);pointer-events:none;
     background:rgba(13,16,19,.72);border:1px solid var(--line);border-radius:8px;padding:6px 9px;line-height:1.5;
     backdrop-filter:blur(6px);max-width:60vw;}
+  /* live move distance, top-right so a thumb never covers it (Planner pattern) */
+  #moveReadout{position:absolute;right:10px;top:calc(10px + env(safe-area-inset-top));z-index:15;
+    font-family:var(--mono);pointer-events:none;background:rgba(13,16,19,.86);
+    border:1px solid var(--line);border-radius:10px;padding:8px 12px;backdrop-filter:blur(6px);
+    box-shadow:0 4px 16px rgba(0,0,0,.4);text-align:right;line-height:1.25;}
+  #moveReadout.hidden{display:none;}
+  #moveReadout .mrv{font-size:22px;font-weight:700;}
+  #moveReadout .mrl{font-size:10px;color:var(--dim);letter-spacing:.04em;text-transform:uppercase;}
   #hud b{color:var(--ink);font-weight:600;}
   #hud .k{color:var(--dim);}
 
@@ -285,7 +293,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand">KT&nbsp;<b>Descent</b> <span class="buildtag">v202</span></span>
+      <span class="brand">KT&nbsp;<b>Descent</b> <span class="buildtag">v203</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -320,6 +328,7 @@
 
   <div id="stage">
     <svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="moveReadout" class="hidden"></div>
     <div id="hud"></div>
     <!-- Sticky note: blocked/invalid actions show here as a clickable message rather than
          a silent no-op or a greyed-out control (Daniel's UI preference). Tap to dismiss. -->
@@ -1102,24 +1111,31 @@ function renderOverlay(){
       {x:mx,y:my-6,"text-anchor":"middle","font-size":12,"font-family":"var(--mono)",
        fill:"var(--orange)","paint-order":"stroke",stroke:"var(--bg)","stroke-width":3}));
   }
-  // move trail: while dragging a model, show a line from where it started and the distance
-  // travelled, coloured green within its move budget / red beyond it.
+  // move trail: while dragging a model, show a line from where it started. The distance
+  // itself is shown in the top-right readout (a thumb never covers it). Distance is compared
+  // against the operative's static Move stat as a reference — we do NOT deplete a budget,
+  // since there's no active turning-point counter to reset it.
   if(S.moveTrail){ const mt=S.moveTrail;
-    const dpx=Math.hypot(mt.x1-mt.x0,mt.y1-mt.y0), din=dpx/PPI;
-    const budget = mt.t && mt.t.moveLeft!=null ? mt.t.moveLeft : (mt.t && mt.t.move!=null ? mt.t.move : null);
-    const over = budget!=null && din>budget+1e-6;
+    const din=Math.hypot(mt.x1-mt.x0,mt.y1-mt.y0)/PPI;
+    const ref = mt.t && mt.t.move!=null ? mt.t.move : null;
+    const over = ref!=null && din>ref+1e-6;
     const col = over ? "var(--inj)" : "#4fd18b";
     gOvl.appendChild(attr(mk("line"),{x1:mt.x0,y1:mt.y0,x2:mt.x1,y2:mt.y1,
       stroke:col,"stroke-width":1.6,"stroke-dasharray":"5 4","vector-effect":"non-scaling-stroke"}));
     gOvl.appendChild(attr(mk("circle"),{cx:mt.x0,cy:mt.y0,r:3,fill:"var(--bg)",stroke:col,
       "stroke-width":1.4,"vector-effect":"non-scaling-stroke"}));
-    const mx=(mt.x0+mt.x1)/2, my=(mt.y0+mt.y1)/2;
-    const txt = din.toFixed(1)+'"' + (budget!=null?` / ${budget}"`:"");
-    gOvl.appendChild(attr(Object.assign(mk("text"),{textContent:txt}),
-      {x:mx,y:my-7,"text-anchor":"middle","font-size":12,"font-family":"var(--mono)",
-       fill:col,"font-weight":700,"paint-order":"stroke",stroke:"var(--bg)","stroke-width":3.5}));
+    showMoveReadout(din, ref, over);
   }
 }
+// Top-right live readout during a drag. Tenths of an inch, never more.
+function showMoveReadout(din, ref, over){
+  const el=$("#moveReadout"); if(!el) return;
+  el.classList.remove("hidden");
+  const val = din.toFixed(1)+'"';
+  const sub = ref!=null ? `move ${(+ref).toFixed(1).replace(/\.0$/,"")}"` : "distance";
+  el.innerHTML = `<div class="mrv" style="color:${over?"var(--inj)":"#4fd18b"}">${val}</div><div class="mrl">${sub}</div>`;
+}
+function hideMoveReadout(){ const el=$("#moveReadout"); if(el) el.classList.add("hidden"); }
 
 /* ------------------------------------------------------------------ HUD */
 function hud(msg){
@@ -1262,7 +1278,7 @@ svg.addEventListener("pointerdown",e=>{
 function onMove(e){
   if(!pointers.has(e.pointerId)) return;
   pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  if(pointers.size>=2){ doPinch(); return; }
+  if(pointers.size>=2){ if(S.moveTrail){ S.moveTrail=null; hideMoveReadout(); renderOverlay(); } doPinch(); return; }
   if(!drag) return;
   const w=clientToWorld(e.clientX,e.clientY); S._lastWorld=[w.x,w.y];
   if(drag.type==="pan"){ panClient(e.clientX-drag.sx,e.clientY-drag.sy); drag.sx=e.clientX; drag.sy=e.clientY; }
@@ -1282,13 +1298,11 @@ function endP(e){
   if(drag&&drag.type==="item"&&drag.moved){
     // re-tag the item to whichever board it now sits in; keep it if dropped in a gutter
     const b=boardAt(drag.t.x,drag.t.y); if(b) drag.t.board=b.id;
-    // record the move for undo, and deduct the distance travelled from the move budget
     const din=Math.hypot(drag.t.x-drag.x0,drag.t.y-drag.y0)/PPI;
-    pushUndo({kind:"move",id:drag.t.id,x:drag.x0,y:drag.y0,board:drag.board0,moveLeft:drag.ml0});
-    if(drag.t.moveLeft!=null) drag.t.moveLeft=Math.max(0, drag.t.moveLeft - din);
-    S.moveTrail=null; save(); renderOverlay(); if(sheetOp===drag.t&&!sheetMin) bindOpSheet();
+    pushUndo({kind:"move",id:drag.t.id,x:drag.x0,y:drag.y0,board:drag.board0});
+    S.moveTrail=null; hideMoveReadout(); save(); renderOverlay();
     hud(`Moved ${din.toFixed(1)}"`);
-  } else if(drag&&drag.type==="item"){ S.moveTrail=null; renderOverlay(); }
+  } else if(drag&&drag.type==="item"){ S.moveTrail=null; hideMoveReadout(); renderOverlay(); }
   if(drag&&drag.type==="marker"&&drag.moved){
     pushUndo({kind:"marker",id:drag.m.id,x:drag.x0,y:drag.y0,board:drag.board0});
     // a marker follows its plate; snap its board tag to the nearest killzone
@@ -1398,7 +1412,7 @@ function bindOpSheet(){
   const baseKey = op.base || String(op.baseMm||32);
   $$("#opBase .mini").forEach(b=>b.classList.toggle("on",b.dataset.v===baseKey));
   $("#opMove").textContent=(op.move??6)+"″";
-  $("#opMoveLeft").textContent = op.moveLeft!=null ? `${op.moveLeft.toFixed(1)}″ left` : "";
+  $("#opMoveLeft").textContent = "";
   $("#opW").textContent = (op.wounds!=null) ? (op.woundsMax!=null?`${op.wounds}/${op.woundsMax}`:op.wounds) : "—";
   $$("#opKw .mini").forEach(b=>{
     const on = b.dataset.kw==="guard" ? !!op.guard : (op.keywords||[]).includes(b.dataset.kw);
@@ -1579,7 +1593,7 @@ function loadPack(id){
   $("#packTag").textContent = S.pack.name + " · " + S.pack.missions[0];
   // a pack switch changes the roster/boards, so close a stale open drawer
   if($("#drawer")) $("#drawer").classList.add("hidden");
-  syncAspect(); renderAll(); fitView(); updateUndoBtn(); hud("Pack loaded");
+  syncAspect(); renderAll(); fitView(); updateUndoBtn(); hideMoveReadout(); hud("Pack loaded");
   save();
 }
 function save(){
