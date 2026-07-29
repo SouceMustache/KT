@@ -347,7 +347,7 @@
           <button class="mini" id="exportLayout">Export game…</button>
           <button class="mini" id="importLayout">Import game…</button>
         </div>
-        <div class="dwhint">Export the current board — maps, objects, markers, operatives and rooms — as a kt-layout.json you can back up, share, or send for analysis. Import restores it. Full library tools (layouts, objects, rosters) come later.</div>
+        <div class="dwhint">Export the current board — maps, objects, markers, operatives and rooms — as a kt-descent-layout.json you can back up, share, or send for analysis. Import restores it (and also reads a Planner kt-layout.json). Full library tools (layouts, objects, rosters) come later.</div>
       </div>
     </div>
   </div>
@@ -1512,9 +1512,9 @@ function exportLayout(){
     nextPair:S.nextPair, objects:usedPrefabDefs() };
   const blob=new Blob([JSON.stringify(data)],{type:"application/json"});
   const url=URL.createObjectURL(blob), a=document.createElement("a");
-  a.href=url; a.download="kt-layout.json"; document.body.appendChild(a); a.click(); a.remove();
+  a.href=url; a.download="kt-descent-layout.json"; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1500);
-  note("Exported kt-layout.json.",true);
+  note("Exported kt-descent-layout.json.",true);
 }
 $("#exportLayout").addEventListener("click",exportLayout);
 $("#importLayout").addEventListener("click",()=>$("#layoutFile").click());
@@ -1525,6 +1525,10 @@ $("#layoutFile").addEventListener("change",e=>{ const f=e.target.files[0]; e.tar
   rd.onerror=()=>note("Couldn't read that file."); rd.readAsText(f); });
 function importLayout(d){
   if(!d||typeof d!=="object"){ note("Not a layout file."); return; }
+  // Planner-format file? It has a top-level `map` string and `layout.terr.insts`, but no
+  // Descent `boards[]`. Fold it into the lower killzone so a Planner board can be pulled in.
+  const isPlanner = !Array.isArray(d.boards) && (typeof d.map==="string" || (d.layout&&d.layout.terr));
+  if(isPlanner){ importPlannerLayout(d); return; }
   // switch to the file's pack if specified and known
   if(d.packId && PACKS[d.packId] && d.packId!==S.packId){ loadPack(d.packId); }
   // merge any embedded object defs so referenced pieces render
@@ -1540,6 +1544,23 @@ function importLayout(d){
   save(); renderAll(); fitView(); if($("#drawer")) buildDrawer();
   if(missing.length) note(`Imported — but these objects aren't in the library, so they won't draw: ${missing.join(", ")}. Import kt-objects.json first.`);
   else note("Game imported.",true);
+}
+// Fold a Planner single-board export onto the Descent lower killzone: its map, its placed
+// objects (tagged to lower), embedded prefab defs. Markers/rooms don't exist in Planner.
+function importPlannerLayout(d){
+  const b=S.boards.find(x=>x.rules&&x.rules.closeQuarters)||S.boards[S.boards.length-1];
+  if(!b){ note("No board to import onto."); return; }
+  if(d.objects) loadPrefabLibrary(d.objects);
+  const lay=d.layout||d;
+  const insts=((lay.terr&&lay.terr.insts)||[]).map(i=>({id:crypto.randomUUID(),
+    ref:i.ref,x:i.x,y:i.y,k:i.k||0,board:b.id}));
+  S.insts=insts;
+  if(typeof d.map==="string"){ b.map=d.map; b.mapOX=lay.mapOX||0; b.mapOY=lay.mapOY||0;
+    b.mapSX=lay.mapSX||1; b.mapSY=lay.mapSY||1; }
+  S.selInst=null; S.selected=null;
+  const missing=[...new Set(insts.map(i=>i.ref).filter(r=>!S.prefabs[r]))];
+  save(); renderAll(); fitView(); if($("#drawer")) buildDrawer();
+  note(`Imported a Planner board onto the ${b.id} killzone${missing.length?` — missing objects: ${missing.join(", ")}`:"."}`, !missing.length);
 }
 function rotateInst(inst){ inst.k=((inst.k||0)+1)%4; save(); renderTerr(); showInstBar(); note(`Rotated ${inst.ref} to ${inst.k*90}°.`,true); }
 
