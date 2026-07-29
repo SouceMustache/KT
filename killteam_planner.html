@@ -184,12 +184,15 @@
   #sheetTab.show{display:flex;}
   #sheetTab::before{content:"";width:3px;height:16px;border-radius:2px;background:var(--orange);flex:0 0 auto;}
   #sheetTabName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .opface{width:38px;height:38px;flex:0 0 auto;padding:0;border-radius:50%;cursor:pointer;
-    border:2px solid var(--line);background:var(--panel2);overflow:hidden;-webkit-appearance:none;
-    display:grid;place-items:center;}
+  .opface{position:absolute;top:-26px;right:-10px;z-index:2;
+    width:76px;height:76px;flex:0 0 auto;padding:0;border-radius:50%;cursor:pointer;
+    border:3px solid var(--orange);background:var(--panel2);overflow:hidden;-webkit-appearance:none;
+    display:grid;place-items:center;box-shadow:0 4px 14px rgba(0,0,0,.5);}
   .opface:active{transform:translateY(1px);}
   #shFace{width:100%;height:100%;border-radius:50%;background-size:cover;background-position:center;
-    display:grid;place-items:center;font:700 13px var(--mono);color:var(--ink);}
+    display:grid;place-items:center;font:700 22px var(--mono);color:var(--ink);}
+  #sheet{overflow:visible;}
+  #sheet .headtop{position:relative;padding-right:74px;}
   #sheet .head{display:flex;flex-direction:column;gap:8px;}
   #sheet .headtop{display:flex;align-items:baseline;gap:8px;min-width:0;}
   #sheet .headacts{display:flex;gap:8px;flex-wrap:wrap;}
