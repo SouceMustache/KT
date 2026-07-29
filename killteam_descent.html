@@ -126,6 +126,16 @@
   #note #noteX{flex:0 0 auto;border:0;background:transparent;color:var(--muted);
     font-size:15px;line-height:1;padding:2px 4px;cursor:pointer;}
 
+  /* selected-object action bar, top-centre like the Planner */
+  #instBar{position:absolute;left:50%;top:calc(8px + env(safe-area-inset-top));transform:translateX(-50%);
+    z-index:22;display:flex;align-items:center;gap:8px;
+    background:rgba(30,38,47,.96);border:1px solid var(--line);border-radius:10px;
+    padding:7px 10px;box-shadow:0 6px 20px rgba(0,0,0,.4);backdrop-filter:blur(8px);max-width:calc(100vw - 24px);}
+  #instBar #instBarName{font-size:12px;color:var(--orange);font-weight:600;
+    max-width:36vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #instBar .mini{flex:0 0 auto;}
+  #instBar #instDel{border-color:rgba(229,72,77,.4);color:var(--red);}
+
   /* traverse mode: a hint chip in the toolbar */
   .modechip{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--orange);
     border:1px solid var(--orange);border-radius:999px;padding:4px 9px;background:rgba(242,160,61,.1);}
@@ -177,12 +187,20 @@
   .mapslot .msname{font-size:12.5px;font-weight:600;}
   .mapslot .msstate{font-family:var(--mono);font-size:10px;color:var(--dim);margin-left:auto;}
   .mapslot .msrow{display:flex;gap:7px;flex-wrap:wrap;}
-  .palette{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;max-height:210px;overflow:auto;}
-  .palette .pf{border:1px solid var(--line);border-radius:8px;background:var(--panel2);
-    padding:8px;font-size:11.5px;cursor:pointer;display:flex;flex-direction:column;gap:3px;}
-  .palette .pf.on{border-color:var(--orange);background:rgba(242,160,61,.12);}
-  .palette .pf .pfn{font-weight:600;line-height:1.2;}
-  .palette .pf .pfd{font-family:var(--mono);font-size:9.5px;color:var(--dim);}
+  .palette{max-height:250px;overflow:auto;display:flex;flex-direction:column;gap:0;}
+  .palette .biome{width:100%;display:flex;align-items:center;gap:8px;text-align:left;
+    border:0;border-top:1px solid var(--line);background:transparent;color:var(--ink);
+    font:inherit;font-size:12.5px;padding:9px 4px;cursor:pointer;}
+  .palette .biome:first-child{border-top:0;}
+  .palette .biome .bcar{color:var(--muted);width:12px;flex:0 0 auto;}
+  .palette .biome .bcount{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--dim);
+    border:1px solid var(--line);border-radius:999px;padding:1px 7px;}
+  .palette .pfrow{display:flex;align-items:center;gap:8px;padding:7px 4px 7px 22px;border-top:1px solid rgba(42,51,61,.5);}
+  .palette .pfrow .pfname{flex:1 1 auto;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .palette .pfrow .pfmeta{font-family:var(--mono);font-size:9.5px;color:var(--dim);flex:0 0 auto;}
+  .palette .pfrow .mini{padding:5px 9px;font-size:11px;flex:0 0 auto;}
+  .palette .pfrow.armed{background:rgba(242,160,61,.1);}
+  .palette .pfrow.armed .pfname{color:var(--orange);font-weight:600;}
   #placeBoardPick .mini{padding:5px 9px;font-size:11px;}
   #placeBoardPick .mini.on{border-color:var(--orange);color:var(--orange);background:rgba(242,160,61,.12);}
 </style>
@@ -230,6 +248,14 @@
     <!-- Sticky note: blocked/invalid actions show here as a clickable message rather than
          a silent no-op or a greyed-out control (Daniel's UI preference). Tap to dismiss. -->
     <div id="note" class="hidden"><span id="noteText"></span><button id="noteX" aria-label="Dismiss">✕</button></div>
+
+    <!-- Action bar for a selected placed object (mirrors the Planner's instBar). -->
+    <div id="instBar" class="hidden">
+      <span id="instBarName">Object</span>
+      <button class="mini" id="instRot">↻ 90°</button>
+      <button class="mini" id="instDel">Delete</button>
+      <button class="mini" id="instDone">Done</button>
+    </div>
 
     <!-- Lightweight operative editor. A working stand-in for the full collapsible datacard
          (that arrives with packs in Phase 3); enough to place, retag and delete ops and to
@@ -937,14 +963,14 @@ svg.addEventListener("pointerdown",e=>{
     if(b){ placeArmedPrefab(w); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
   }
 
-  // Unlocked objects: select/drag with priority just under operatives. In Move mode we
-  // still let operatives win selection (checked later); here we grab an object only if
-  // no operative is under the point.
-  if(!S.lockObj && (S.mode==="move")){
+  // Objects: tapping one always selects it and shows the action bar (so you can delete it
+  // without unlocking). Dragging to move only happens when unlocked and no op is on top.
+  if(S.mode==="move"){
     const io=instAt(w);
     if(io && !itemAt(w)){
-      S.selInst=io.id; renderTerr();
-      drag={type:"inst",inst:io,ox:w.x-io.x,oy:w.y-io.y,moved:false,downT:Date.now()};
+      S.selInst=io.id; renderTerr(); showInstBar();
+      if(!S.lockObj){ drag={type:"inst",inst:io,ox:w.x-io.x,oy:w.y-io.y,moved:false}; }
+      else { drag={type:"pan",sx:e.clientX,sy:e.clientY}; }   // locked: tap selects, no drag
       return;
     }
   }
@@ -984,6 +1010,7 @@ svg.addEventListener("pointerdown",e=>{
   // mode above checks markers first. Unlocked markers on open ground stay draggable.
   const t=itemAt(w);
   if(t){ S.selected=t.id; drag={type:"item",t,ox:w.x-t.x,oy:w.y-t.y,moved:false};
+    S.selInst=null; hideInstBar(); renderTerr();
     renderOverlay(); updateTraverseChip(); openOpSheet(t); hud("Selected"); return; }
   const m=markerAt(w);
   if(m && S.mode==="move"){
@@ -991,7 +1018,7 @@ svg.addEventListener("pointerdown",e=>{
     drag={type:"marker",m,ox:w.x-m.x,oy:w.y-m.y,moved:false}; return;
   }
 
-  S.selected=null; S.traverse=null; closeOpSheet(); updateTraverseChip(); renderOverlay();
+  S.selected=null; S.traverse=null; S.selInst=null; hideInstBar(); closeOpSheet(); updateTraverseChip(); renderOverlay(); renderTerr();
   drag={type:"pan",sx:e.clientX,sy:e.clientY,vb:{...S.vb}};
 });
 function onMove(e){
@@ -1024,8 +1051,9 @@ function endP(e){
   }
   if(drag&&drag.type==="inst"){
     if(drag.moved){ const b=nearestBoard(drag.inst.x,drag.inst.y); if(b) drag.inst.board=b.id;
-      save(); hud("Object moved"); }
-    else { rotateInst(drag.inst); }   // a tap (no drag) rotates 90°
+      save(); showInstBar(); hud("Object moved"); }
+    // a tap without drag just leaves it selected with the action bar showing (rotate is a
+    // bar button now, so a stray tap no longer spins the piece)
   }
   if(drag&&drag.type==="line"){
     const m=S.measure; S.measure=null;
@@ -1242,7 +1270,7 @@ if(window.ResizeObserver) new ResizeObserver(()=>{ syncAspect(); applyVB(); }).o
 function resetPointers(){ pointers.clear(); drag=null; lastPinch=null; }
 document.addEventListener("visibilitychange",resetPointers);
 window.addEventListener("blur",resetPointers);
-document.addEventListener("touchmove",e=>{ if(!e.target.closest("#picker,#note,#opSheet,#drawer")) e.preventDefault(); },{passive:false});
+document.addEventListener("touchmove",e=>{ if(!e.target.closest("#picker,#note,#opSheet,#drawer,#instBar")) e.preventDefault(); },{passive:false});
 
 /* ------------------------------------------------------------------ dev seed
    A couple of placeholder tokens so the two-board hull is visibly alive: one player
@@ -1328,23 +1356,52 @@ $("#objFile").addEventListener("change",e=>{ const f=e.target.files[0]; e.target
     else note("No objects found in that file."); }
     catch(_){ note("That isn't a valid objects file."); } };
   rd.readAsText(f); });
+// Group object names by biome, same heuristic as the Planner, so a big library is
+// navigable instead of a flat two-column scroll.
+const OBJ_BIOMES=[
+  {key:"volkus",     label:"Volkus",       match:/volkus|stronghold|ruin|rubble/i},
+  {key:"gallowdark", label:"Gallowdark",   match:/gallow|hatch|bulkhead|pillar/i},
+  {key:"tombworld",  label:"Tomb World",   match:/tomb|sarcoph|debris|teleport/i},
+  {key:"bhetadecima",label:"Bheta-Decima", match:/bheta|decima|gantry|condenser/i},
+  {key:"octarius",   label:"Octarius",     match:/octarius|barricade|scrap|walkway|oil pump/i},
+];
+function objBiome(n){ const b=OBJ_BIOMES.find(x=>x.match.test(n)); return b?b.key:"other"; }
+function objBiomeLabel(k){ const b=OBJ_BIOMES.find(x=>x.key===k); return b?b.label:"Other"; }
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
 function buildPalette(){
-  const host=$("#palette"); host.replaceChildren();
-  const names=Object.keys(S.prefabs).sort();
+  const host=$("#palette"); const names=Object.keys(S.prefabs).sort();
   $("#libCount").textContent = names.length ? `${names.length} loaded` : "none loaded";
-  for(const name of names){ const pf=S.prefabs[name];
-    const el=document.createElement("div"); el.className="pf"+(S.armedPrefab===name?" on":"");
-    el.innerHTML=`<span class="pfn">${name}</span><span class="pfd">${pf.w}×${pf.h}"</span>`;
-    el.addEventListener("click",()=>{ S.armedPrefab = S.armedPrefab===name?null:name;
-      buildPalette();
-      note(S.armedPrefab?`${name} armed — tap the ${S.placeBoard} board to place it.`:"Disarmed.",true); });
-    host.appendChild(el); }
-  if(!names.length){ host.innerHTML=`<div class="dwhint" style="grid-column:1/-1">Import kt-objects.json (or a layout with embedded objects) to populate the library. Build new pieces in the Planner.</div>`; }
+  if(!names.length){ host.innerHTML=`<div class="dwhint">Import kt-objects.json (or a layout with embedded objects) to populate the library. Build new pieces in the Planner.</div>`; return; }
+  const groups=new Map();
+  names.forEach(n=>{ const k=objBiome(n); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(n); });
+  const order=OBJ_BIOMES.map(b=>b.key).concat("other").filter(k=>groups.has(k));
+  S.pfOpen=S.pfOpen||{};
+  host.innerHTML=order.map(k=>{
+    const list=groups.get(k), open=!!S.pfOpen[k];
+    const head=`<button type="button" class="biome${open?" open":""}" data-pfgrp="${k}">
+      <span class="bcar">${open?"▾":"▸"}</span><span>${esc(objBiomeLabel(k))}</span>
+      <span class="bcount">${list.length}</span></button>`;
+    if(!open) return head;
+    return head+list.map(n=>{ const p=S.prefabs[n], armed=S.armedPrefab===n;
+      return `<div class="pfrow${armed?" armed":""}">
+        <span class="pfname" title="${esc(n)}">${esc(n)}</span>
+        <span class="pfmeta">${(p.edges||[]).length}e/${(p.zones||[]).length}z</span>
+        <button class="mini" data-pfplace="${esc(n)}">${armed?"Armed":"Place"}</button></div>`; }).join("");
+  }).join("");
 }
+$("#palette").addEventListener("click",e=>{
+  const grp=e.target.closest("[data-pfgrp]");
+  if(grp){ const k=grp.dataset.pfgrp; S.pfOpen[k]=!S.pfOpen[k]; buildPalette(); return; }
+  const pl=e.target.closest("[data-pfplace]");
+  if(pl){ const n=pl.dataset.pfplace; S.armedPrefab = S.armedPrefab===n?null:n; buildPalette();
+    note(S.armedPrefab?`${n} armed — tap the ${S.placeBoard} board to place it.`:"Disarmed.",true); }
+});
 
 /* ---- lock objects ---- */
 $("#lockObjToggle").addEventListener("click",()=>{ S.lockObj=!S.lockObj; syncLockObjBtn(); save();
-  note(S.lockObj?"Objects locked.":"Objects unlocked — drag to move, tap to rotate.",true); });
+  if(S.selInst) showInstBar();
+  note(S.lockObj?"Objects locked.":"Objects unlocked — drag to move, use ↻ to rotate.",true); });
 function syncLockObjBtn(){ const b=$("#lockObjToggle");
   b.classList.toggle("on",S.lockObj); b.textContent=S.lockObj?"🔒 Objects locked":"🔓 Objects unlocked"; }
 
@@ -1422,7 +1479,22 @@ function placeArmedPrefab(w){
   S.insts.push(inst); S.selInst=inst.id; save(); renderTerr();
   note(`Placed ${S.armedPrefab}. It stays armed — tap again to place another, or tap it in the palette to disarm.`,true);
 }
-function rotateInst(inst){ inst.k=((inst.k||0)+1)%4; save(); renderTerr(); note(`Rotated ${inst.ref} to ${inst.k*90}°.`,true); }
+function rotateInst(inst){ inst.k=((inst.k||0)+1)%4; save(); renderTerr(); showInstBar(); note(`Rotated ${inst.ref} to ${inst.k*90}°.`,true); }
+
+/* ---- selected-object action bar ---- */
+function showInstBar(){ const inst=S.insts.find(i=>i.id===S.selInst);
+  if(!inst){ hideInstBar(); return; }
+  $("#instBarName").textContent = inst.ref+" · "+((inst.k||0)*90)+"°"+(S.lockObj?" (locked)":"");
+  $("#instBar").classList.remove("hidden"); }
+function hideInstBar(){ $("#instBar").classList.add("hidden"); }
+$("#instRot").addEventListener("click",()=>{ const inst=S.insts.find(i=>i.id===S.selInst);
+  if(!inst) return;
+  if(S.lockObj){ note("Objects are locked. Unlock in the Terrain drawer to rotate."); return; }
+  rotateInst(inst); });
+$("#instDel").addEventListener("click",()=>{ const inst=S.insts.find(i=>i.id===S.selInst);
+  if(!inst) return;
+  S.insts=S.insts.filter(i=>i!==inst); S.selInst=null; hideInstBar(); save(); renderTerr(); hud("Object deleted"); });
+$("#instDone").addEventListener("click",()=>{ S.selInst=null; hideInstBar(); renderTerr(); });
 
 /* ------------------------------------------------------------------ service worker */
 if("serviceWorker" in navigator){
