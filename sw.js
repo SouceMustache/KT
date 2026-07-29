@@ -1,8 +1,9 @@
-const CACHE_NAME = 'killteam-v191';
+const CACHE_NAME = 'killteam-v200';
 const ASSETS = [
   './',
   './killteam_viewer.html',
   './killteam_planner.html',
+  './killteam_descent.html',
   './maps-volkus.js',
   './maps-gallowdark.js',
   './maps-tombworld.js',
@@ -20,6 +21,12 @@ const ASSETS = [
   './planner-icon-512.png',
   './planner-favicon-32.png',
   './planner-favicon-16.png',
+  './manifest-descent.json',
+  './descent-apple-touch-icon.png',
+  './descent-icon-192.png',
+  './descent-icon-512.png',
+  './descent-favicon-32.png',
+  './descent-favicon-16.png',
 ];
 
 self.addEventListener('install', function(e) {
@@ -65,7 +72,8 @@ self.addEventListener('fetch', function(e) {
         return res;
       }).catch(function(){
         return caches.match(req).then(function(hit){
-          return hit || caches.match('./killteam_planner.html')
+          return hit || caches.match('./killteam_descent.html')
+                     || caches.match('./killteam_planner.html')
                      || caches.match('./killteam_viewer.html');
         });
       })
