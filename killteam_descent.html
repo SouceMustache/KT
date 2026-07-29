@@ -158,6 +158,20 @@
     font:inherit;font-size:11px;padding:5px 11px;border-radius:8px 8px 0 0;cursor:pointer;}
   #opTabs .tabb.on{color:var(--orange);border-color:var(--orange);border-bottom-color:transparent;background:rgba(242,160,61,.1);}
   #opBody{flex:1 1 auto;overflow:auto;-webkit-overflow-scrolling:touch;padding:10px 12px 14px;min-height:0;}
+  #opSheet.min{display:none;}
+  /* left-edge tab to reopen a minimised card */
+  #opRailTab{position:absolute;left:0;bottom:calc(80px + env(safe-area-inset-bottom));z-index:16;
+    display:none;align-items:center;gap:7px;padding:9px 12px 9px 9px;
+    border:1px solid var(--line);border-left:0;border-radius:0 12px 12px 0;
+    background:rgba(22,28,35,.96);color:var(--ink);font:inherit;font-size:12px;
+    max-width:52vw;cursor:pointer;-webkit-appearance:none;box-shadow:0 4px 16px rgba(0,0,0,.45);backdrop-filter:blur(6px);}
+  #opRailTab.show{display:flex;}
+  #opRailTab::before{content:"";width:3px;height:16px;border-radius:2px;background:var(--orange);flex:0 0 auto;}
+  #opRailName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono);}
+  /* wounds stepper */
+  .dc-wounds .wstep{display:flex;align-items:center;gap:6px;}
+  .dc-wounds .wstep .mini{padding:5px 10px;font-size:15px;line-height:1;min-width:34px;}
+  .dc-wounds .wval{font-family:var(--mono);font-size:16px;font-weight:700;min-width:30px;text-align:center;}
   #opLabel{width:84px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;
     color:var(--ink);font:inherit;font-family:var(--mono);font-size:14px;padding:7px 9px;text-transform:uppercase;}
   .oshead .spacer{flex:1 1 auto;}
@@ -323,6 +337,7 @@
       <div class="oshead">
         <input id="opLabel" maxlength="6" placeholder="OP" autocomplete="off" spellcheck="false">
         <span class="spacer"></span>
+        <button class="iconbtn" id="opMin" title="Minimise to side"><svg viewBox="0 0 20 20"><path d="M4 10h9M4 6h12M4 14h6"/></svg></button>
         <button class="mini" id="opDelete">Delete</button>
         <button class="iconbtn" id="opClose" aria-label="Close"><svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg></button>
       </div>
@@ -360,6 +375,14 @@
             <span class="oshint" id="opMoveLeft"></span>
           </div>
         </div>
+        <div class="osrow"><label>Wounds</label>
+          <div class="pick">
+            <button class="mini" id="owDown">−</button>
+            <span id="opW" class="osval">—</span>
+            <button class="mini" id="owUp">＋</button>
+            <button class="mini" id="owReset" title="Set current = max">reset</button>
+          </div>
+        </div>
         <div class="osrow"><label>Keywords</label>
           <div class="pick" id="opKw">
             <button class="mini" data-kw="fly">FLY</button>
@@ -370,6 +393,9 @@
         </div><!-- /opEdit -->
       </div><!-- /opBody -->
     </div>
+
+    <!-- left-edge tab that reopens a minimised card (Planner pattern) -->
+    <button id="opRailTab"><span id="opRailName">Op</span></button>
 
   <!-- Terrain drawer: per-killzone map upload, object-library import + palette, rooms.
        No drawing editor — objects are built in the Planner and imported here. -->
@@ -1291,9 +1317,23 @@ function npoShort(name){ // short marker label
 }
 
 /* ------------------------------------------------------------------ op editor sheet */
-let sheetOp=null;
-function openOpSheet(op){ if(!op||op.kind!=="op"){ closeOpSheet(); return; } sheetOp=op; bindOpSheet(); $("#opSheet").classList.remove("hidden"); }
-function closeOpSheet(){ sheetOp=null; $("#opSheet").classList.add("hidden"); }
+let sheetOp=null, sheetMin=false;
+function openOpSheet(op){ if(!op||op.kind!=="op"){ closeOpSheet(); return; } sheetOp=op;
+  // If the card is minimised, keep it minimised — just update the rail tab. This lets you
+  // click model after model (to move them) without the big card popping open each time.
+  if(sheetMin){ updateRailTab(); return; }
+  bindOpSheet(); $("#opSheet").classList.remove("hidden","min"); $("#opRailTab").classList.remove("show");
+}
+function closeOpSheet(){ sheetOp=null; sheetMin=false;
+  $("#opSheet").classList.add("hidden"); $("#opSheet").classList.remove("min"); $("#opRailTab").classList.remove("show"); }
+function minimizeOpSheet(){ if(!sheetOp) return; sheetMin=true;
+  $("#opSheet").classList.add("min"); updateRailTab(); $("#opRailTab").classList.add("show"); }
+function restoreOpSheet(){ if(!sheetOp){ $("#opRailTab").classList.remove("show"); return; }
+  sheetMin=false; $("#opSheet").classList.remove("min","hidden"); $("#opRailTab").classList.remove("show"); bindOpSheet(); }
+function updateRailTab(){ const op=sheetOp;
+  $("#opRailName").textContent = op ? (op.npoKey&&NPO_LIB[op.npoKey] ? NPO_LIB[op.npoKey].name : (op.label||"Operative")) : "Operative"; }
+$("#opMin").addEventListener("click",minimizeOpSheet);
+$("#opRailTab").addEventListener("click",restoreOpSheet);
 function bindOpSheet(){
   const op=sheetOp; if(!op) return;
   const isNPO = !!op.npoKey && NPO_LIB[op.npoKey];
@@ -1310,6 +1350,7 @@ function bindOpSheet(){
   $$("#opBase .mini").forEach(b=>b.classList.toggle("on",b.dataset.v===baseKey));
   $("#opMove").textContent=(op.move??6)+"″";
   $("#opMoveLeft").textContent = op.moveLeft!=null ? `${op.moveLeft.toFixed(1)}″ left` : "";
+  $("#opW").textContent = (op.wounds!=null) ? (op.woundsMax!=null?`${op.wounds}/${op.woundsMax}`:op.wounds) : "—";
   $$("#opKw .mini").forEach(b=>{
     const on = b.dataset.kw==="guard" ? !!op.guard : (op.keywords||[]).includes(b.dataset.kw);
     b.classList.toggle("on",on);
@@ -1328,7 +1369,9 @@ function renderNPOCard(op){
       <div style="font-size:15px;font-weight:700;margin-bottom:2px">${esc(dc.name)}</div>
       <div class="dc-behav" style="margin-bottom:8px">${esc(dc.keywords.join(", "))}</div>
       <div class="dc-wounds"><span class="wlab">Wounds</span>
-        <input id="npoW" type="number" min="0" max="${dc.wounds}" value="${op.wounds}">
+        <span class="wstep"><button class="mini" id="npoWdn">−</button>
+          <span class="wval" id="npoWval">${op.wounds}</span>
+          <button class="mini" id="npoWup">＋</button></span>
         <span class="wlab">/ ${dc.wounds}</span></div>
       <div class="dc-stats">
         <div class="dc-stat"><div class="l">APL</div><div class="v">${dc.apl}</div></div>
@@ -1350,9 +1393,10 @@ function renderNPOCard(op){
       <ol>${bh.order.map(o=>`<li>${esc(o)}</li>`).join("")}</ol></div>`;
   }
   host.innerHTML=body;
-  const wIn=$("#npoW");
-  if(wIn) wIn.addEventListener("input",()=>{ let v=Math.max(0,Math.min(dc.wounds,+wIn.value||0));
-    op.wounds=v; save(); renderItems(); });
+  const setW=(v)=>{ v=Math.max(0,Math.min(dc.wounds,v)); op.wounds=v;
+    const el=$("#npoWval"); if(el) el.textContent=v; save(); renderItems(); };
+  if($("#npoWup")) $("#npoWup").addEventListener("click",()=>setW((op.wounds||0)+1));
+  if($("#npoWdn")) $("#npoWdn").addEventListener("click",()=>setW((op.wounds||0)-1));
 }
 $("#opClose").addEventListener("click",closeOpSheet);
 $("#opLabel").addEventListener("input",e=>{ if(!sheetOp) return;
@@ -1366,6 +1410,18 @@ $("#mvUp").addEventListener("click",()=>{ if(!sheetOp) return;
   sheetOp.move=Math.min(12,(sheetOp.move||6)+1); sheetOp.moveLeft=sheetOp.move; bindOpSheet(); save(); });
 $("#mvDown").addEventListener("click",()=>{ if(!sheetOp) return;
   sheetOp.move=Math.max(1,(sheetOp.move||6)-1); sheetOp.moveLeft=sheetOp.move; bindOpSheet(); save(); });
+$("#owUp").addEventListener("click",()=>{ if(!sheetOp) return;
+  if(sheetOp.wounds==null){ sheetOp.wounds=1; sheetOp.woundsMax=Math.max(1,sheetOp.woundsMax||1); }
+  else { sheetOp.wounds++; if(sheetOp.woundsMax!=null&&sheetOp.wounds>sheetOp.woundsMax) sheetOp.woundsMax=sheetOp.wounds; }
+  bindOpSheet(); renderItems(); save(); });
+$("#owDown").addEventListener("click",()=>{ if(!sheetOp) return;
+  if(sheetOp.wounds!=null) sheetOp.wounds=Math.max(0,sheetOp.wounds-1);
+  bindOpSheet(); renderItems(); save(); });
+$("#owReset").addEventListener("click",()=>{ if(!sheetOp) return;
+  // treat the current value as the operative's max (full health baseline)
+  if(sheetOp.wounds==null) return;
+  sheetOp.woundsMax=sheetOp.wounds; bindOpSheet(); renderItems(); save();
+  note("Set current wounds as this operative's max.",true); });
 $("#opKw").addEventListener("click",e=>{ const b=e.target.closest("[data-kw]"); if(!b||!sheetOp) return;
   const kw=b.dataset.kw;
   if(kw==="guard"){ sheetOp.guard=!sheetOp.guard; }
