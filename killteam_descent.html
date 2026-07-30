@@ -315,7 +315,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v206</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v207</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -1389,13 +1389,28 @@ function showLosReadout(r){
 }
 function hideLosReadout(){ const el=$("#losReadout"); if(el) el.classList.add("hidden"); }
 // A faint Control-Range ring (1") one inch outside the base edge, as a placement/LoS aid.
-// Circle approximation using the long-axis radius; for ovals it slightly overstates the short
-// axis (acceptable as a visual guide — the entryway CR test itself uses exact baseRadDir).
+// Round bases → a circle. Oval bases → a TRUE offset outline (constant 1" normal distance from
+// the ellipse edge, honouring the model's facing), so the ring is accurate on both axes rather
+// than a long-axis circle approximation.
 function crRing(op,col){
   if(!op) return;
-  const r = itemR(op) + CTRL_DEFAULT*PPI;
-  gOvl.appendChild(attr(mk("circle"),{cx:op.x,cy:op.y,r,fill:"none",stroke:col||"rgba(140,160,180,.5)",
-    "stroke-width":1,"stroke-dasharray":"2 4","vector-effect":"non-scaling-stroke"}));
+  const stroke=col||"rgba(140,160,180,.5)";
+  const {a,b,th}=baseAxes(op), d=CTRL_DEFAULT;   // semi-axes + facing (inches), offset (inches)
+  if(Math.abs(a-b)<1e-6){                          // circle
+    gOvl.appendChild(attr(mk("circle"),{cx:op.x,cy:op.y,r:(a+d)*PPI,fill:"none",stroke,
+      "stroke-width":1,"stroke-dasharray":"2 4","vector-effect":"non-scaling-stroke"}));
+    return;
+  }
+  const N=72, pts=[];
+  for(let i=0;i<N;i++){ const u=i/N*2*Math.PI;
+    const px=a*Math.cos(u), py=b*Math.sin(u);                 // point on the ellipse
+    const nx=Math.cos(u)/a, ny=Math.sin(u)/b, nl=Math.hypot(nx,ny)||1;  // outward normal
+    const ox=px+d*nx/nl, oy=py+d*ny/nl;                       // pushed out by d along normal
+    pts.push([op.x+(ox*Math.cos(th)-oy*Math.sin(th))*PPI,     // rotate by facing + to world px
+              op.y+(ox*Math.sin(th)+oy*Math.cos(th))*PPI]); }
+  const dPath="M"+pts.map(p=>p[0].toFixed(1)+" "+p[1].toFixed(1)).join("L")+"Z";
+  gOvl.appendChild(attr(mk("path"),{d:dPath,fill:"none",stroke,"stroke-width":1,
+    "stroke-dasharray":"2 4","vector-effect":"non-scaling-stroke"}));
 }
 // draw sightline + cone of vision for the active LoS result (called from renderOverlay)
 function renderLosOverlay(){
