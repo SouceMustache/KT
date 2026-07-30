@@ -85,6 +85,17 @@
   #moveReadout.hidden{display:none;}
   #moveReadout .mrv{font-size:22px;font-weight:700;}
   #moveReadout .mrl{font-size:10px;color:var(--dim);letter-spacing:.04em;text-transform:uppercase;}
+  /* line-of-sight readout, top-left so it doesn't clash with the move readout */
+  #losReadout{position:absolute;left:10px;top:calc(56px + env(safe-area-inset-top));z-index:15;
+    font-family:var(--mono);pointer-events:none;background:rgba(13,16,19,.86);
+    border:1px solid var(--line);border-radius:10px;padding:8px 12px;backdrop-filter:blur(6px);
+    box-shadow:0 4px 16px rgba(0,0,0,.4);line-height:1.35;max-width:64vw;font-size:12px;}
+  #losReadout.hidden{display:none;}
+  #losReadout .lrv{font-size:15px;font-weight:700;letter-spacing:.02em;}
+  #losReadout .lrl{color:var(--dim);text-transform:uppercase;letter-spacing:.04em;font-size:10px;margin-top:2px;}
+  #losReadout .lrtag{display:inline-block;padding:1px 6px;border-radius:6px;font-size:10px;font-weight:700;
+    margin-top:4px;letter-spacing:.03em;}
+  #losReadout .lrhint{color:var(--dim);font-size:10px;margin-top:5px;line-height:1.3;}
   #hud b{color:var(--ink);font-weight:600;}
   #hud .k{color:var(--dim);}
 
@@ -293,13 +304,14 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand">KT&nbsp;<b>Descent</b> <span class="buildtag">v204</span></span>
+      <span class="brand">KT&nbsp;<b>Descent</b> <span class="buildtag">v205</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
         <button class="tool" data-mode="measure" title="Line" aria-label="Line"><svg viewBox="0 0 20 20"><path d="M3.5 16.5 16.5 3.5"/><path d="M3.5 13.4v3.1h3.1M16.5 6.6V3.5h-3.1"/></svg></button>
         <button class="tool" data-mode="marker" title="Portals" aria-label="Portals"><svg viewBox="0 0 20 20"><path d="M10 3l3 3-3 3-3-3z"/><path d="M10 11l3 3-3 3-3-3z"/><path d="M10 6.2v4.6"/></svg></button>
         <button class="tool" data-mode="op" title="Drop token (Mine/Enemy)" aria-label="Drop token"><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="5.5"/><circle cx="10" cy="10" r="1.6" fill="currentColor" stroke="none"/></svg></button>
+        <button class="tool" data-mode="los" title="Line of sight" aria-label="Line of sight"><svg viewBox="0 0 20 20"><path d="M2 10s3-5 8-5 8 5 8 5-3 5-8 5-8-5-8-5z"/><circle cx="10" cy="10" r="2.2" fill="currentColor" stroke="none"/></svg></button>
       </div>
       <button class="iconbtn" id="undoBtn" title="Undo move" disabled><svg viewBox="0 0 20 20"><path d="M7 5L3 9l4 4"/><path d="M3 9h9a5 5 0 0 1 0 10h-2"/></svg></button>
       <button class="iconbtn" id="terrainBtn" title="Maps, objects & rooms"><svg viewBox="0 0 20 20"><path d="M3 6l5-2 4 2 5-2v12l-5 2-4-2-5 2z"/><path d="M8 4v12M12 6v12"/></svg></button>
@@ -329,6 +341,7 @@
   <div id="stage">
     <svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg>
     <div id="moveReadout" class="hidden"></div>
+    <div id="losReadout" class="hidden"></div>
     <div id="hud"></div>
     <!-- Sticky note: blocked/invalid actions show here as a clickable message rather than
          a silent no-op or a greyed-out control (Daniel's UI preference). Tap to dismiss. -->
@@ -622,6 +635,7 @@ const S = {
   npoTheme:"tomb",    // pool theme — Tomb World OR Core, not mixed (Shadowhunt rule)
   armedNPO:null,      // datacard key armed for placement (tap board to drop)
   moveTrail:null,     // {x0,y0,x1,y1,t} while dragging a model — shows trail + distance
+  los:{a:null,b:null,r:null},  // Line-of-sight tool: shooter id, target id, last result
   undo:[],            // undo stack of reversible actions
   msg:null,           // {text} sticky note for a blocked/invalid action (clickable dismiss)
   vb:{x:0,y:0,w:1,h:1},
@@ -800,6 +814,182 @@ function instGeom(inst){ const pf=S.prefabs[inst.ref]; if(!pf) return {edges:[],
   const zones=(pf.zones||[]).map(z=>({poly:(z.poly||[]).map(p=>{ const r=rot90(p[0],p[1],k);
     return [cx+r[0]*PPI,cy+r[1]*PPI]; }),class:z.class,top:z.top}));
   return {edges,zones};
+}
+
+/* ==================================================================== LINE OF SIGHT
+   Ported faithfully from the Planner's cone-of-vision engine, simplified for the
+   Descent phase where height is FLAT: every operative sits at ground level with a
+   fixed eye height, so 3D distance collapses to horizontal and platform-plane
+   occlusion never triggers on its own (solid/barred edges still block). When we build
+   the roster/height phase this same engine takes real z-values — and the Nightbringer
+   gets a taller per-Nemesis eye height so it sees over more terrain.
+
+   Visibility is a single sightline (base edge to base edge); COVER/OBSCURED are judged
+   over a cone of vision whose apex the shooter may draw from anywhere on its own base.
+   Cross-board LoS is NOT allowed here — the two boards can only be shot between via an
+   Entryway (both operatives within Control Range of the twin markers, no cover). */
+const EYE=1.4;                    // nominal sight height above the floor (inches)
+function opFloor(t){ return 0; }  // FLAT for now; roster phase will feed real elevation
+// base geometry (ovals: 60mm long x 35mm short, facing = ang degrees, 0 = east)
+function baseAxes(t){
+  const isOval = t.base==="oval" || (t.baseMm2 && Math.abs(t.baseMm2-(t.baseMm||32))>0.5);
+  const a=((t.baseMm|| (isOval?60:32))/25.4)/2;
+  const b=((isOval? (t.baseMm2||35) : (t.baseMm||32))/25.4)/2;
+  return {a,b,th:(t.ang||0)*Math.PI/180}; }
+function baseRadDir(t,dx,dy){ const {a,b,th}=baseAxes(t);
+  if(Math.abs(a-b)<1e-6) return a;
+  const w=Math.atan2(dy,dx)-th, c=Math.cos(w), sn=Math.sin(w);
+  return (a*b)/Math.hypot(b*c, a*sn); }
+function losClosestOnSeg(px,py,x1,y1,x2,y2){ const dx=x2-x1,dy=y2-y1,L=dx*dx+dy*dy||1;
+  let u=((px-x1)*dx+(py-y1)*dy)/L; u=Math.max(0,Math.min(1,u));
+  return [x1+u*dx, y1+u*dy]; }
+function baseRadSeg(t,e){ const p=losClosestOnSeg(t.x,t.y,e.a[0],e.a[1],e.b[0],e.b[1]);
+  return baseRadDir(t,p[0]-t.x,p[1]-t.y); }
+function losDistToSeg(px,py,x1,y1,x2,y2){ const dx=x2-x1,dy=y2-y1,L=dx*dx+dy*dy||1;
+  let u=((px-x1)*dx+(py-y1)*dy)/L; u=Math.max(0,Math.min(1,u));
+  const cx=x1+u*dx, cy=y1+u*dy; return Math.hypot(px-cx,py-cy); }
+function losPointInPoly(x,y,poly){ if(!poly||poly.length<3) return false; let inside=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){ const xi=poly[i][0],yi=poly[i][1],xj=poly[j][0],yj=poly[j][1];
+    if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi)) inside=!inside; } return inside; }
+function losPolyCentroid(poly){ let x=0,y=0; (poly||[]).forEach(p=>{x+=p[0];y+=p[1];});
+  const n=(poly||[]).length||1; return [x/n,y/n]; }
+function baseRadPoly(t,poly){ const c=losPolyCentroid(poly); return baseRadDir(t,c[0]-t.x,c[1]-t.y); }
+function losDistPolyEdge(P,poly){ let best=1e9;
+  for(let i=0;i<poly.length;i++){ const a=poly[i], b=poly[(i+1)%poly.length];
+    best=Math.min(best,losDistToSeg(P[0],P[1],a[0],a[1],b[0],b[1])); } return best; }
+function segX(p1,p2,p3,p4){
+  const x1=p1[0],y1=p1[1],x2=p2[0],y2=p2[1],x3=p3[0],y3=p3[1],x4=p4[0],y4=p4[1];
+  const d=(x2-x1)*(y4-y3)-(y2-y1)*(x4-x3); if(Math.abs(d)<1e-9) return null;
+  const t=((x3-x1)*(y4-y3)-(y3-y1)*(x4-x3))/d;
+  const u=((x3-x1)*(y2-y1)-(y3-y1)*(x2-x1))/d;
+  if(t<0||t>1||u<0||u>1) return null;
+  return {t,x:x1+t*(x2-x1),y:y1+t*(y2-y1)}; }
+function triHas(px,py,a,b,c){
+  const sg=(p,q,r)=>(p[0]-r[0])*(q[1]-r[1])-(q[0]-r[0])*(p[1]-r[1]);
+  const d1=sg([px,py],a,b), d2=sg([px,py],b,c), d3=sg([px,py],c,a);
+  const neg=(d1<0)||(d2<0)||(d3<0), pos=(d1>0)||(d2>0)||(d3>0); return !(neg&&pos); }
+function segInTri(p,q,a,b,c){
+  if(triHas(p[0],p[1],a,b,c)||triHas(q[0],q[1],a,b,c)) return true;
+  return !!(segX(p,q,a,b)||segX(p,q,b,c)||segX(p,q,c,a)); }
+function polyInCone(poly,cone){ const T=[cone.apex,cone.T1,cone.T2];
+  for(const p of poly) if(triHas(p[0],p[1],T[0],T[1],T[2])) return true;
+  for(let i=0;i<poly.length;i++){ const a=poly[i], b=poly[(i+1)%poly.length];
+    if(segX(a,b,T[0],T[1])||segX(a,b,T[1],T[2])||segX(a,b,T[2],T[0])) return true; }
+  if(losPointInPoly(cone.apex[0],cone.apex[1],poly)) return true;
+  return false; }
+// world terrain, FILTERED to one board (same-board LoS only)
+function boardEdges(board){ const out=[];
+  (S.insts||[]).forEach(inst=>{ if(inst.board!==board) return; out.push(...instGeom(inst).edges); });
+  return out; }
+function boardZones(board){ const out=[];
+  (S.insts||[]).forEach(inst=>{ if(inst.board!==board) return; out.push(...instGeom(inst).zones); });
+  return out; }
+function visionCone(A,B,rA,rB,edges,inBand,oa,ob,zones){
+  const dx=B[0]-A[0], dy=B[1]-A[1], L=Math.hypot(dx,dy)||1;
+  const ux=-dy/L, uy=dx/L;
+  rB=baseRadDir(ob,ux,uy); rA=baseRadDir(oa,ux,uy);
+  const T1=[B[0]+ux*rB*PPI, B[1]+uy*rB*PPI];
+  const T2=[B[0]-ux*rB*PPI, B[1]-uy*rB*PPI];
+  const apexes=[[A[0],A[1]],[A[0]+ux*rA*PPI,A[1]+uy*rA*PPI],[A[0]-ux*rA*PPI,A[1]-uy*rA*PPI]];
+  let best=null;
+  for(const ap of apexes){
+    const hit=edges.filter(e=>inBand(e)&&segInTri(e.a,e.b,ap,T1,T2));
+    const zc=(zones||[]).filter(z=>polyInCone(z.poly,{apex:ap,T1,T2})).length;
+    const score=hit.length+zc;
+    if(!best||score<best.score) best={apex:ap,T1,T2,hit,score};
+    if(score===0) break; }
+  return best; }
+// a,b are operative items. Returns full reasoning, or {sameBoard:false} if cross-board.
+function losCheck(a,b){
+  if(a.board!==b.board) return {sameBoard:false};
+  const board=a.board;
+  const A=[a.x,a.y], B=[b.x,b.y];
+  const rA=baseRadDir(a,B[0]-A[0],B[1]-A[1]), rB=baseRadDir(b,A[0]-B[0],A[1]-B[1]);
+  const centreH=Math.hypot(B[0]-A[0],B[1]-A[1])/PPI;
+  const distH=Math.max(0,centreH-rA-rB);
+  const zA=opFloor(a)+EYE, zB=opFloor(b)+EYE;
+  const edges=boardEdges(board);
+  const coverZones=boardZones(board).filter(z=>z.class==="Rubble"||z.class==="Heavy"||z.class==="Light");
+  const cone=visionCone(A,B,rA,rB,edges,e=>{
+    const t=e.zTop||0, bt=e.zBot||0;
+    return t>=Math.min(zA,zB)-0.6 && bt<=Math.max(zA,zB)+0.05; },a,b,coverZones);
+  const coneHit=new Set(cone?cone.hit:[]);
+  let blocked=false; const blockers=[]; let cover=null, obscured=false;
+  for(const e of edges){
+    const X=segX(A,B,e.a,e.b); if(!X) continue;
+    const sightZ=zA+X.t*(zB-zA);
+    const within=sightZ>=e.zBot-0.05 && sightZ<=e.zTop+0.05;
+    const dSegA=losDistToSeg(A[0],A[1],e.a[0],e.a[1],e.b[0],e.b[1])/PPI-baseRadSeg(a,e);
+    const dSegB=losDistToSeg(B[0],B[1],e.a[0],e.a[1],e.b[0],e.b[1])/PPI-baseRadSeg(b,e);
+    const near=Math.min(dSegA,dSegB)<=1.0;
+    let blocks=false;
+    if(within){
+      if(e.los==="solid") blocks=true;
+      else if(e.los==="barred") blocks=!near; }
+    if(blocks){ blocked=true; blockers.push(e); }
+  }
+  // Vantage platforms occlude by plane-crossing (flat mode: level sightline never crosses)
+  const zones=boardZones(board);
+  for(const z of zones){
+    if(!z.poly||z.poly.length<3) continue;
+    const top=z.top||0;
+    if(z.class!=="Vantage"){
+      if(z.class==="Rubble"){
+        const mid=[(A[0]+B[0])/2,(A[1]+B[1])/2];
+        if(losPointInPoly(mid[0],mid[1],z.poly) && Math.min(zA,zB)<=top+1.2){
+          if(cover!=="heavy") cover="light"; } }
+      continue; }
+    if(Math.abs(zB-zA)<1e-6) continue;
+    const t=(top-zA)/(zB-zA);
+    if(t<=0.001||t>=0.999) continue;
+    const cx=A[0]+t*(B[0]-A[0]), cy=A[1]+t*(B[1]-A[1]);
+    if(losPointInPoly(cx,cy,z.poly)){ blocked=true; blockers.push({platform:true,poly:z.poly}); }
+  }
+  // cover / obscured, judged over the whole cone
+  coneHit.forEach(e=>{
+    if(e.cover!=="heavy"&&e.cover!=="light") return;
+    const dA=losDistToSeg(A[0],A[1],e.a[0],e.a[1],e.b[0],e.b[1])/PPI-baseRadSeg(a,e);
+    const dB=losDistToSeg(B[0],B[1],e.a[0],e.a[1],e.b[0],e.b[1])/PPI-baseRadSeg(b,e);
+    if(dB<=1.0 && distH>2.0){ if(e.cover==="heavy") cover="heavy"; else if(cover!=="heavy") cover="light"; }
+    else if(e.cover==="heavy" && dA>1.0) obscured=true;
+  });
+  // area zones (Rubble/Light/Heavy) inside the favourable cone
+  boardZones(board).forEach(z=>{
+    const cls=(z.class==="Rubble"||z.class==="Heavy")?"heavy":(z.class==="Light"?"light":null);
+    if(!cls || !cone) return;
+    if(!polyInCone(z.poly,cone)) return;
+    const dB=losDistPolyEdge(B,z.poly)/PPI-baseRadPoly(b,z.poly);
+    const dA=losDistPolyEdge(A,z.poly)/PPI-baseRadPoly(a,z.poly);
+    if(dB<=1.0 && distH>2.0){ if(cls==="heavy") cover="heavy"; else if(cover!=="heavy") cover="light"; }
+    else if(cls==="heavy" && dA>1.0) obscured=true;
+  });
+  // standing on a Vantage platform gives Light cover in its own right
+  if(!cover){
+    const onV=boardZones(board).some(z=>z.class==="Vantage" && (z.top||0)>0.05 &&
+      losPointInPoly(B[0],B[1],z.poly));
+    if(onV && distH>2.0) cover="light";
+  }
+  const coverChoice=!!(cover&&obscured);
+  return {sameBoard:true, clear:!blocked, blocked, blockers, cover, obscured, coverChoice, cone, distH, A, B};
+}
+// Entryway shot: shooter + defender each within Control Range (1") of the twin markers
+// of one Entryway pair. No cover/obscured — pure CR + visibility gate (rules pg for Descent).
+const CR_INCH=1.0;
+function entrywayShot(a,b){
+  if(a.board===b.board) return null;
+  // find an Entryway pair whose two markers sit one on each board, with a in CR of one and b in CR of the twin
+  const ent=(S.markers||[]).filter(m=>m.mtype==="entryway");
+  const byPair={};
+  ent.forEach(m=>{ (byPair[m.pair]=byPair[m.pair]||[]).push(m); });
+  for(const pair in byPair){
+    const ms=byPair[pair]; if(ms.length<2) continue;
+    const mA=ms.find(m=>m.board===a.board), mB=ms.find(m=>m.board===b.board);
+    if(!mA||!mB) continue;
+    const dA=(Math.hypot(a.x-mA.x,a.y-mA.y)/PPI)-baseRadDir(a,mA.x-a.x,mA.y-a.y);
+    const dB=(Math.hypot(b.x-mB.x,b.y-mB.y)/PPI)-baseRadDir(b,mB.x-b.x,mB.y-b.y);
+    if(dA<=CR_INCH && dB<=CR_INCH) return {ok:true,pair:+pair,mA,mB};
+  }
+  return {ok:false};
 }
 // axis-aligned bounds of a placed inst, in world px (for hit-testing + room flood-fill)
 function instBounds(inst){ const pf=S.prefabs[inst.ref]; if(!pf) return null;
@@ -1122,6 +1312,7 @@ function renderOverlay(){
       "stroke-width":1.4,"vector-effect":"non-scaling-stroke"}));
     showMoveReadout(din, ref, over);
   }
+  renderLosOverlay();
 }
 // Top-right live readout during a drag. Tenths of an inch, never more.
 function showMoveReadout(din, ref, over){
@@ -1132,6 +1323,100 @@ function showMoveReadout(din, ref, over){
   el.innerHTML = `<div class="mrv" style="color:${over?"var(--inj)":"#4fd18b"}">${val}</div><div class="mrl">${sub}</div>`;
 }
 function hideMoveReadout(){ const el=$("#moveReadout"); if(el) el.classList.add("hidden"); }
+
+// --- line of sight ------------------------------------------------------------------
+function clearLos(){ S.los={a:null,b:null,r:null}; hideLosReadout(); }
+function computeLos(){
+  const a=S.items.find(i=>i.id===S.los.a), b=S.items.find(i=>i.id===S.los.b);
+  if(!a||!b){ clearLos(); return; }
+  if(a.board===b.board){
+    const r=losCheck(a,b); r.kind="same"; S.los.r=r; showLosReadout(r);
+  } else {
+    // cross-board: no straight map-to-map shot — only via an Entryway pair, both in Control Range
+    const e=entrywayShot(a,b);
+    S.los.r={kind:"entry", ok:!!(e&&e.ok), e};
+    showLosReadout(S.los.r);
+  }
+}
+function showLosReadout(r){
+  const el=$("#losReadout"); if(!el){ return; }
+  el.classList.remove("hidden");
+  if(r.kind==="entry"){
+    if(r.ok){
+      el.innerHTML = `<div class="lrv" style="color:#4fd18b">VISIBLE · Entryway</div>`
+        +`<div class="lrl">cross-killzone shot (pair ${r.e.pair})</div>`
+        +`<span class="lrtag" style="background:rgba(79,209,139,.16);color:#4fd18b">CLEAR — no cover</span>`
+        +`<div class="lrhint">Shooter and target are both within Control Range of the twin Entryway markers. Cover/obscured do not apply to Entryway shots.</div>`;
+    } else {
+      el.innerHTML = `<div class="lrv" style="color:var(--inj)">NO SHOT</div>`
+        +`<div class="lrl">different killzones</div>`
+        +`<div class="lrhint">There is no straight map-to-map line of sight. A cross-killzone shot is only possible when the shooter and target are each within Control Range (1") of the two markers of one Entryway pair.</div>`;
+    }
+    return;
+  }
+  // same-board result from losCheck
+  const dist = r.distH!=null ? r.distH.toFixed(1)+'"' : "—";
+  let stateTag, stateCol;
+  if(r.blocked){ stateTag="NOT VISIBLE"; stateCol="var(--inj)"; }
+  else { stateTag="VISIBLE"; stateCol="#4fd18b"; }
+  let coverTag="";
+  if(!r.blocked){
+    if(r.coverChoice){ coverTag=`<span class="lrtag" style="background:rgba(242,160,61,.16);color:#f2a03d">COVER / OBSCURED — defender picks</span>`; }
+    else if(r.cover){ coverTag=`<span class="lrtag" style="background:rgba(242,160,61,.16);color:#f2a03d">${r.cover==="heavy"?"HEAVY":"LIGHT"} COVER</span>`; }
+    else if(r.obscured){ coverTag=`<span class="lrtag" style="background:rgba(200,160,110,.16);color:#c8a06e">OBSCURED</span>`; }
+    else { coverTag=`<span class="lrtag" style="background:rgba(120,140,160,.14);color:var(--dim)">no cover</span>`; }
+  }
+  const hint = r.blocked
+    ? `<div class="lrhint">Terrain blocks the sightline — the target cannot be selected as a valid target.</div>`
+    : (r.obscured && !r.cover
+        ? `<div class="lrhint">Heavy terrain intervenes &gt;1" from both — worse shot, still selectable.</div>`
+        : "");
+  el.innerHTML = `<div class="lrv" style="color:${stateCol}">${stateTag}</div>`
+    +`<div class="lrl">base-to-base ${dist}</div>`
+    +coverTag+hint;
+}
+function hideLosReadout(){ const el=$("#losReadout"); if(el) el.classList.add("hidden"); }
+// draw sightline + cone of vision for the active LoS result (called from renderOverlay)
+function renderLosOverlay(){
+  if(S.mode!=="los") return;
+  if(S.los.a && !S.items.find(i=>i.id===S.los.a)){ clearLos(); return; }   // shooter was deleted
+  const a=S.items.find(i=>i.id===S.los.a), b=S.los.b?S.items.find(i=>i.id===S.los.b):null;
+  if(S.los.b && !b){ S.los.b=null; S.los.r=null; hideLosReadout(); }        // target was deleted
+  if(a){ gOvl.appendChild(attr(mk("circle"),{cx:a.x,cy:a.y,r:itemR(a)+5,fill:"none",
+    stroke:"#4fd18b","stroke-width":2,"vector-effect":"non-scaling-stroke"})); }
+  if(!b||!S.los.r) return;
+  const r=S.los.r;
+  if(r.kind==="entry"){
+    // draw a dashed link between the two ops (through the gutter) tinted by result
+    const col=r.ok?"#4fd18b":"var(--inj)";
+    gOvl.appendChild(attr(mk("line"),{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:col,"stroke-width":1.6,
+      "stroke-dasharray":"2 5","vector-effect":"non-scaling-stroke",opacity:.8}));
+    gOvl.appendChild(attr(mk("circle"),{cx:b.x,cy:b.y,r:itemR(b)+5,fill:"none",stroke:col,
+      "stroke-width":2,"vector-effect":"non-scaling-stroke"}));
+    return;
+  }
+  // same-board: cone (if visible), sightline, blockers
+  const visCol = r.blocked ? "var(--inj)" : ((r.cover||r.obscured) ? "#f2a03d" : "#4fd18b");
+  if(r.cone && !r.blocked){ const C=r.cone;
+    gOvl.appendChild(attr(mk("polygon"),{points:[C.apex,C.T1,C.T2].map(p=>p[0]+","+p[1]).join(" "),
+      fill:(r.cover||r.obscured)?"rgba(242,160,61,.12)":"rgba(79,209,139,.10)",
+      stroke:(r.cover||r.obscured)?"rgba(242,160,61,.5)":"rgba(79,209,139,.4)",
+      "stroke-width":1,"stroke-dasharray":"4 4","vector-effect":"non-scaling-stroke"}));
+    (C.hit||[]).forEach(e=>gOvl.appendChild(attr(mk("line"),
+      {x1:e.a[0],y1:e.a[1],x2:e.b[0],y2:e.b[1],stroke:"#f2a03d","stroke-width":4,
+       "vector-effect":"non-scaling-stroke",opacity:.75})));
+  }
+  gOvl.appendChild(attr(mk("line"),{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:visCol,"stroke-width":1.8,
+    "vector-effect":"non-scaling-stroke"}));
+  (r.blockers||[]).forEach(e=>{
+    if(e.platform&&e.poly){ gOvl.appendChild(attr(mk("polygon"),{points:e.poly.map(p=>p[0]+","+p[1]).join(" "),
+      fill:"rgba(224,87,77,.18)",stroke:"var(--inj)","stroke-width":2.4,"vector-effect":"non-scaling-stroke"})); }
+    else if(e.a&&e.b){ gOvl.appendChild(attr(mk("line"),{x1:e.a[0],y1:e.a[1],x2:e.b[0],y2:e.b[1],
+      stroke:"var(--inj)","stroke-width":5,"vector-effect":"non-scaling-stroke",opacity:.7})); }
+  });
+  gOvl.appendChild(attr(mk("circle"),{cx:b.x,cy:b.y,r:itemR(b)+5,fill:"none",stroke:visCol,
+    "stroke-width":2,"vector-effect":"non-scaling-stroke"}));
+}
 
 /* ------------------------------------------------------------------ HUD */
 function hud(msg){
@@ -1194,6 +1479,26 @@ svg.addEventListener("pointerdown",e=>{
 
   // Room paint: tap toggles a cell in/out of the active room; dragging paints cells in.
   if(S.mode==="room"){ paintRoomCell(w,"toggle"); drag={type:"room"}; return; }
+
+  // Line-of-sight tool: tap shooter, then target. Two operatives → visibility + cover readout.
+  if(S.mode==="los"){
+    const t=itemAt(w);
+    if(t){
+      if(!S.los.a || (S.los.a && S.los.b)){       // pick (or re-pick) the shooter
+        S.los={a:t.id,b:null,r:null};
+        note("Shooter picked. Now tap the target operative.",true);
+      } else if(t.id===S.los.a){                   // tapped shooter again → clear
+        clearLos();
+      } else {                                     // pick target + compute
+        S.los.b=t.id; computeLos();
+      }
+      renderOverlay();
+      drag={type:"pan",sx:e.clientX,sy:e.clientY}; return;
+    }
+    // tap on empty space clears the current sightline
+    clearLos(); renderOverlay();
+    drag={type:"pan",sx:e.clientX,sy:e.clientY,vb:{...S.vb}}; return;
+  }
 
   // If an NPO datacard is armed, tap the board to place it with its stats + photo.
   if(S.armedNPO){
@@ -1343,6 +1648,7 @@ $("#toolseg").addEventListener("click",e=>{ const b=e.target.closest("[data-mode
   if(S.mode==="marker"){ const lb=$("#lockToggle");
     lb.classList.toggle("on",S.locked); lb.textContent=S.locked?"🔒 Locked":"🔓 Unlocked"; }
   if(S.mode!=="move"){ S.traverse=null; closeOpSheet(); }
+  if(S.mode!=="los"){ clearLos(); }
   updateTraverseChip();
 });
 // op side picker
@@ -1579,7 +1885,7 @@ function openPicker(){ renderPackList(); $("#picker").classList.remove("hidden")
 /* ------------------------------------------------------------------ load / persist */
 function loadPack(id){
   S.packId=id; S.pack=PACKS[id]; S.items=[]; S.markers=[]; S.nextPair=1;
-  S.insts=[]; S.rulers=[]; S.rooms=[]; S.selInst=null; S.armedPrefab=null; S.activeRoom=null; S.npoPool=[]; S.armedNPO=null; S.moveTrail=null; S.undo=[];
+  S.insts=[]; S.rulers=[]; S.rooms=[]; S.selInst=null; S.armedPrefab=null; S.activeRoom=null; S.npoPool=[]; S.armedNPO=null; S.moveTrail=null; S.undo=[]; S.los={a:null,b:null,r:null};
   S.selected=null; S.traverse=null; S.opTab="stats"; S._themeConfirm=null;
   // keep S.prefabs across packs — the imported object library is reusable
   resolveBoards();
@@ -1589,7 +1895,7 @@ function loadPack(id){
   $("#packTag").textContent = S.pack.name + " · " + S.pack.missions[0];
   // a pack switch changes the roster/boards, so close a stale open drawer
   if($("#drawer")) $("#drawer").classList.add("hidden");
-  syncAspect(); renderAll(); fitView(); updateUndoBtn(); hideMoveReadout(); hud("Pack loaded");
+  syncAspect(); renderAll(); fitView(); updateUndoBtn(); hideMoveReadout(); hideLosReadout(); hud("Pack loaded");
   save();
 }
 function save(){
