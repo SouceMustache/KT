@@ -48,6 +48,17 @@
     stroke-linecap:round;stroke-linejoin:round;}
   .seg .tool+.tool{border-left:1px solid var(--line);}
   .seg .tool.on{background:rgba(242,160,61,.14);color:var(--orange);}
+  /* Narrow / portrait phones: the first toolbar row (brand + 5 tools + 4 icon buttons)
+     overflows and gets clipped on the right. Drop the brand words (keep the tiny build tag),
+     kill the flex spacer so everything packs from the left, shrink hit targets a touch, and
+     allow the row to wrap the icon buttons to a second line rather than clipping them. */
+  @media (max-width:640px){
+    .brandname{display:none;}
+    #bar .barrow:first-child{flex-wrap:wrap;gap:5px;}
+    #bar .barrow:first-child .spacer{display:none;}
+    .seg .tool{padding:6px 9px;}
+    .iconbtn{width:29px;height:29px;}
+  }
   .tool,.mini{border:1px solid var(--line);background:var(--panel2);color:var(--ink);
         font:inherit;font-size:12px;padding:8px 11px;border-radius:8px;cursor:pointer;
         display:inline-flex;align-items:center;gap:6px;user-select:none;-webkit-appearance:none;}
@@ -304,7 +315,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand">KT&nbsp;<b>Descent</b> <span class="buildtag">v205</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v206</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -1283,9 +1294,10 @@ function renderOverlay(){
   gOvl.replaceChildren();
   if(S.selected){
     const t=S.items.find(i=>i.id===S.selected);
-    if(t) gOvl.appendChild(attr(mk("circle"),{cx:t.x,cy:t.y,r:itemR(t)+4,
+    if(t){ gOvl.appendChild(attr(mk("circle"),{cx:t.x,cy:t.y,r:itemR(t)+4,
       fill:"none",stroke:"var(--orange)","stroke-width":2,"stroke-dasharray":"4 3",
       "vector-effect":"non-scaling-stroke"}));
+      crRing(t,"rgba(242,160,61,.55)"); }
   }
   if(S.measure){ const m=S.measure;
     gOvl.appendChild(attr(mk("line"),{x1:m.a.x,y1:m.a.y,x2:m.b.x,y2:m.b.y,
@@ -1376,6 +1388,15 @@ function showLosReadout(r){
     +coverTag+hint;
 }
 function hideLosReadout(){ const el=$("#losReadout"); if(el) el.classList.add("hidden"); }
+// A faint Control-Range ring (1") one inch outside the base edge, as a placement/LoS aid.
+// Circle approximation using the long-axis radius; for ovals it slightly overstates the short
+// axis (acceptable as a visual guide — the entryway CR test itself uses exact baseRadDir).
+function crRing(op,col){
+  if(!op) return;
+  const r = itemR(op) + CTRL_DEFAULT*PPI;
+  gOvl.appendChild(attr(mk("circle"),{cx:op.x,cy:op.y,r,fill:"none",stroke:col||"rgba(140,160,180,.5)",
+    "stroke-width":1,"stroke-dasharray":"2 4","vector-effect":"non-scaling-stroke"}));
+}
 // draw sightline + cone of vision for the active LoS result (called from renderOverlay)
 function renderLosOverlay(){
   if(S.mode!=="los") return;
@@ -1383,7 +1404,8 @@ function renderLosOverlay(){
   const a=S.items.find(i=>i.id===S.los.a), b=S.los.b?S.items.find(i=>i.id===S.los.b):null;
   if(S.los.b && !b){ S.los.b=null; S.los.r=null; hideLosReadout(); }        // target was deleted
   if(a){ gOvl.appendChild(attr(mk("circle"),{cx:a.x,cy:a.y,r:itemR(a)+5,fill:"none",
-    stroke:"#4fd18b","stroke-width":2,"vector-effect":"non-scaling-stroke"})); }
+    stroke:"#4fd18b","stroke-width":2,"vector-effect":"non-scaling-stroke"}));
+    crRing(a,"rgba(79,209,139,.5)"); }
   if(!b||!S.los.r) return;
   const r=S.los.r;
   if(r.kind==="entry"){
@@ -1393,6 +1415,7 @@ function renderLosOverlay(){
       "stroke-dasharray":"2 5","vector-effect":"non-scaling-stroke",opacity:.8}));
     gOvl.appendChild(attr(mk("circle"),{cx:b.x,cy:b.y,r:itemR(b)+5,fill:"none",stroke:col,
       "stroke-width":2,"vector-effect":"non-scaling-stroke"}));
+    crRing(b,r.ok?"rgba(79,209,139,.5)":"rgba(224,87,77,.5)");
     return;
   }
   // same-board: cone (if visible), sightline, blockers
@@ -1416,6 +1439,7 @@ function renderLosOverlay(){
   });
   gOvl.appendChild(attr(mk("circle"),{cx:b.x,cy:b.y,r:itemR(b)+5,fill:"none",stroke:visCol,
     "stroke-width":2,"vector-effect":"non-scaling-stroke"}));
+  crRing(b,"rgba(140,160,180,.45)");
 }
 
 /* ------------------------------------------------------------------ HUD */
@@ -1469,8 +1493,14 @@ function instAt(w){
   return null;
 }
 svg.addEventListener("pointerdown",e=>{
-  svg.setPointerCapture(e.pointerId);
-  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  // NOTE: deliberately no setPointerCapture — move/up/cancel are bound on window, so capture
+  // is redundant, and on mobile a missed release left a stale captured pointer that made the
+  // next tap look like a pinch (size>=2) and silently swallowed toolbar taps until a reflow.
+  // Belt-and-suspenders: prune any pointer that hasn't reported in >4s (a missed release) so a
+  // stale entry can never wedge us into the pinch branch and eat single taps.
+  const now=Date.now();
+  for(const [id,p] of pointers){ if(now-(p.t||now)>4000) pointers.delete(id); }
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,t:now});
   if(pointers.size>=2){ drag=null; lastPinch=null; return; }
   const w=clientToWorld(e.clientX,e.clientY);
   S._lastWorld=[w.x,w.y];
@@ -1480,23 +1510,28 @@ svg.addEventListener("pointerdown",e=>{
   // Room paint: tap toggles a cell in/out of the active room; dragging paints cells in.
   if(S.mode==="room"){ paintRoomCell(w,"toggle"); drag={type:"room"}; return; }
 
-  // Line-of-sight tool: tap shooter, then target. Two operatives → visibility + cover readout.
+  // Line-of-sight tool: tap shooter, then target. Panning, or tapping empty ground / a marker /
+  // an objective must NOT drop the shooter — only tapping another operative picks the target, so
+  // "tap, tap" works even when you need to pan or zoom between the two models. Deselect happens
+  // only by tapping the shooter again or by switching tools.
   if(S.mode==="los"){
     const t=itemAt(w);
     if(t){
-      if(!S.los.a || (S.los.a && S.los.b)){       // pick (or re-pick) the shooter
+      if(!S.los.a){                                   // first op → shooter
         S.los={a:t.id,b:null,r:null};
         note("Shooter picked. Now tap the target operative.",true);
-      } else if(t.id===S.los.a){                   // tapped shooter again → clear
+      } else if(t.id===S.los.a){                      // tapped shooter again → clear it
         clearLos();
-      } else {                                     // pick target + compute
+      } else if(!S.los.b){                            // second, different op → target + compute
         S.los.b=t.id; computeLos();
+      } else {                                        // both already set → start fresh shooter
+        S.los={a:t.id,b:null,r:null};
+        note("New shooter picked. Now tap the target operative.",true);
       }
       renderOverlay();
-      drag={type:"pan",sx:e.clientX,sy:e.clientY}; return;
     }
-    // tap on empty space clears the current sightline
-    clearLos(); renderOverlay();
+    // whether or not an op was hit, always allow a pan so you can scroll/zoom between the two
+    // models without losing the armed shooter.
     drag={type:"pan",sx:e.clientX,sy:e.clientY,vb:{...S.vb}}; return;
   }
 
@@ -1506,7 +1541,7 @@ svg.addEventListener("pointerdown",e=>{
     if(b){ const op=makeNPO(S.armedNPO,(S.placeBoard||b.id),w.x,w.y);
       if(op){ S.items.push(op); S.selected=op.id; S.armedNPO=null; save(); renderItems(); renderOverlay();
         if($("#drawer")&&!$("#drawer").classList.contains("hidden")) buildNPOSection();
-        openOpSheet(op); note(`Placed ${NPO_LIB[op.npoKey].name}.`,true); }
+        openOpSheet(op, true); note(`Placed ${NPO_LIB[op.npoKey].name}.`,true); }
       drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
   }
 
@@ -1545,7 +1580,7 @@ svg.addEventListener("pointerdown",e=>{
     if(!b){ note("Tap inside a killzone to place an operative."); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
     const op=makeOp(S.opSide||"mine", b.id, w.x, w.y);
     S.items.push(op); S.selected=op.id; save(); renderItems(); renderOverlay();
-    openOpSheet(op); hud("Placed");
+    openOpSheet(op, true); hud("Placed");
     drag={type:"item",t:op,ox:0,oy:0,moved:false,x0:op.x,y0:op.y,board0:op.board,ml0:op.moveLeft};  // allow immediate nudge
     S.moveTrail={x0:op.x,y0:op.y,x1:op.x,y1:op.y,t:op};
     return;
@@ -1683,10 +1718,18 @@ function npoShort(name){ // short marker label
 
 /* ------------------------------------------------------------------ op editor sheet */
 let sheetOp=null, sheetMin=false;
-function openOpSheet(op){ if(!op||op.kind!=="op"){ closeOpSheet(); return; } sheetOp=op;
-  // If the card is minimised, keep it minimised — just update the rail tab. This lets you
-  // click model after model (to move them) without the big card popping open each time.
-  if(sheetMin){ updateRailTab(); return; }
+function openOpSheet(op, expand){ if(!op||op.kind!=="op"){ closeOpSheet(); return; } sheetOp=op;
+  // Default behaviour on a plain SELECTION is MINIMISED: just show the left-edge rail tab,
+  // not the big card. This lets you tap model after model (to move them, check LoS, etc.)
+  // without the near-fullscreen card popping open every time and needing to be dismissed.
+  // A fresh DROP passes expand=true, because you almost always want to edit a new piece.
+  if(!expand){
+    sheetMin=true;
+    $("#opSheet").classList.add("hidden"); $("#opSheet").classList.remove("min");
+    updateRailTab(); $("#opRailTab").classList.add("show");
+    return;
+  }
+  sheetMin=false;
   bindOpSheet(); $("#opSheet").classList.remove("hidden","min"); $("#opRailTab").classList.remove("show");
 }
 function closeOpSheet(){ sheetOp=null; sheetMin=false;
