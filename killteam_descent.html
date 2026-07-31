@@ -319,6 +319,13 @@
   .dc-rule .rn{font-weight:600;font-size:12px;color:var(--orange);}
   .dc-rule .rt{font-size:11.5px;color:var(--muted);line-height:1.45;margin-top:2px;}
   .dc-behav{font-size:11.5px;color:var(--muted);line-height:1.45;}
+  .adv-row{border:1px solid var(--line);border-radius:8px;padding:7px 9px;margin-bottom:6px;cursor:pointer;background:var(--panel2);}
+  .adv-row.on{border-color:var(--orange);background:rgba(242,160,61,.1);}
+  .adv-head{display:flex;align-items:center;gap:6px;}
+  .adv-act{font-weight:700;font-size:12.5px;}
+  .adv-tgt{color:var(--muted);font-size:11.5px;flex:1 1 auto;min-width:0;}
+  .adv-score{font-family:var(--mono);font-size:11px;color:var(--orange);font-weight:700;}
+  .adv-why{font-size:10.5px;color:var(--dim);line-height:1.35;margin-top:3px;}
   .dc-behav ol{margin:6px 0 0;padding-left:18px;}
   .dc-behav li{margin:2px 0;}
   .dc-photo{width:100%;border-radius:10px;margin-bottom:9px;display:block;}
@@ -332,7 +339,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v212</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v213</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -401,6 +408,7 @@
         <button class="tabb" data-tab="weapons">Weapons</button>
         <button class="tabb" data-tab="rules">Rules</button>
         <button class="tabb" data-tab="behaviour">Behaviour</button>
+        <button class="tabb" data-tab="advisor">Advisor</button>
       </div>
       <div id="opBody">
         <!-- NPO datacard panel (read-only), shown when the selected op is an NPO -->
@@ -674,6 +682,7 @@ const S = {
   los:{a:null,b:null,r:null},  // Line-of-sight tool: shooter id, target id, last result
   mission:{},         // mission trackers: {missionIdx, tp, scans, escaped, ...} per pack
   reanim:null,        // Nightbringer Reanimation marker: {board,x,y,count} (count null = D3+1 pending)
+  advisorPick:null,   // Phase 4 advisor: {npoId, targetId, i} — highlighted recommended action
   undo:[],            // undo stack of reversible actions
   msg:null,           // {text} sticky note for a blocked/invalid action (clickable dismiss)
   vb:{x:0,y:0,w:1,h:1},
@@ -1481,6 +1490,22 @@ function renderOverlay(){
   }
   renderLosOverlay();
   renderReanim();
+  renderAdvisorOverlay();
+}
+// Highlight the advisor's picked recommendation: dashed link NPO→target + target ring.
+function renderAdvisorOverlay(){
+  const p=S.advisorPick; if(!p) return;
+  const npo=S.items.find(o=>o.id===p.npoId); if(!npo){ S.advisorPick=null; return; }
+  // ring the NPO whose plan we're viewing
+  gOvl.appendChild(attr(mk("circle"),{cx:npo.x,cy:npo.y,r:itemR(npo)+5,fill:"none",
+    stroke:"var(--orange)","stroke-width":2,"stroke-dasharray":"4 3","vector-effect":"non-scaling-stroke"}));
+  const t=p.targetId && S.items.find(o=>o.id===p.targetId);
+  if(t){
+    gOvl.appendChild(attr(mk("line"),{x1:npo.x,y1:npo.y,x2:t.x,y2:t.y,stroke:"var(--orange)",
+      "stroke-width":1.8,"stroke-dasharray":"5 4","vector-effect":"non-scaling-stroke"}));
+    gOvl.appendChild(attr(mk("circle"),{cx:t.x,cy:t.y,r:itemR(t)+5,fill:"none",stroke:"var(--orange)",
+      "stroke-width":2,"vector-effect":"non-scaling-stroke"}));
+  }
 }
 // Nightbringer Reanimation marker: a dark disc + green pulsing ring, with a count badge.
 function renderReanim(){
@@ -1909,7 +1934,7 @@ function npoShort(name){ // short marker label
 
 /* ------------------------------------------------------------------ op editor sheet */
 let sheetOp=null, sheetMin=false;
-function openOpSheet(op, expand){ if(!op||op.kind!=="op"){ closeOpSheet(); return; } sheetOp=op;
+function openOpSheet(op, expand){ if(!op||op.kind!=="op"){ closeOpSheet(); return; } if(S.advisorPick && S.advisorPick.npoId!==op.id) S.advisorPick=null; sheetOp=op;
   // Default behaviour on a plain SELECTION is MINIMISED: just show the left-edge rail tab,
   // not the big card. This lets you tap model after model (to move them, check LoS, etc.)
   // without the near-fullscreen card popping open every time and needing to be dismissed.
@@ -1923,7 +1948,7 @@ function openOpSheet(op, expand){ if(!op||op.kind!=="op"){ closeOpSheet(); retur
   sheetMin=false;
   bindOpSheet(); $("#opSheet").classList.remove("hidden","min"); $("#opRailTab").classList.remove("show");
 }
-function closeOpSheet(){ sheetOp=null; sheetMin=false;
+function closeOpSheet(){ sheetOp=null; sheetMin=false; S.advisorPick=null;
   $("#opSheet").classList.add("hidden"); $("#opSheet").classList.remove("min"); $("#opRailTab").classList.remove("show"); }
 function minimizeOpSheet(){ if(!sheetOp) return; sheetMin=true;
   $("#opSheet").classList.add("min"); updateRailTab(); $("#opRailTab").classList.add("show"); }
@@ -1992,8 +2017,31 @@ function renderNPOCard(op){
     const bh=behaviourOf(dc.behaviour);
     body=`<div class="dc-behav"><b style="color:var(--ink)">${esc(bh.label)}</b><br>${esc(bh.blurb)}
       <ol>${bh.order.map(o=>`<li>${esc(o)}</li>`).join("")}</ol></div>`;
+  } else if(tab==="advisor"){
+    const rk=rankNPOActions(op);
+    if(!rk.candidates.length){
+      body=`<div class="dc-behav">No operatives to act on in this killzone.</div>`;
+    } else {
+      body=`<div class="dc-behav" style="margin-bottom:7px"><b style="color:var(--ink)">${esc(rk.label)}</b> — ranked options (tap to highlight)</div>`
+        + rk.candidates.map((c,i)=>{
+            const tgt=c.targetId && S.items.find(o=>o.id===c.targetId);
+            const on=S.advisorPick && S.advisorPick.npoId===op.id && S.advisorPick.i===i;
+            const dim=c.reachable===false?' style="opacity:.55"':'';
+            return `<div class="adv-row${on?' on':''}" data-adv="${i}"${dim}>
+              <div class="adv-head"><span class="adv-act">${esc(c.action)}</span>
+                ${tgt?`<span class="adv-tgt">→ ${esc(tgt.label||'target')}</span>`:'<span class="adv-tgt"></span>'}
+                <span class="adv-score">${c.score}</span></div>
+              <div class="adv-why">${esc((c.reasons||[]).join(' · '))}</div>
+            </div>`;
+          }).join("");
+    }
   }
   host.innerHTML=body;
+  host.querySelectorAll('[data-adv]').forEach(el=>el.addEventListener('click',()=>{
+    const i=+el.dataset.adv, rk=rankNPOActions(op), c=rk.candidates[i];
+    S.advisorPick={npoId:op.id, targetId:(c&&c.targetId)||null, i};
+    renderNPOCard(op); renderOverlay();
+  }));
   const setW=(v)=>{ v=Math.max(0,Math.min(dc.wounds,v)); op.wounds=v;
     const el=$("#npoWval"); if(el) el.textContent=v; save(); renderItems(); };
   if($("#npoWup")) $("#npoWup").addEventListener("click",()=>setW((op.wounds||0)+1));
@@ -2133,7 +2181,7 @@ function loadPack(id){
   S.packId=id; S.pack=PACKS[id]; S.items=[]; S.markers=[]; S.nextPair=1;
   S.insts=[]; S.rulers=[]; S.rooms=[]; S.selInst=null; S.armedPrefab=null; S.activeRoom=null; S.npoPool=[]; S.armedNPO=null; S.moveTrail=null; S.undo=[]; S.los={a:null,b:null,r:null};
   S.selected=null; S.traverse=null; S.opTab="stats"; S._themeConfirm=null;
-  initMission(); S.reanim=null;
+  initMission(); S.reanim=null; S.advisorPick=null;
   if($("#missionPanel")){ $("#missionPanel").classList.add("hidden"); }
   if($("#missionBtn")) $("#missionBtn").classList.remove("on");
   // keep S.prefabs across packs — the imported object library is reusable
