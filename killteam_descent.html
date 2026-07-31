@@ -332,7 +332,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v211</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v212</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -1012,6 +1012,61 @@ function losCheck(a,b){
   }
   const coverChoice=!!(cover&&obscured);
   return {sameBoard:true, clear:!blocked, blocked, blockers, cover, obscured, coverChoice, cone, distH, A, B};
+}
+
+/* ============================================================ PHASE 4 — Kawałek B
+   Scoring + ranking of the Kawałek A candidates per behaviour archetype, using the ordered
+   priority lists in NPO_BEHAVIOURS. Produces a sorted list with a numeric score and a plain
+   reasoning trail per candidate — still NO UI (Kawałek C renders it). */
+// Map an order-list phrase ("Charge closest…", "Fall Back (…)") to a candidate action key.
+function actionKeyOf(orderText){
+  const t=(orderText||"").toLowerCase();
+  if(t.startsWith("fall back")) return "Fall Back";
+  if(t.startsWith("fight"))     return "Fight";
+  if(t.startsWith("charge"))    return "Charge";
+  if(t.startsWith("shoot"))     return "Shoot";
+  if(t.startsWith("reposition"))return "Reposition";
+  if(t.startsWith("dash"))      return "Dash";
+  return null;
+}
+// action -> rank (0 = highest priority) for a behaviour.
+function behaviourPriority(behKey){
+  const order=behaviourOf(behKey).order||[]; const map={};
+  order.forEach((txt,i)=>{ const k=actionKeyOf(txt); if(k&&map[k]==null) map[k]=i; });
+  return map;
+}
+// Score a single candidate. Returns {score, reasons[]}.
+function scoreCandidate(cand, npo, prio, behLabel){
+  const reasons=[]; let score=0;
+  const rank=prio[cand.action];
+  if(rank!=null){ score += (10-rank)*10; reasons.push(`${behLabel} prioritises ${cand.action} (#${rank+1})`); }
+  else { score += 5; }
+  if(cand.reachable===false){ score -= 100; reasons.push("not reachable this activation"); }
+  if(cand.action==="Shoot"){
+    if(cand.blocked){ reasons.push("no line of sight"); }
+    else if(cand.cover==="heavy"){ score-=20; reasons.push("target in heavy cover"); }
+    else if(cand.cover==="light"){ score-=10; reasons.push("target in light cover"); }
+    else if(cand.obscured){ score-=8; reasons.push("target obscured"); }
+    else { score+=8; reasons.push("clean line of fire"); }
+  }
+  if(cand.action==="Fight"){ score+=15; reasons.push("already engaged — no move needed"); }
+  if(cand.action==="Charge" && cand.reachable){ score += Math.max(0,8-(cand.need||0)); reasons.push(`reaches engagement (needs ${(cand.need||0).toFixed(1)}\")`); }
+  // finish wounded targets
+  const tgt=cand.targetId && S.items.find(o=>o.id===cand.targetId);
+  if(tgt && tgt.wounds!=null && tgt.woundsMax){ const frac=tgt.wounds/tgt.woundsMax;
+    if(frac<=0.4){ score+=10; reasons.push(`${tgt.label||"target"} is wounded (${tgt.wounds}/${tgt.woundsMax})`); } }
+  // mild proximity nudge: closer targets first
+  if(cand.dist!=null) score += Math.max(0, 6 - cand.dist)*0.5;
+  return {score, reasons};
+}
+// Rank all candidate actions for an NPO. Returns {behaviour, label, candidates:[...scored], best}.
+function rankNPOActions(npo){
+  const dc=npo&&npo.npoKey&&NPO_LIB[npo.npoKey]; if(!dc) return {candidates:[]};
+  const behKey=dc.behaviour||"brawler", beh=behaviourOf(behKey), prio=behaviourPriority(behKey);
+  const cands=enumerateNPOActions(npo).map(c=>{ const s=scoreCandidate(c,npo,prio,beh.label);
+    return Object.assign({}, c, {score:Math.round(s.score*10)/10, reasons:s.reasons}); });
+  cands.sort((a,b)=> b.score-a.score);
+  return {behaviour:behKey, label:beh.label, blurb:beh.blurb, candidates:cands, best:cands[0]||null};
 }
 
 /* ============================================================ PHASE 4 — Kawałek A
