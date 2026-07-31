@@ -275,6 +275,16 @@
   .rstatus .mini.on{background:rgba(58,209,139,.16);color:#3ad18b;border-color:rgba(58,209,139,.5);}
   .rstatus .rsig.on{background:rgba(242,160,61,.16);color:var(--orange);border-color:rgba(242,160,61,.5);}
   .rstatus .rspawn{border-color:rgba(224,87,77,.4);color:var(--red);}
+  .tteam-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;}
+  .tteam-tab{border:1px solid var(--line);background:var(--panel2);color:var(--ink);padding:6px 10px;
+    border-radius:8px;font-size:11.5px;cursor:pointer;}
+  .tteam-tab.on{border-color:var(--orange);color:var(--orange);background:rgba(242,160,61,.1);}
+  .rmodel{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(42,51,61,.5);cursor:pointer;}
+  .rmodel:last-child{border-bottom:0;}
+  .rmodel.on{background:rgba(242,160,61,.08);}
+  .rmodel img{width:26px;height:26px;border-radius:5px;object-fit:cover;flex:0 0 auto;background:var(--panel2);}
+  .rmodel .rmname{flex:1 1 auto;min-width:0;font-size:12px;}
+  .rmodel .rmstat{font-family:var(--mono);font-size:10px;color:var(--dim);}
   .roomrow.active{}
   .rswatch{width:12px;height:12px;border-radius:3px;flex:0 0 auto;}
   .roomrow .rname{flex:1 1 auto;min-width:0;background:var(--panel2);border:1px solid var(--line);
@@ -339,7 +349,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v213</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v214</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -518,12 +528,25 @@
         <div class="dwrow" style="margin-top:9px"><button class="mini" id="npoNemesis">Place Nemesis</button></div>
       </div>
       <div class="dwsec">
+        <div class="dwsec-h">Roster</div>
+        <div class="dwrow">
+          <button class="mini" id="rosterImport">Import kt-roster.json…</button>
+          <button class="mini" id="rosterClear">Clear</button>
+        </div>
+        <div class="tteam-tabs" id="rosterTeams"></div>
+        <div id="rosterModels"></div>
+        <div class="dwhint">Load your Planner <b>kt-roster.json</b> (all teams). Pick a team, tap an operative to arm it, then tap a board to place it with its full datacard. The same file you already use in the Planner — no need to rebuild.</div>
+      </div>
+      <div class="dwsec">
         <div class="dwsec-h">Save / load</div>
         <div class="dwrow">
-          <button class="mini" id="exportLayout">Export game…</button>
-          <button class="mini" id="importLayout">Import game…</button>
+          <button class="mini" id="exportLib">Export library…</button>
+          <button class="mini" id="exportState">Copy state for Claude…</button>
         </div>
-        <div class="dwhint">Export the current board — maps, objects, markers, operatives and rooms — as a kt-descent-layout.json you can back up, share, or send for analysis. Import restores it (and also reads a Planner kt-layout.json). Full library tools (layouts, objects, rosters) come later.</div>
+        <div class="dwrow" style="margin-top:6px">
+          <button class="mini" id="importLayout">Import…</button>
+        </div>
+        <div class="dwhint"><b>Library</b> (kt-descent-layouts.json) is the heavy setup file — maps + objects + board config — that you build once and reload each game. <b>State</b> (kt-descent-layout.json) is the lean turn exchange — positions, statuses, rooms and geometry refs, <i>without</i> the base64 maps — small enough to paste for analysis. Import reads either (and a Planner kt-layout.json).</div>
       </div>
     </div>
   </div>
@@ -531,6 +554,7 @@
   <input type="file" id="objFile" accept="application/json" style="display:none">
   <input type="file" id="mapFileHidden" accept="image/*" style="display:none">
   <input type="file" id="layoutFile" accept="application/json" style="display:none">
+  <input type="file" id="rosterFile" accept="application/json" style="display:none">
   </div>
 </div>
 
@@ -678,6 +702,9 @@ const S = {
   npoPool:[],         // chosen NPO datacard keys forming the pool (respecting budget)
   npoTheme:"tomb",    // pool theme — Tomb World OR Core, not mixed (Shadowhunt rule)
   armedNPO:null,      // datacard key armed for placement (tap board to drop)
+  roster:{teams:[]},  // player roster (kt-roster.json shape) — reused from the Planner
+  rosterEdit:null,    // active team id in the roster UI
+  armedModel:null,    // roster model armed for placement (tap board to drop)
   moveTrail:null,     // {x0,y0,x1,y1,t} while dragging a model — shows trail + distance
   los:{a:null,b:null,r:null},  // Line-of-sight tool: shooter id, target id, last result
   mission:{},         // mission trackers: {missionIdx, tp, scans, escaped, ...} per pack
@@ -1760,6 +1787,15 @@ svg.addEventListener("pointerdown",e=>{
         openOpSheet(op, true); note(`Placed ${NPO_LIB[op.npoKey].name}.`,true); }
       drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
   }
+  // If a roster operative is armed, a tap on the board places it with its full datacard.
+  if(S.armedModel){
+    const b=boardAt(w.x,w.y);
+    if(b){ const side=S.armedModel._side||"mine"; const op=makeOpFromModel(S.armedModel,side,b.id,w.x,w.y);
+      S.items.push(op); S.selected=op.id; S.armedModel=null; save(); renderItems(); renderOverlay();
+      if($("#rosterModels")) buildRoster();
+      openOpSheet(op, true); note(`Placed ${op.model.name}.`,true);
+      drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
+  }
 
   // If a palette piece is armed, a tap on the board drops it (any mode).
   if(S.armedPrefab){
@@ -1961,14 +1997,19 @@ $("#opRailTab").addEventListener("click",restoreOpSheet);
 function bindOpSheet(){
   const op=sheetOp; if(!op) return;
   const isNPO = !!op.npoKey && NPO_LIB[op.npoKey];
-  $("#opEdit").classList.toggle("hidden", isNPO);
-  $("#opCard").classList.toggle("hidden", !isNPO);
-  $("#opTabs").classList.toggle("hidden", !isNPO);
+  const hasCard = isNPO || !!op.model;      // roster ops carry op.model → full datacard
+  $("#opEdit").classList.toggle("hidden", hasCard);
+  $("#opCard").classList.toggle("hidden", !hasCard);
+  $("#opTabs").classList.toggle("hidden", !hasCard);
   $("#opLabel").value=op.label||"";
-  $("#opLabel").disabled = isNPO;
-  if(isNPO){ if(!S.opTab) S.opTab="stats";
+  $("#opLabel").disabled = isNPO;           // NPO names are fixed; roster ops can be renamed
+  // Behaviour & Advisor tabs are NPO-only (they read NPO_BEHAVIOURS); hide for roster ops.
+  $$("#opTabs .tabb").forEach(b=>{ if(b.dataset.tab==="behaviour"||b.dataset.tab==="advisor") b.style.display=isNPO?"":"none"; });
+  if(hasCard){
+    if(!S.opTab || ((S.opTab==="behaviour"||S.opTab==="advisor") && !isNPO)) S.opTab="stats";
     $$("#opTabs .tabb").forEach(b=>b.classList.toggle("on",b.dataset.tab===S.opTab));
-    renderNPOCard(op); return; }
+    renderNPOCard(op); return;
+  }
   $$("#opSide .mini").forEach(b=>b.classList.toggle("on",b.dataset.v===op.side));
   const baseKey = op.base || String(op.baseMm||32);
   $$("#opBase .mini").forEach(b=>b.classList.toggle("on",b.dataset.v===baseKey));
@@ -1984,9 +2025,12 @@ $("#opTabs").addEventListener("click",e=>{ const b=e.target.closest("[data-tab]"
   S.opTab=b.dataset.tab; $$("#opTabs .tabb").forEach(x=>x.classList.toggle("on",x===b));
   if(sheetOp) renderNPOCard(sheetOp); });
 
+// The datacard behind an op: an NPO's library entry, or a roster op's synthesized card.
+function opDatacard(op){ return (op.npoKey&&NPO_LIB[op.npoKey]) || op.model || null; }
 // Read-only datacard, rendered one tab at a time so no single view overflows the panel.
 function renderNPOCard(op){
-  const dc=NPO_LIB[op.npoKey]; const host=$("#opCard"); const tab=S.opTab||"stats";
+  const dc=opDatacard(op); if(!dc){ return; } const isNPO=!!(op.npoKey&&NPO_LIB[op.npoKey]);
+  const host=$("#opCard"); const tab=S.opTab||"stats";
   let body="";
   if(tab==="stats"){
     body=`${dc.photo?`<img class="dc-photo" src="${dc.photo.card}" alt="">`:""}
@@ -2179,7 +2223,7 @@ function openPicker(){ renderPackList(); $("#picker").classList.remove("hidden")
 /* ------------------------------------------------------------------ load / persist */
 function loadPack(id){
   S.packId=id; S.pack=PACKS[id]; S.items=[]; S.markers=[]; S.nextPair=1;
-  S.insts=[]; S.rulers=[]; S.rooms=[]; S.selInst=null; S.armedPrefab=null; S.activeRoom=null; S.npoPool=[]; S.armedNPO=null; S.moveTrail=null; S.undo=[]; S.los={a:null,b:null,r:null};
+  S.insts=[]; S.rulers=[]; S.rooms=[]; S.selInst=null; S.armedPrefab=null; S.activeRoom=null; S.npoPool=[]; S.armedNPO=null; S.armedModel=null; S.moveTrail=null; S.undo=[]; S.los={a:null,b:null,r:null};
   S.selected=null; S.traverse=null; S.opTab="stats"; S._themeConfirm=null;
   initMission(); S.reanim=null; S.advisorPick=null;
   if($("#missionPanel")){ $("#missionPanel").classList.add("hidden"); }
@@ -2339,7 +2383,7 @@ $("#missionBtn").addEventListener("click",()=>{ const p=$("#missionPanel");
 });
 $("#missionClose").addEventListener("click",()=>{ $("#missionPanel").classList.add("hidden"); $("#missionBtn").classList.remove("on"); });
 
-function buildDrawer(){ buildMapSlots(); buildPlaceBoardPick(); buildPalette(); buildRoomList(); buildNPOSection(); syncLockObjBtn(); syncRoomPaintBtn(); }
+function buildDrawer(){ buildMapSlots(); buildPlaceBoardPick(); buildPalette(); buildRoomList(); buildNPOSection(); buildRoster(); syncLockObjBtn(); syncRoomPaintBtn(); }
 
 /* ---- per-killzone map slots ---- */
 let mapTargetBoard=null;
@@ -2553,19 +2597,88 @@ function placeArmedPrefab(w){
    used are embedded, so the file rebuilds without the whole library. The Planner won't read
    this (it looks for a single top-level map) and that's fine — separate apps by design. */
 function usedPrefabDefs(){ const out={}; S.insts.forEach(i=>{ if(S.prefabs[i.ref]) out[i.ref]=S.prefabs[i.ref]; }); return out; }
-function exportLayout(){
-  const boards=S.boards.map(b=>({id:b.id,map:b.map||null,
-    mapOX:b.mapOX||0,mapOY:b.mapOY||0,mapSX:b.mapSX||1,mapSY:b.mapSY||1}));
-  const data={ v:1, kind:"kt-descent-layout", packId:S.packId,
-    boards, insts:S.insts, markers:S.markers, items:S.items, rooms:S.rooms, rulers:S.rulers, npoPool:S.npoPool,
-    nextPair:S.nextPair, objects:usedPrefabDefs() };
-  const blob=new Blob([JSON.stringify(data)],{type:"application/json"});
-  const url=URL.createObjectURL(blob), a=document.createElement("a");
-  a.href=url; a.download="kt-descent-layout.json"; document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),1500);
-  note("Exported kt-descent-layout.json.",true);
+// Shared payload. `withMaps` decides whether per-board base64 map images ride along:
+//   library (heavy, built once) keeps them; the turn-exchange state (lean) strips them.
+function layoutPayload(withMaps){
+  const boards=S.boards.map(b=>({id:b.id, map:withMaps?(b.map||null):undefined,
+    mapOX:b.mapOX||0, mapOY:b.mapOY||0, mapSX:b.mapSX||1, mapSY:b.mapSY||1}));
+  return { v:1, kind:withMaps?"kt-descent-layouts":"kt-descent-layout", packId:S.packId,
+    boards, insts:S.insts, markers:S.markers, items:S.items, rooms:S.rooms, rulers:S.rulers,
+    npoPool:S.npoPool, npoTheme:S.npoTheme, nextPair:S.nextPair, mission:S.mission, reanim:S.reanim,
+    objects:usedPrefabDefs() };
 }
-$("#exportLayout").addEventListener("click",exportLayout);
+function downloadJSON(obj, name, msg){
+  const blob=new Blob([JSON.stringify(obj)],{type:"application/json"});
+  const url=URL.createObjectURL(blob), a=document.createElement("a");
+  a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500); note(msg,true);
+}
+// Heavy library: maps + objects + board config. Built once, reloaded at setup.
+function exportLibrary(){ downloadJSON(layoutPayload(true), "kt-descent-layouts.json", "Exported kt-descent-layouts.json (library, with maps)."); }
+// Lean turn state: everything EXCEPT the base64 maps — small enough to paste for analysis.
+function exportState(){ downloadJSON(layoutPayload(false), "kt-descent-layout.json", "Exported kt-descent-layout.json (lean state, no maps)."); }
+$("#exportLib").addEventListener("click",exportLibrary);
+$("#exportState").addEventListener("click",exportState);
+
+/* ============================================================ Kawałek K1 — roster
+   Reuse the Planner's kt-roster.json verbatim: {teams:[{id,name,side,cap,models:[...]}]}, each
+   model {name,photo,base/baseMm,wounds,move,apl,sv,weapons:[{name,atk,hit,dmg,wr,type}],
+   abilities:[{name,desc,ap,restrict,unique,track}]}. Place ops carrying a synthesized datacard. */
+const ROSTER_KEY="kt-descent-roster";
+function saveRoster(){ try{ localStorage.setItem(ROSTER_KEY, JSON.stringify(S.roster)); }catch(_){} }
+function loadRosterLS(){ try{ const r=JSON.parse(localStorage.getItem(ROSTER_KEY)); if(r&&Array.isArray(r.teams)) S.roster=r; }catch(_){} }
+// Map a roster model → the datacard shape our card renders (same as NPO_LIB).
+function modelToCard(m){
+  return {
+    name:m.name||"Operative", apl:m.apl, move:m.move, save:m.sv, wounds:m.wounds,
+    keywords:m.keywords||[],
+    weapons:(m.weapons||[]).map(w=>({n:w.name, t:w.type||(/(range|rng)\b/i.test(w.wr||"")?"ranged":"melee"),
+      atk:w.atk, hit:w.hit, dmg:w.dmg, wr:w.wr||""})),
+    rules:(m.abilities||[]).map(a=>({n:a.name, text:(a.ap?`[${a.ap}] `:"")+(a.desc||"")+(a.restrict?` — ${a.restrict}`:"")})),
+    photo:m.photo?{card:m.photo, marker:m.photo}:null
+  };
+}
+function makeOpFromModel(m, side, boardId, x, y){
+  const oval=(m.base==="oval");
+  return {id:crypto.randomUUID(), kind:"op", side, board:boardId, x, y,
+    label:(m.name||"OP").replace(/[()']/g,"").split(/\s+/).map(w=>w[0]).join("").slice(0,6).toUpperCase(),
+    base:oval?"oval":String(m.baseMm||32), baseMm:oval?60:(m.baseMm||32), baseMm2:oval?35:null,
+    move:m.move??6, moveLeft:m.move??6, ang:0, guard:false, keywords:[],
+    wounds:m.wounds, woundsMax:m.wounds,
+    rosterRef:{team:S.rosterEdit, modelId:m.id}, model:modelToCard(m) };
+}
+function curRosterTeam(){ return (S.roster.teams||[]).find(t=>t.id===S.rosterEdit) || S.roster.teams[0] || null; }
+function buildRoster(){
+  const tabs=$("#rosterTeams"), list=$("#rosterModels"); if(!tabs||!list) return;
+  const teams=S.roster.teams||[];
+  if(!teams.length){ tabs.replaceChildren(); list.innerHTML=`<div class="dwhint">No roster loaded.</div>`; return; }
+  if(!curRosterTeam()) S.rosterEdit=teams[0].id;
+  tabs.innerHTML=teams.map(t=>`<button class="tteam-tab${t.id===S.rosterEdit?" on":""}" data-team="${t.id}">${esc(t.name)} · ${t.side==="mine"?"Mine":"Enemy"}</button>`).join("");
+  const team=curRosterTeam();
+  list.innerHTML=(team.models||[]).map(m=>{
+    const on=S.armedModel&&S.armedModel.id===m.id;
+    return `<div class="rmodel${on?" on":""}" data-model="${m.id}">
+      ${m.photo?`<img src="${m.photo}" alt="">`:`<span class="rmodel img"></span>`}
+      <span class="rmname">${esc(m.name||"Model")}</span>
+      <span class="rmstat">APL${m.apl} · M${m.move}" · ${m.wounds}W</span></div>`;
+  }).join("") || `<div class="dwhint">This team has no operatives.</div>`;
+}
+$("#rosterTeams").addEventListener("click",e=>{ const b=e.target.closest("[data-team]"); if(!b) return;
+  S.rosterEdit=b.dataset.team; S.armedModel=null; buildRoster(); });
+$("#rosterModels").addEventListener("click",e=>{ const r=e.target.closest("[data-model]"); if(!r) return;
+  const team=curRosterTeam(); const m=team&&(team.models||[]).find(x=>x.id===r.dataset.model); if(!m) return;
+  S.armedModel = (S.armedModel&&S.armedModel.id===m.id) ? null : m;
+  if(S.armedModel) S.armedModel._side=team.side;
+  buildRoster(); note(S.armedModel?`Armed ${m.name}. Tap a board to place it.`:"Disarmed.",true); });
+$("#rosterImport").addEventListener("click",()=>$("#rosterFile").click());
+$("#rosterClear").addEventListener("click",()=>{ S.roster={teams:[]}; S.rosterEdit=null; S.armedModel=null; saveRoster(); buildRoster(); note("Roster cleared.",true); });
+$("#rosterFile").addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value=""; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{ let r; try{ r=JSON.parse(rd.result); }catch(_){ note("That isn't valid JSON."); return; }
+    if(!r||!Array.isArray(r.teams)){ note("Not a kt-roster.json (needs teams[])."); return; }
+    S.roster=r; S.rosterEdit=r.teams[0]?r.teams[0].id:null; S.armedModel=null; saveRoster(); buildRoster();
+    note(`Roster loaded: ${r.teams.length} team${r.teams.length===1?"":"s"}.`,true); };
+  rd.onerror=()=>note("Couldn't read that file."); rd.readAsText(f); });
 $("#importLayout").addEventListener("click",()=>$("#layoutFile").click());
 $("#layoutFile").addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value="";
   if(!f) return; const rd=new FileReader();
@@ -2584,10 +2697,14 @@ function importLayout(d){
   if(d.objects) loadPrefabLibrary(d.objects);
   S.insts=d.insts||[]; S.markers=d.markers||[]; S.items=d.items||[];
   S.rooms=d.rooms||[]; S.rulers=d.rulers||[]; S.npoPool=d.npoPool||[]; S.nextPair=d.nextPair||1;
-  S.selected=null; S.selInst=null; S.traverse=null; S.activeRoom=S.rooms[0]?S.rooms[0].id:null;
-  // reapply per-board maps
+  if(d.npoTheme) S.npoTheme=d.npoTheme;
+  S.mission=(d.mission&&d.mission.missionIdx!=null)?d.mission:S.mission; S.reanim=d.reanim||null;
+  S.selected=null; S.selInst=null; S.traverse=null; S.advisorPick=null; S.activeRoom=S.rooms[0]?S.rooms[0].id:null;
+  // reapply per-board transform; only overwrite the map image when the file actually carries one
+  // (a lean state export has no base64 maps — keep whatever the loaded library already provided).
   if(Array.isArray(d.boards)){ d.boards.forEach(bd=>{ const b=boardById(bd.id); if(b){
-    b.map=bd.map||null; b.mapOX=bd.mapOX||0; b.mapOY=bd.mapOY||0; b.mapSX=bd.mapSX||1; b.mapSY=bd.mapSY||1; } }); }
+    if(bd.map!=null) b.map=bd.map;
+    b.mapOX=bd.mapOX||0; b.mapOY=bd.mapOY||0; b.mapSX=bd.mapSX||1; b.mapSY=bd.mapSY||1; } }); }
   // warn if the board references objects we still don't have
   const missing=[...new Set(S.insts.map(i=>i.ref).filter(r=>!S.prefabs[r]))];
   save(); renderAll(); fitView(); if($("#drawer")) buildDrawer();
@@ -2709,6 +2826,7 @@ if("serviceWorker" in navigator){
   renderPackList();
   const saved=localStorage.getItem(PACKKEY);
   $("#resumeBtn").style.display = saved ? "" : "none";
+  loadRosterLS();
   // Auto-resume a prior session so a returning player lands straight on their board;
   // if there's nothing to resume, the picker stays up as the first screen.
   if(!restore()){
