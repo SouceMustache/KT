@@ -367,7 +367,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v217</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v218</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -553,6 +553,9 @@
           <button class="mini" id="rosterImport">Import kt-roster.json…</button>
           <button class="mini" id="rosterClear">Clear</button>
         </div>
+        <div class="dwrow" style="margin-top:6px">
+          <button class="mini" id="codexSync">Sync codex (skills)</button>
+        </div>
         <div class="tteam-tabs" id="rosterTeams"></div>
         <div id="rosterModels"></div>
         <div class="dwhint">Load your Planner <b>kt-roster.json</b> (all teams). Pick a team, tap an operative to arm it, then tap a board to place it with its full datacard. The same file you already use in the Planner — no need to rebuild.</div>
@@ -725,6 +728,7 @@ const S = {
   roster:{teams:[]},  // player roster (kt-roster.json shape) — reused from the Planner
   rosterEdit:null,    // active team id in the roster UI
   armedModel:null,    // roster model armed for placement (tap board to drop)
+  codex:null,         // synced codex {factionKey:[{id,name,side,weapons,abilities}]} for OP skills
   moveTrail:null,     // {x0,y0,x1,y1,t} while dragging a model — shows trail + distance
   los:{a:null,b:null,r:null},  // Line-of-sight tool: shooter id, target id, last result
   mission:{},         // mission trackers: {missionIdx, tp, scans, escaped, ...} per pack
@@ -2124,9 +2128,10 @@ function renderNPOCard(op){
       <td>${w.dmg}</td><td class="wr">${esc(w.wr)}</td></tr>`).join("");
     body=`<table class="dc-wtable"><tr><th>Name</th><th>ATK</th><th>HIT</th><th>DMG</th><th>WR</th></tr>${wpn}</table>`;
   } else if(tab==="rules"){
-    body=(dc.rules&&dc.rules.length)
-      ? dc.rules.map(r=>`<div class="dc-rule"><div class="rn">${esc(r.n)}</div><div class="rt">${esc(r.text)}</div></div>`).join("")
-      : `<div class="dc-behav">No special rules.</div>`;
+    const ab=opAbilities(op);
+    body = ab.length
+      ? ab.map(a=>`<div class="dc-rule"><div class="rn">${esc(a.name||"")}${a.ap?` <span style="color:var(--orange)">[${esc(a.ap)}]</span>`:""}</div><div class="rt">${esc(a.desc||"")}${a.restrict?`<br><span style="color:var(--dim)">${esc(a.restrict)}</span>`:""}</div></div>`).join("")
+      : `<div class="dc-behav">No abilities loaded.${op.model?` Tap <b>Sync codex</b> in the Roster panel to pull this operative's skills.`:""}</div>`;
   } else if(tab==="behaviour"){
     const bh=behaviourOf(dc.behaviour);
     body=`<div class="dc-behav"><b style="color:var(--ink)">${esc(bh.label)}</b><br>${esc(bh.blurb)}
@@ -2717,8 +2722,56 @@ function makeOpFromModel(m, side, boardId, x, y){
     base:oval?"oval":String(m.baseMm||32), baseMm:oval?60:(m.baseMm||32), baseMm2:oval?35:null,
     move:m.move??6, moveLeft:m.move??6, ang:0, guard:false, keywords:[],
     wounds:m.wounds, woundsMax:m.wounds,
-    rosterRef:{team:S.rosterEdit, modelId:m.id}, model:modelToCard(m) };
+    rosterRef:{team:S.rosterEdit, modelId:m.id}, codexRef:m.codexRef||null, model:modelToCard(m) };
 }
+
+/* ---- K2b: codex sync (skills for player ops), ported 1:1 from the Planner ---- */
+const CXKEY="kt-descent-codex-v1";
+const FAC_LEGACY={MINE:"murderwing", mine:"murderwing"};
+function loadCodexLS(){ try{ const c=JSON.parse(localStorage.getItem(CXKEY)); if(c) S.codex=c; }catch(_){} }
+function cxExtract(src,start){ let i=src.indexOf('[',start); const open=i; let depth=0,s=null,esc=false;
+  for(;i<src.length;i++){ const c=src[i];
+    if(s){ if(esc)esc=false; else if(c==='\\')esc=true; else if(c===s)s=null; continue; }
+    if(c==='"'||c==="'"||c==='`'){ s=c; continue; }
+    if(c==='[')depth++; else if(c===']'){ depth--; if(depth===0) return src.slice(open,i+1); } }
+  return null; }
+function wpnIsRanged(name,wr){ const nl=(name||"").toLowerCase(); wr=wr||"";
+  if(/\(point-blank\)|\(stab\)|\(strike\)|\(sweep\)/.test(nl)) return false;
+  if(/\(ranged\)|throwing/.test(nl)) return true;
+  if(/\bRange\s/i.test(wr)) return true;
+  if(/\b(Blast|Torrent|Saturate|Devastating|Hot|Bipod|Beam|Silent|Seek|Heavy)\b/i.test(wr)) return true;
+  return false; }
+function codexFacKey(fac){ if(!S.codex) return fac;
+  const mapped=FAC_LEGACY[fac]||fac;
+  if(S.codex[mapped]) return mapped;
+  if(S.codex[fac]) return fac;
+  const w=String(mapped||"").toLowerCase();
+  return Object.keys(S.codex).find(k=>k.toLowerCase()===w) || mapped; }
+// Abilities for an op: codexRef→codex, else the op's own datacard rules (NPO) / model rules (roster).
+function opAbilities(op){
+  if(op.codexRef && S.codex){ const fk=codexFacKey(op.codexRef.fac);
+    if(S.codex[fk]){ const c=S.codex[fk].find(o=>o.id===op.codexRef.opId);
+      if(c&&c.abilities&&c.abilities.length) return c.abilities.map(a=>({name:a.name,desc:a.desc,ap:a.ap,restrict:a.restrict})); } }
+  const dc=opDatacard(op);
+  if(dc&&dc.rules&&dc.rules.length) return dc.rules.map(r=>({name:r.n,desc:r.text}));
+  return []; }
+async function syncCodex(btn){ const t0=btn?btn.textContent:""; if(btn){ btn.textContent="Syncing…"; btn.disabled=true; }
+  try{ const res=await fetch("./killteam_viewer.html",{cache:"no-store"}); if(!res.ok) throw new Error("HTTP "+res.status);
+    const src=await res.text(); const re=/(?:const|var|let)\s+([A-Z_][A-Z0-9_]*)\s*=\s*\[/g; let m; const cx={};
+    while((m=re.exec(src))){ const txt=cxExtract(src,m.index); if(!txt) continue;
+      let arr; try{ arr=Function("return ("+txt+")")(); }catch(_){ continue; }
+      if(!Array.isArray(arr)||!arr.length||!arr[0]||!arr[0].weapons) continue;
+      cx[m[1]]=arr.map(o=>({id:o.id,name:o.name,side:o.side,
+        weapons:(o.weapons||[]).map(w=>({name:w.name,atk:w.atk,hit:w.hit,dmg:w.dmg,wr:w.wr||"",
+          type:(w.type||(wpnIsRanged(w.name,w.wr)?"ranged":"melee"))})),
+        abilities:(o.abilities||[]).map(a=>({name:a.name,desc:a.desc||"",ap:a.ap||"",restrict:a.restrict||"",unique:!!a.unique,track:a.track||null}))})); }
+    if(!Object.keys(cx).length) throw new Error("no operative data found");
+    let ops=0; Object.values(cx).forEach(a=>ops+=a.length);
+    S.codex=cx; try{ localStorage.setItem(CXKEY,JSON.stringify(cx)); }catch(_){}
+    if(sheetOp) renderNPOCard(sheetOp);
+    note(`Codex synced: ${Object.keys(cx).length} factions, ${ops} operatives.`,true); }
+  catch(err){ note("Codex sync failed: "+(err.message||err)+" — open the app from GitHub Pages (same origin as the viewer)."); }
+  finally{ if(btn){ btn.textContent=t0; btn.disabled=false; } } }
 function curRosterTeam(){ return (S.roster.teams||[]).find(t=>t.id===S.rosterEdit) || S.roster.teams[0] || null; }
 function buildRoster(){
   const tabs=$("#rosterTeams"), list=$("#rosterModels"); if(!tabs||!list) return;
@@ -2743,6 +2796,7 @@ $("#rosterModels").addEventListener("click",e=>{ const r=e.target.closest("[data
   if(S.armedModel) S.armedModel._side=team.side;
   buildRoster(); note(S.armedModel?`Armed ${m.name}. Tap a board to place it.`:"Disarmed.",true); });
 $("#rosterImport").addEventListener("click",()=>$("#rosterFile").click());
+$("#codexSync").addEventListener("click",e=>syncCodex(e.currentTarget));
 $("#rosterClear").addEventListener("click",()=>{ S.roster={teams:[]}; S.rosterEdit=null; S.armedModel=null; saveRoster(); buildRoster(); note("Roster cleared.",true); });
 $("#rosterFile").addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value=""; if(!f) return;
   const rd=new FileReader();
@@ -2898,7 +2952,7 @@ if("serviceWorker" in navigator){
   renderPackList();
   const saved=localStorage.getItem(PACKKEY);
   $("#resumeBtn").style.display = saved ? "" : "none";
-  loadRosterLS();
+  loadRosterLS(); loadCodexLS();
   // Auto-resume a prior session so a returning player lands straight on their board;
   // if there's nothing to resume, the picker stays up as the first screen.
   if(!restore()){
