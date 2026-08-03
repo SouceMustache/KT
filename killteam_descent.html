@@ -377,7 +377,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v221</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v222</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -580,6 +580,8 @@
       </div>
       <div class="dwsec">
         <div class="dwsec-h">Save / load</div>
+        <div id="missionPresets"></div>
+        <div class="dwhint" style="margin:2px 0 8px">Presets are named by <b>this pack's missions</b> and saved per pack — loading Shadowhunt won't show Devlan's. Build a board (maps, objects, markers, rooms), then <b>Save current</b> into a mission slot; <b>Load</b> restores it any time, maps and all. <b>Export library</b> writes every preset to kt-descent-layouts.json.</div>
         <div class="dwrow">
           <button class="mini" id="exportLib">Export library…</button>
           <button class="mini" id="exportState">Copy state for Claude…</button>
@@ -2545,7 +2547,7 @@ $("#metaBtn").addEventListener("click",()=>{ const p=$("#metaPanel");
 });
 $("#metaClose").addEventListener("click",()=>{ $("#metaPanel").classList.add("hidden"); $("#metaBtn").classList.remove("on"); });
 
-function buildDrawer(){ buildMapSlots(); buildPlaceBoardPick(); buildPalette(); buildRoomList(); buildNPOSection(); buildRoster(); syncLockObjBtn(); syncRoomPaintBtn(); }
+function buildDrawer(){ buildMapSlots(); buildPresetPicker(); buildPlaceBoardPick(); buildPalette(); buildRoomList(); buildNPOSection(); buildRoster(); syncLockObjBtn(); syncRoomPaintBtn(); }
 
 /* ---- per-killzone map slots ---- */
 let mapTargetBoard=null;
@@ -2775,8 +2777,59 @@ function downloadJSON(obj, name, msg){
   a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1500); note(msg,true);
 }
+// ---- K0b: mission-preset library --------------------------------------------------
+// A library of named board presets, keyed by pack then mission name. Slots are seeded from
+// the active pack's mission list (no typing), and only the active pack's missions are shown,
+// so loading Shadowhunt never surfaces Devlan's presets. Each preset is a heavy payload
+// (maps + objects + board config), so a load restores everything without re-entering maps.
+const LIBKEY="ktDescentLibrary";
+function loadLibLS(){ try{ const d=JSON.parse(localStorage.getItem(LIBKEY)); return (d&&typeof d==="object")?d:{}; }catch(_){ return {}; } }
+let LIB=loadLibLS();
+function persistLib(){ try{ localStorage.setItem(LIBKEY,JSON.stringify(LIB)); }
+  catch(_){ note("Library too big for local storage (maps are heavy) — it's kept for now but export it to a file to be safe."); } }
+function saveLayoutToSlot(mission){ if(!S.packId||!S.pack) return;
+  const idx=(S.pack.missions||[]).indexOf(mission);
+  const payload=layoutPayload(true);
+  if(idx>=0) payload.mission=Object.assign({},payload.mission||{},{missionIdx:idx});  // keep slot in step with mission
+  if(!LIB[S.packId]) LIB[S.packId]={};
+  LIB[S.packId][mission]=payload; persistLib(); buildPresetPicker();
+  note(`Saved current board to "${mission}".`,true); }
+function loadLayoutFromSlot(mission){ const p=LIB[S.packId]&&LIB[S.packId][mission];
+  if(!p){ note("No board saved in that slot yet."); return; }
+  importLayout(p); buildPresetPicker(); }          // importLayout notes success itself
+function deleteSlot(mission){ if(LIB[S.packId]){ delete LIB[S.packId][mission]; persistLib(); buildPresetPicker();
+  note(`Deleted "${mission}".`,true); } }
+function mergeLibrary(lib){ let n=0;
+  for(const pk in lib){ if(!LIB[pk]) LIB[pk]={}; for(const m in lib[pk]){ LIB[pk][m]=lib[pk][m]; n++; } }
+  persistLib(); if($("#missionPresets")) buildPresetPicker();
+  note(`Imported ${n} mission preset${n===1?"":"s"} into the library.`,true); }
+// Render the picker: one row per mission in the ACTIVE pack, seeded from pack.missions.
+function buildPresetPicker(){ const host=$("#missionPresets"); if(!host) return; host.replaceChildren();
+  if(!S.pack) return; const slots=LIB[S.packId]||{};
+  (S.pack.missions||[]).forEach(mission=>{ const saved=!!slots[mission];
+    const el=document.createElement("div"); el.className="mapslot";
+    el.innerHTML=`
+      <div class="msh"><span class="mschip" style="background:var(--orange)"></span>
+        <span class="msname">${esc(mission)}</span>
+        <span class="msstate">${saved?"saved":"empty"}</span></div>
+      <div class="msrow">
+        <button class="mini" data-preset="save" data-m="${esc(mission)}">${saved?"Save (overwrite)":"Save current"}</button>
+        ${saved?`<button class="mini" data-preset="load" data-m="${esc(mission)}">Load</button>`:""}
+        ${saved?`<button class="mini" data-preset="del" data-m="${esc(mission)}">Delete</button>`:""}
+      </div>`;
+    host.appendChild(el); });
+  host.querySelectorAll("[data-preset]").forEach(btn=>btn.addEventListener("click",()=>{
+    const m=btn.dataset.m, act=btn.dataset.preset;
+    if(act==="save") saveLayoutToSlot(m);
+    else if(act==="load") loadLayoutFromSlot(m);
+    else if(act==="del") deleteSlot(m); })); }
+
 // Heavy library: maps + objects + board config. Built once, reloaded at setup.
-function exportLibrary(){ downloadJSON(layoutPayload(true), "kt-descent-layouts.json", "Exported kt-descent-layouts.json (library, with maps)."); }
+function exportLibrary(){ const nPacks=Object.keys(LIB).length;
+  const nP=Object.values(LIB).reduce((a,o)=>a+Object.keys(o).length,0);
+  if(!nP){ note("No presets saved yet — save a mission into a slot first."); return; }
+  downloadJSON({v:2,kind:"kt-descent-library",library:LIB}, "kt-descent-layouts.json",
+    `Exported kt-descent-layouts.json — ${nP} preset${nP===1?"":"s"} across ${nPacks} pack${nPacks===1?"":"s"} (with maps).`); }
 // Lean turn state: everything EXCEPT the base64 maps — small enough to paste for analysis.
 function exportState(){ downloadJSON(layoutPayload(false), "kt-descent-layout.json", "Exported kt-descent-layout.json (lean state, no maps)."); }
 $("#exportLib").addEventListener("click",exportLibrary);
@@ -2911,6 +2964,8 @@ $("#layoutFile").addEventListener("change",e=>{ const f=e.target.files[0]; e.tar
   rd.onerror=()=>note("Couldn't read that file."); rd.readAsText(f); });
 function importLayout(d){
   if(!d||typeof d!=="object"){ note("Not a layout file."); return; }
+  // A multi-preset library file: merge into the local library, leave the board alone.
+  if(d.library && typeof d.library==="object"){ mergeLibrary(d.library); return; }
   // Planner-format file? It has a top-level `map` string and `layout.terr.insts`, but no
   // Descent `boards[]`. Fold it into the lower killzone so a Planner board can be pulled in.
   const isPlanner = !Array.isArray(d.boards) && (typeof d.map==="string" || (d.layout&&d.layout.terr));
