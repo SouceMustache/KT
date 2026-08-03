@@ -377,7 +377,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v222</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v223</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -1895,7 +1895,7 @@ svg.addEventListener("pointerdown",e=>{
   if(S.mode==="marker"){
     const m=markerAt(w);
     if(m){
-      if(S.locked){ note("Markers are locked. Tap 🔒 to unlock before moving them."); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
+      if(S.locked||S.lockObj){ note("Pads are locked. Unlock Objects (or 🔒 in Portals) to move them."); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
       drag={type:"marker",m,ox:w.x-m.x,oy:w.y-m.y,moved:false,x0:m.x,y0:m.y,board0:m.board}; return;
     }
     drag={type:"pan",sx:e.clientX,sy:e.clientY}; return;
@@ -1931,7 +1931,7 @@ svg.addEventListener("pointerdown",e=>{
     renderOverlay(); updateTraverseChip(); openOpSheet(t); hud("Selected"); return; }
   const m=markerAt(w);
   if(m && S.mode==="move"){
-    if(S.locked){ note(`Markers are locked. Unlock (🔒 in Portals) to move them.`); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
+    if(S.locked||S.lockObj){ note(`Pads are locked. Unlock Objects (or 🔒 in Portals) to move them.`); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
     drag={type:"marker",m,ox:w.x-m.x,oy:w.y-m.y,moved:false,x0:m.x,y0:m.y,board0:m.board}; return;
   }
 
@@ -2611,13 +2611,23 @@ $("#objFile").addEventListener("change",e=>{ const f=e.target.files[0]; e.target
 // Group object names by biome, same heuristic as the Planner, so a big library is
 // navigable instead of a flat two-column scroll.
 const OBJ_BIOMES=[
-  {key:"volkus",     label:"Volkus",       match:/volkus|stronghold|ruin|rubble/i},
-  {key:"gallowdark", label:"Gallowdark",   match:/gallow|hatch|bulkhead|pillar/i},
-  {key:"tombworld",  label:"Tomb World",   match:/tomb|sarcoph|debris|teleport/i},
-  {key:"bhetadecima",label:"Bheta-Decima", match:/bheta|decima|gantry|condenser/i},
-  {key:"octarius",   label:"Octarius",     match:/octarius|barricade|scrap|walkway|oil pump/i},
+  {key:"volkus",     label:"Volkus",       match:/volkus/i},
+  {key:"gallowdark", label:"Gallowdark",   match:/gallow/i},
+  {key:"tombworld",  label:"Tomb World",   match:/tomb/i},
+  {key:"bhetadecima",label:"Bheta-Decima", match:/bheta|decima/i},
+  {key:"octarius",   label:"Octarius",     match:/octarius/i},
 ];
-function objBiome(n){ const b=OBJ_BIOMES.find(x=>x.match.test(n)); return b?b.key:"other"; }
+// Two-stage, ported 1:1 from the Planner: match the biome NAME/prefix first (authoritative),
+// and only fall back to ambiguous feature keywords when the name carries no biome. This stops
+// Tomb World walls named "…WITH PILLARS"/"…HATCHWAY" from being misfiled under Gallowdark.
+function objBiome(n){
+  const b=OBJ_BIOMES.find(x=>x.match.test(n)); if(b) return b.key;
+  if(/stronghold|ruin|rubble/i.test(n)) return "volkus";
+  if(/hatch|bulkhead|pillar/i.test(n)) return "gallowdark";
+  if(/sarcoph|debris|teleport/i.test(n)) return "tombworld";
+  if(/gantry|condenser/i.test(n)) return "bhetadecima";
+  if(/barricade|scrap|walkway|oil pump/i.test(n)) return "octarius";
+  return "other"; }
 function objBiomeLabel(k){ const b=OBJ_BIOMES.find(x=>x.key===k); return b?b.label:"Other"; }
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 
