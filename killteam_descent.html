@@ -377,7 +377,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v220</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v221</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -664,8 +664,8 @@ const PACKS = {
       // close-quarters (≈23.9×16.3, a 6×4 square grid). Dimensions in inches.
       { id:"upper", name:"Upper — Volkus", w:22, h:15,
         rules:{ closeQuarters:false }, grid:{mode:"inch",inch:1} },
-      { id:"lower", name:"Lower — Tomb World", w:23.9, h:16.3,
-        rules:{ closeQuarters:true }, grid:{mode:"squares",cols:6,rows:4} },
+      { id:"lower", name:"Lower — Tomb World", w:582/25.4, h:388/25.4,
+        rules:{ closeQuarters:true }, grid:{mode:"squares",cols:6,rows:4}, mapInset:0 },
     ],
     portals:{ type:"entryway", note:"Numbered Entryway markers link matching pairs between boards." },
     missions:["01 Find the Source","02 The Sarcophagus","03 Rising Doom"],
@@ -688,8 +688,8 @@ const PACKS = {
     boards:[
       { id:"upper", name:"Upper — Volkus", w:22, h:15,
         rules:{ closeQuarters:false }, grid:{mode:"inch",inch:1} },
-      { id:"lower", name:"Lower — Tomb World", w:23.9, h:16.3,
-        rules:{ closeQuarters:true }, grid:{mode:"squares",cols:6,rows:4} },
+      { id:"lower", name:"Lower — Tomb World", w:582/25.4, h:388/25.4,
+        rules:{ closeQuarters:true }, grid:{mode:"squares",cols:6,rows:4}, mapInset:0 },
     ],
     portals:{ type:"entryway", note:"Numbered Entryway markers link matching pairs between boards." },
     missions:["01 Into the Depths","02 Unlock the Vault","03 Awakening"],
@@ -842,6 +842,14 @@ function twinOf(m){
 function markersInControl(x,y){
   return S.markers.filter(m=>distIn(x,y,m.x,m.y) <= (m.ctrl||CTRL_DEFAULT));
 }
+// Teleport pads are physical 60mm discs (Exposed, Insignificant, Vantage). An operative can
+// teleport only when WHOLLY WITHIN the disc: its entire base fits inside the 60mm circle,
+// i.e. dist(centre,op)+opBaseRadius <= 30mm. Positions+radius travel in the lean export so
+// the correspondence sim can judge "wholly within" too.
+function padRadIn(m){ return ((m.dia||60)/25.4)/2; }              // disc radius, inches
+function opBaseRadIn(op){ const {a,b}=baseAxes(op); return Math.max(a,b); }
+function whollyWithinPad(op,m){ return distIn(op.x,op.y,m.x,m.y)+opBaseRadIn(op) <= padRadIn(m)+1e-6; }
+function padUnder(op){ return S.markers.find(m=>m.mtype==="teleport"&&m.board===op.board&&whollyWithinPad(op,m)); }
 // place an Entryway pair: one marker on each board, at matching relative x, tucked a short
 // way in from the gutter edge so the link reads cleanly. Numbered automatically.
 function placeEntrywayPair(worldX){
@@ -860,10 +868,10 @@ function placeTeleportPair(worldX){
   const up=S.boards[0], lo=S.boards[1], n=S.nextPair++;
   const clampX=(b)=>Math.max(b.ox+18,Math.min(worldX,b.ox+b.wpx-18));
   S.markers.push(
-    {kind:"marker",mtype:"teleport",id:crypto.randomUUID(),pair:n,board:up.id,x:clampX(up),y:up.oy+up.hpx*0.5,ctrl:CTRL_DEFAULT},
-    {kind:"marker",mtype:"teleport",id:crypto.randomUUID(),pair:n,board:lo.id,x:clampX(lo),y:lo.oy+lo.hpx*0.5,ctrl:CTRL_DEFAULT});
+    {kind:"marker",mtype:"teleport",id:crypto.randomUUID(),pair:n,board:up.id,x:clampX(up),y:up.oy+up.hpx*0.5,ctrl:CTRL_DEFAULT,dia:60},
+    {kind:"marker",mtype:"teleport",id:crypto.randomUUID(),pair:n,board:lo.id,x:clampX(lo),y:lo.oy+lo.hpx*0.5,ctrl:CTRL_DEFAULT,dia:60});
   save(); renderMarkers(); renderLinks();
-  note(`Teleport pad ${n} placed. An operative on guard loses guard when it teleports between killzones.`,true);
+  note(`Teleport pad ${n} placed (60mm disc). An operative must be wholly within a pad to teleport; guard drops on teleport between killzones.`,true);
 }
 
 // The traverse action. Returns {ok, reason}. On success the op is moved to the twin
@@ -881,12 +889,20 @@ function climbThrough(op, marker){
   // budget check (there's no active turning-point counter to reset a budget against).
   // set the op down so the twin marker is within its control range: land it just inside
   // the twin's control ring, offset toward the board centre so it's a legal-ish spot.
-  const b=boardById(twin.board), toC=Math.atan2((b.oy+b.hpx/2)-twin.y,(b.ox+b.wpx/2)-twin.x);
-  const r=(twin.ctrl||CTRL_DEFAULT)*PPI*0.6;
-  op.x=twin.x+Math.cos(toC)*r; op.y=twin.y+Math.sin(toC)*r; op.board=twin.board;
-  // guard drops on a teleport between killzones
   let extra="";
-  if(marker.mtype==="teleport" && op.guard){ op.guard=false; extra=" Guard dropped."; }
+  if(marker.mtype==="teleport"){
+    // land on the twin pad's centre (guarantees wholly-within). Only one op per pad: if the
+    // twin pad is occupied, swap that operative back onto the origin pad (rules: swap around).
+    const occupant=S.items.find(o=>o!==op && o.board===twin.board && whollyWithinPad(o,twin));
+    if(occupant){ occupant.x=marker.x; occupant.y=marker.y; occupant.board=marker.board;
+      extra+=` Swapped with ${occupant.label||"an operative"}.`; }
+    op.x=twin.x; op.y=twin.y; op.board=twin.board;
+    if(op.guard){ op.guard=false; extra+=" Guard dropped."; }   // guard drops on teleport
+  } else {
+    const b=boardById(twin.board), toC=Math.atan2((b.oy+b.hpx/2)-twin.y,(b.ox+b.wpx/2)-twin.x);
+    const r=(twin.ctrl||CTRL_DEFAULT)*PPI*0.6;
+    op.x=twin.x+Math.cos(toC)*r; op.y=twin.y+Math.sin(toC)*r; op.board=twin.board;
+  }
   return {ok:true, extra};
 }
 function labelKw(k){ return ({fly:"FLY",burrow:"BURROW",shadow_passage:"SHADOW PASSAGE",
@@ -1288,7 +1304,8 @@ function renderImg(){
   gImg.replaceChildren();
   for(const b of S.boards){
     if(!b.map) continue;
-    const w=b.wpx*(b.mapSX||1), h=b.hpx*(b.mapSY||1);
+    const netFx=1-2*(b.mapInset||0);   // dead-zone border: net playable region fills the plate
+    const w=(b.wpx/netFx)*(b.mapSX||1), h=(b.hpx/netFx)*(b.mapSY||1);
     const ox=(b.mapOX||0)*PPI, oy=(b.mapOY||0)*PPI;
     const cx=b.ox+b.wpx/2, cy=b.oy+b.hpx/2;
     // clip to the plate rect
@@ -1448,10 +1465,9 @@ function renderMarkers(){
   for(const m of S.markers){
     const g=attr(mk("g"),{"data-mid":m.id});
     const tint = m.board==="upper" ? "var(--upper)" : m.board==="lower" ? "var(--lower)" : "var(--orange)";
-    const r=(m.ctrl||CTRL_DEFAULT)*PPI;
-    // control ring
-    g.appendChild(attr(mk("circle"),{cx:m.x,cy:m.y,r,fill:"none",stroke:tint,
-      "stroke-width":1,opacity:.22,"stroke-dasharray":"3 4","vector-effect":"non-scaling-stroke"}));
+    if(m.mtype==="entryway"){ const r=(m.ctrl||CTRL_DEFAULT)*PPI;   // control ring (entryways only)
+      g.appendChild(attr(mk("circle"),{cx:m.x,cy:m.y,r,fill:"none",stroke:tint,
+        "stroke-width":1,opacity:.22,"stroke-dasharray":"3 4","vector-effect":"non-scaling-stroke"})); }
     if(m.mtype==="entryway"){
       const s=11;
       g.appendChild(attr(mk("path"),{d:`M${m.x} ${m.y-s} L${m.x+s} ${m.y} L${m.x} ${m.y+s} L${m.x-s} ${m.y} Z`,
@@ -1460,10 +1476,15 @@ function renderMarkers(){
         {x:m.x,y:m.y+3.5,"text-anchor":"middle","font-size":11,"font-family":"var(--mono)",
          fill:"var(--orange)","font-weight":700,"pointer-events":"none"}));
     }else{
-      g.appendChild(attr(mk("circle"),{cx:m.x,cy:m.y,r:10,fill:"rgba(43,184,184,.14)",
-        stroke:"var(--teal)","stroke-width":1.8,"vector-effect":"non-scaling-stroke"}));
-      g.appendChild(attr(mk("circle"),{cx:m.x,cy:m.y,r:4,fill:"none",stroke:"var(--teal)",
-        "stroke-width":1.4,"vector-effect":"non-scaling-stroke"}));
+      // 60mm teleport pad drawn at its true footprint — the disc IS the "on the pad" area
+      const pr=padRadIn(m)*PPI;
+      g.appendChild(attr(mk("circle"),{cx:m.x,cy:m.y,r:pr,fill:"rgba(43,184,184,.12)",
+        stroke:"var(--teal)","stroke-width":2,"vector-effect":"non-scaling-stroke"}));
+      g.appendChild(attr(mk("circle"),{cx:m.x,cy:m.y,r:pr*0.52,fill:"none",stroke:"var(--teal)",
+        "stroke-width":1,opacity:.5,"stroke-dasharray":"2 3","vector-effect":"non-scaling-stroke"}));
+      g.appendChild(attr(Object.assign(mk("text"),{textContent:"T"+m.pair}),
+        {x:m.x,y:m.y+4,"text-anchor":"middle","font-size":11,"font-family":"var(--mono)",
+         fill:"var(--teal)","font-weight":700,"pointer-events":"none"}));
     }
     gMark.appendChild(g);
   }
@@ -2261,12 +2282,18 @@ $("#traverseChip").addEventListener("click",()=>{
   const op=S.items.find(i=>i.id===S.selected); if(!op) return;
   S.traverse = S.traverse ? null : {opId:op.id};
   updateTraverseChip();
-  if(S.traverse) note("Tap an Entryway or teleport marker within this operative's control range to climb through.",true);
+  if(S.traverse) note("Tap an Entryway (within control range) or a teleport pad (operative wholly within it) to move through.",true);
 });
 function doTraverse(opId, marker){
   const op=S.items.find(i=>i.id===opId); if(!op){ S.traverse=null; return; }
-  // the op must actually have the marker within control range to use it
-  if(distIn(op.x,op.y,marker.x,marker.y) > (marker.ctrl||CTRL_DEFAULT)+1e-6){
+  // gate the move: a teleport pad needs the op WHOLLY WITHIN the 60mm disc; an Entryway
+  // just needs to be within control range.
+  if(marker.mtype==="teleport"){
+    if(!whollyWithinPad(op,marker)){
+      note(`${op.label||"The operative"} must be WHOLLY WITHIN the 60mm teleport pad (its whole base on the disc) to teleport.`);
+      return;
+    }
+  } else if(distIn(op.x,op.y,marker.x,marker.y) > (marker.ctrl||CTRL_DEFAULT)+1e-6){
     note(`That marker isn't within ${op.label||"the operative"}'s control range (${(marker.ctrl||CTRL_DEFAULT)}"). Move closer first.`);
     return;
   }

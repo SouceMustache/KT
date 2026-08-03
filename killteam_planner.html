@@ -527,6 +527,7 @@
         <option value="unimark">Marker (icon)</option>
         <option value="smoke">Smoke (20mm)</option>
         <option value="objective">Objective (40mm)</option>
+        <option value="teleport">Teleport pad (60mm)</option>
         <option value="barricade">Barricade</option>
         <option value="tunnel">Tunnel</option>
       </select>
@@ -1084,6 +1085,11 @@ function landscape(){ return S.orient%180===0; }
 function extW(){ return (landscape()?S.boardW:S.boardH)*PPI; }
 function extH(){ return (landscape()?S.boardH:S.boardW)*PPI; }
 function itemR(t){ return (t.baseMm/25.4)/2*PPI; }   // legacy: mean radius, px
+// Teleport pad geometry (parity with Descent): a 60mm Vantage disc; an operative is "on the
+// pad" only when WHOLLY WITHIN it — its whole base inside the 60mm circle.
+function padRadIn(t){ return ((t.baseMm||60)/25.4)/2; }
+function opBaseRadIn(op){ const {a,b}=baseAxes(op); return Math.max(a,b); }
+function whollyWithinPad(op,pad){ return Math.hypot(op.x-pad.x,op.y-pad.y)/PPI + opBaseRadIn(op) <= padRadIn(pad)+1e-6; }
 // --- base geometry ------------------------------------------------------------------
 // A base is an ellipse: baseMm is the long axis, baseMm2 the short one (absent = circle),
 // and ang is the facing in degrees, 0 pointing east. Everything that used to divide a
@@ -1422,6 +1428,15 @@ function renderItems(){
         "stroke-width":1,"vector-effect":"non-scaling-stroke"}));
       g.appendChild(attr(mk("circle"),{r,fill:"#9aa1a8",stroke:"#d2d8de",
         "stroke-width":2,"vector-effect":"non-scaling-stroke"}));
+    }else if(t.type==="teleport"){
+      // 60mm teleport pad (Exposed/Insignificant/Vantage) — the disc IS the "on the pad" area
+      g.appendChild(attr(mk("circle"),{r,fill:"rgba(43,184,184,.12)",stroke:"var(--teal)",
+        "stroke-width":2,"vector-effect":"non-scaling-stroke"}));
+      g.appendChild(attr(mk("circle"),{r:r*0.52,fill:"none",stroke:"var(--teal)",
+        "stroke-width":1,opacity:.5,"stroke-dasharray":"2 3","vector-effect":"non-scaling-stroke"}));
+      g.appendChild(attr(Object.assign(mk("text"),{textContent:"T"}),
+        {x:0,y:4,"text-anchor":"middle","font-size":12,"font-family":"var(--mono)",
+         fill:"var(--teal)","font-weight":700,"pointer-events":"none"}));
     }else if(t.type==="tunnel"){
       const c=TEAM[t.team];
       g.appendChild(attr(mk("circle"),{r,fill:c.fill,stroke:c.stroke,
@@ -1631,6 +1646,7 @@ function addItem(x,y){
   else if(S.addType==="tunnel"){ if(S.activeTunnel==null) S.activeTunnel=crypto.randomUUID();
     const seq=S.items.filter(x=>x.type==="tunnel"&&x.group===S.activeTunnel).length;
     Object.assign(t,{baseMm:20,group:S.activeTunnel,seq}); }
+  else if(S.addType==="teleport"){ Object.assign(t,{baseMm:60}); }   // 60mm Vantage teleport pad (Exposed/Insignificant/Vantage)
   else { S.counter.obj++; Object.assign(t,{baseMm:40,team:"obj",halo:true,
     label:String.fromCharCode(64+S.counter.obj)}); }
   S.items.push(t); select(t.id); renderItems(); renderOverlay(); autosave();
@@ -1654,10 +1670,10 @@ function select(id){
   if(S.sheetMin) $("#sheetTabName").textContent=nameOf(t);
   $("#sheetTab").classList.toggle("show",!!S.sheetMin);
   const rm=t.type==="base"&&t.modelId?modelById(t.modelId):null;
-  $("#shTag").textContent=(rm&&rm.name)||t.label||(t.type==="unimark"?((UNIMARK[t.mark]||{}).name||"Marker"):t.type==="tunnel"?"Tunnel":t.type==="barricade"?"Barricade":t.type==="smoke"?"Smoke":"Marker");
+  $("#shTag").textContent=(rm&&rm.name)||t.label||(t.type==="unimark"?((UNIMARK[t.mark]||{}).name||"Marker"):t.type==="teleport"?"Teleport pad":t.type==="tunnel"?"Tunnel":t.type==="barricade"?"Barricade":t.type==="smoke"?"Smoke":"Marker");
   $("#shTag").style.color=t.type==="objective"?"var(--orange)":TEAM[t.team]?TEAM[t.team].stroke:"var(--ink)";
   $("#shType").textContent=t.type==="base"?"":t.type==="marker"?"Marker 20mm":t.type==="unimark"?((UNIMARK[t.mark]||{}).name||"Marker"):
-    t.type==="objective"?"Objective 40mm":t.type==="tunnel"?"Tunnel node":t.type==="smoke"?"Smoke 20mm":((BARR[t.subtype]||{}).name+" barricade");
+    t.type==="objective"?"Objective 40mm":t.type==="teleport"?"Teleport pad 60mm":t.type==="tunnel"?"Tunnel node":t.type==="smoke"?"Smoke 20mm":((BARR[t.subtype]||{}).name+" barricade");
   // Coordinates apply to anything on the board — objectives and markers need placing just
   // as precisely as operatives do.
   // Portrait in the header — the same photo used on the board marker, or a coloured
