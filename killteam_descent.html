@@ -377,7 +377,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v223</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v224</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -1895,7 +1895,7 @@ svg.addEventListener("pointerdown",e=>{
   if(S.mode==="marker"){
     const m=markerAt(w);
     if(m){
-      if(S.locked||S.lockObj){ note("Pads are locked. Unlock Objects (or 🔒 in Portals) to move them."); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
+      if(S.lockObj){ note("Pads are locked. Unlock (🔓) to move them."); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
       drag={type:"marker",m,ox:w.x-m.x,oy:w.y-m.y,moved:false,x0:m.x,y0:m.y,board0:m.board}; return;
     }
     drag={type:"pan",sx:e.clientX,sy:e.clientY}; return;
@@ -1931,7 +1931,7 @@ svg.addEventListener("pointerdown",e=>{
     renderOverlay(); updateTraverseChip(); openOpSheet(t); hud("Selected"); return; }
   const m=markerAt(w);
   if(m && S.mode==="move"){
-    if(S.locked||S.lockObj){ note(`Pads are locked. Unlock Objects (or 🔒 in Portals) to move them.`); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
+    if(S.lockObj){ note(`Pads are locked. Unlock (🔓) to move them.`); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
     drag={type:"marker",m,ox:w.x-m.x,oy:w.y-m.y,moved:false,x0:m.x,y0:m.y,board0:m.board}; return;
   }
 
@@ -2008,7 +2008,7 @@ $("#toolseg").addEventListener("click",e=>{ const b=e.target.closest("[data-mode
   $("#markerSub").classList.toggle("hidden", S.mode!=="marker");
   $("#opSub").classList.toggle("hidden", S.mode!=="op");
   if(S.mode==="marker"){ const lb=$("#lockToggle");
-    lb.classList.toggle("on",S.locked); lb.textContent=S.locked?"🔒 Locked":"🔓 Unlocked"; }
+    lb.classList.toggle("on",S.lockObj); lb.textContent=S.lockObj?"🔒 Locked":"🔓 Unlocked"; }
   if(S.mode!=="move"){ S.traverse=null; closeOpSheet(); }
   if(S.mode!=="los"){ clearLos(); }
   updateTraverseChip();
@@ -2260,11 +2260,8 @@ $("#opDelete").addEventListener("click",()=>{ if(!sheetOp) return;
 
 $("#addEntry").addEventListener("click",()=>{ const w=S._lastWorld||[centreX(),0]; placeEntrywayPair(w[0]); });
 $("#addTele").addEventListener("click",()=>{ const w=S._lastWorld||[centreX(),0]; placeTeleportPair(w[0]); });
-$("#lockToggle").addEventListener("click",()=>{ S.locked=!S.locked;
-  const b=$("#lockToggle"); b.classList.toggle("on",S.locked);
-  b.textContent = S.locked ? "🔒 Locked" : "🔓 Unlocked";
-  note(S.locked?"Markers locked — they won't move by accident.":"Markers unlocked — drag to reposition.",true);
-});
+$("#lockToggle").addEventListener("click",()=>{ setLock(!S.locked);
+  note(S.locked?"Locked — objects & pads won't move by accident.":"Unlocked — drag to reposition.",true); });
 function centreX(){ const b=S.boards[0]; return b?b.ox+b.wpx/2:0; }
 $("#fitBtn").addEventListener("click",fitView);
 
@@ -2379,7 +2376,7 @@ function restore(){
   if(!d||!d.packId||!PACKS[d.packId]) return false;
   S.packId=d.packId; S.pack=PACKS[d.packId]; S.items=d.items||[];
   S.markers=d.markers||[]; S.nextPair=d.nextPair||1; S.locked=(d.locked!==false);
-  S.lockObj=(d.lockObj!==false); S.insts=d.insts||[]; S.prefabs=d.prefabs||{};
+  S.lockObj=(d.lockObj!==false); S.locked=S.lockObj; S.insts=d.insts||[]; S.prefabs=d.prefabs||{};
   S.rulers=d.rulers||[]; S.rooms=d.rooms||[]; S.npoPool=d.npoPool||[]; S.npoTheme=d.npoTheme||"tomb"; S.selected=null; S.traverse=null; S.selInst=null;
   S.mission=(d.mission&&d.mission.missionIdx!=null)?d.mission:null; if(!S.mission) initMission();
   S.reanim=d.reanim||null;
@@ -2661,9 +2658,13 @@ $("#palette").addEventListener("click",e=>{
 });
 
 /* ---- lock objects ---- */
-$("#lockObjToggle").addEventListener("click",()=>{ S.lockObj=!S.lockObj; syncLockObjBtn(); save();
-  if(S.selInst) showInstBar();
-  note(S.lockObj?"Objects locked.":"Objects unlocked — drag to move, use ↻ to rotate.",true); });
+// One lock for everything placed — terrain objects AND pads/markers. Both lock buttons
+// (Objects lock here, and 🔒 in the Portals tool) drive the same state, kept mirrored.
+function setLock(v){ S.locked=v; S.lockObj=v; syncLockObjBtn();
+  const lb=$("#lockToggle"); if(lb){ lb.classList.toggle("on",v); lb.textContent=v?"🔒 Locked":"🔓 Unlocked"; }
+  if(S.selInst) showInstBar(); save(); }
+$("#lockObjToggle").addEventListener("click",()=>{ setLock(!S.lockObj);
+  note(S.lockObj?"Objects & pads locked.":"Objects & pads unlocked — drag to move, ↻ to rotate.",true); });
 function syncLockObjBtn(){ const b=$("#lockObjToggle");
   b.classList.toggle("on",S.lockObj); b.textContent=S.lockObj?"🔒 Objects locked":"🔓 Objects unlocked"; }
 
