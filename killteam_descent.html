@@ -380,7 +380,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v228</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v229</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -959,8 +959,9 @@ function instGeom(inst){ const pf=S.prefabs[inst.ref]; if(!pf) return {edges:[],
    Descent phase. Height is now ACTIVE: each operative's floor comes from its elevation
    status (opFloor/ELEV_H), so a model on Vantage sits higher, 3D distance includes the
    vertical leg, per-edge height bands decide which walls actually intrude the sightline,
-   and Vantage platform-planes occlude when the two operatives differ in height. Still
-   pending: a taller per-Nemesis eye height (Nightbringer) layered on top of EYE.
+   and Vantage platform-planes occlude when the two operatives differ in height.
+   Per-Nemesis eye height is now ACTIVE too: opEye(t) returns t.eyeIn (Nightbringer ~5.3") or
+   the nominal EYE, so a towering Nemesis sightline starts higher and clears more terrain.
 
    Visibility is a single sightline (base edge to base edge); COVER/OBSCURED are judged
    over a cone of vision whose apex the shooter may draw from anywhere on its own base.
@@ -972,6 +973,11 @@ function instGeom(inst){ const pf=S.prefabs[inst.ref]; if(!pf) return {edges:[],
 // occlusion activate — it can see over lower terrain, and lower operatives can be blocked.
 const ELEV_H=[0,3,6];
 const EYE=1.4;                    // nominal sight height above the floor (inches)
+// Per-operative eye height override (inches above the floor). Absent = EYE. Nemeses that
+// physically tower (Nightbringer) carry their own eyeIn so their sightline starts higher and
+// they see over terrain that would block a normal trooper. Pure DATA on the op (like baseMm):
+// set once in makeNPO, so initial placement and Reanimation respawn both inherit it.
+function opEye(t){ return (t&&t.eyeIn!=null) ? t.eyeIn : EYE; }
 function opFloor(t){ return ELEV_H[t.elev||0]||0; }
 // base geometry (ovals: 60mm long x 35mm short, facing = ang degrees, 0 = east)
 function baseAxes(t){
@@ -1053,7 +1059,7 @@ function losCheck(a,b){
   const rA=baseRadDir(a,B[0]-A[0],B[1]-A[1]), rB=baseRadDir(b,A[0]-B[0],A[1]-B[1]);
   const centreH=Math.hypot(B[0]-A[0],B[1]-A[1])/PPI;
   const distH=Math.max(0,centreH-rA-rB);
-  const zA=opFloor(a)+EYE, zB=opFloor(b)+EYE;
+  const zA=opFloor(a)+opEye(a), zB=opFloor(b)+opEye(b);
   const edges=boardEdges(board);
   const coverZones=boardZones(board).filter(z=>z.class==="Rubble"||z.class==="Heavy"||z.class==="Light");
   const cone=visionCone(A,B,rA,rB,edges,e=>{
@@ -2085,11 +2091,14 @@ function makeOp(side,boardId,x,y){
 // Build an operative from an NPO datacard: stats, photo, wounds tracker, behaviour.
 function makeNPO(key,boardId,x,y){
   const dc=NPO_LIB[key]; if(!dc) return null;
-  const baseMm = key==="nightbringer" ? 50 : (dc.cat==="tomb"?40:32);
+  const baseMm = key==="nightbringer" ? 80 : (dc.cat==="tomb"?40:32);
+  // Per-Nemesis eye height (inches): Nightbringer is ~7.8" tall to the scythe tip; head/eyes
+  // sit ~2.5" below that. Tune here if it reads wrong on the board.
+  const eyeIn = key==="nightbringer" ? 5.3 : null;
   return {id:crypto.randomUUID(),kind:"op",side:"npo",npoKey:key,board:boardId,x,y,
     label:npoShort(dc.name), base:String(baseMm), baseMm, move:dc.move, moveLeft:dc.move,
     ang:0, guard:false, keywords:(dc.keywords||[]).map(k=>k.toLowerCase()),
-    wounds:dc.wounds, woundsMax:dc.wounds};
+    eyeIn, wounds:dc.wounds, woundsMax:dc.wounds};
 }
 function npoShort(name){ // short marker label
   const m={"Canoptek Scarab Swarm":"SCRB","Necron Warrior":"WAR","Canoptek Macrocyte":"MACR",
