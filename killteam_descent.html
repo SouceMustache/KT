@@ -380,7 +380,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v229</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v230</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -1541,7 +1541,9 @@ function badgeBox(g,x,y,w,h,fill,txt,tcol){
 function renderItems(){
   gItem.replaceChildren();
   for(const t of S.items){
-    const photo = t.photo || (t.npoKey && NPO_LIB[t.npoKey] && NPO_LIB[t.npoKey].photo ? NPO_LIB[t.npoKey].photo.marker : null);
+    const photo = t.photo
+      || (t.model && t.model.photo ? t.model.photo.marker : null)
+      || (t.npoKey && NPO_LIB[t.npoKey] && NPO_LIB[t.npoKey].photo ? NPO_LIB[t.npoKey].photo.marker : null);
     const g=attr(mk("g"),{"data-id":t.id});
     const col = t.side==="npo" ? {fill:"rgba(192,90,43,.9)",stroke:"#e0793f"}
              : t.side==="enemy" ? {fill:"rgba(43,184,184,.9)",stroke:"#4fdede"}
