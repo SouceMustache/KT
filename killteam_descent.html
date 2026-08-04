@@ -377,7 +377,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v226</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v227</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -952,18 +952,23 @@ function instGeom(inst){ const pf=S.prefabs[inst.ref]; if(!pf) return {edges:[],
 
 /* ==================================================================== LINE OF SIGHT
    Ported faithfully from the Planner's cone-of-vision engine, simplified for the
-   Descent phase where height is FLAT: every operative sits at ground level with a
-   fixed eye height, so 3D distance collapses to horizontal and platform-plane
-   occlusion never triggers on its own (solid/barred edges still block). When we build
-   the roster/height phase this same engine takes real z-values — and the Nightbringer
-   gets a taller per-Nemesis eye height so it sees over more terrain.
+   Descent phase. Height is now ACTIVE: each operative's floor comes from its elevation
+   status (opFloor/ELEV_H), so a model on Vantage sits higher, 3D distance includes the
+   vertical leg, per-edge height bands decide which walls actually intrude the sightline,
+   and Vantage platform-planes occlude when the two operatives differ in height. Still
+   pending: a taller per-Nemesis eye height (Nightbringer) layered on top of EYE.
 
    Visibility is a single sightline (base edge to base edge); COVER/OBSCURED are judged
    over a cone of vision whose apex the shooter may draw from anywhere on its own base.
    Cross-board LoS is NOT allowed here — the two boards can only be shot between via an
    Entryway (both operatives within Control Range of the twin markers, no cover). */
+// Operative floor height in inches by elevation status (0/1/2 -> 0"/3"/6", Volkus levels).
+// Ported from the Planner: an operative standing on Vantage sits higher, so its sightline
+// (zA/zB below) starts higher and losCheck's per-edge height bands + Vantage plane-crossing
+// occlusion activate — it can see over lower terrain, and lower operatives can be blocked.
+const ELEV_H=[0,3,6];
 const EYE=1.4;                    // nominal sight height above the floor (inches)
-function opFloor(t){ return 0; }  // FLAT for now; roster phase will feed real elevation
+function opFloor(t){ return ELEV_H[t.elev||0]||0; }
 // base geometry (ovals: 60mm long x 35mm short, facing = ang degrees, 0 = east)
 function baseAxes(t){
   // Oval-ness is PURE DATA (Planner convention): baseMm = long axis, baseMm2 = short axis
