@@ -356,6 +356,9 @@
   .wtag.ranged{background:rgba(90,168,255,.18);color:#5aa8ff;}
   .wtag.melee{background:rgba(242,160,61,.18);color:var(--orange);}
   .dc-wtable .wr{color:var(--muted);font-size:10.5px;}
+  .dc-wtable tr.wrow{cursor:pointer;}
+  .dc-wtable tr.wsel-on td{background:rgba(242,160,61,.14);box-shadow:inset 2px 0 0 var(--orange);}
+  .dc-wtable tr.wsel-dim td{opacity:.42;}
   .dc-rule{margin-bottom:7px;}
   .dc-rule .rn{font-weight:600;font-size:12px;color:var(--orange);}
   .dc-rule .rt{font-size:11.5px;color:var(--muted);line-height:1.45;margin-top:2px;}
@@ -380,7 +383,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v230</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v231</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -2249,10 +2252,16 @@ function renderNPOCard(op){
       ${op.npoKey==="nightbringer" ? `<div class="dwrow" style="margin-top:10px"><button class="mini" id="npoReanim"${op.wounds>0?" disabled":""}>☠ Incapacitate → Reanimation marker</button></div>
       <div class="dwhint" style="margin-top:6px">Indomitable Reanimation: on incapacitation, place a marker under its base and remove the model. In the next Strategy phase roll D3+1; after that many activations — counting every operative AND NPO activation — it returns at full wounds. Controls are in the Mission panel.</div>` : ""}`;
   } else if(tab==="weapons"){
-    const wpn=dc.weapons.map(w=>{ const t=w.t||(w.type)||"melee";
-      return `<tr><td class="wn"><span class="wtag ${t==="ranged"?"ranged":"melee"}">${t==="ranged"?"RNG":"MEL"}</span>${esc(w.n)}</td><td>${w.atk}</td><td>${w.hit}</td>
+    // Active-weapon selection (ported from the Planner's wSel): op.wSel is an array of
+    // selected weapon indices — purely which weapon(s) are "active" this turn. It lands in the
+    // lean export via S.items, so it's visible during correspondence simulation.
+    const sel=new Set(op.wSel||[]);
+    const wpn=dc.weapons.map((w,i)=>{ const t=w.t||(w.type)||"melee";
+      const on=sel.has(i), dim=sel.size&&!on;
+      return `<tr class="wrow${on?" wsel-on":""}${dim?" wsel-dim":""}" data-wsel="${i}"><td class="wn"><span class="wtag ${t==="ranged"?"ranged":"melee"}">${t==="ranged"?"RNG":"MEL"}</span>${esc(w.n)}</td><td>${w.atk}</td><td>${w.hit}</td>
       <td>${w.dmg}</td><td class="wr">${esc(w.wr)}</td></tr>`; }).join("");
-    body=`<table class="dc-wtable"><tr><th>Name</th><th>ATK</th><th>HIT</th><th>DMG</th><th>WR</th></tr>${wpn}</table>`;
+    body=`<div class="dwhint" style="margin-bottom:6px">Tap a weapon to mark it active for this turn.</div>
+      <table class="dc-wtable"><tr><th>Name</th><th>ATK</th><th>HIT</th><th>DMG</th><th>WR</th></tr>${wpn}</table>`;
   } else if(tab==="rules"){
     const ab=opAbilities(op);
     body = ab.length
@@ -2288,6 +2297,11 @@ function renderNPOCard(op){
     const i=+el.dataset.adv, rk=rankNPOActions(op), c=rk.candidates[i];
     S.advisorPick={npoId:op.id, targetId:(c&&c.targetId)||null, i};
     renderNPOCard(op); renderOverlay();
+  }));
+  host.querySelectorAll('[data-wsel]').forEach(el=>el.addEventListener('click',()=>{
+    const i=+el.dataset.wsel; op.wSel=op.wSel||[];
+    const p=op.wSel.indexOf(i); if(p>=0) op.wSel.splice(p,1); else op.wSel.push(i);
+    save(); renderNPOCard(op);
   }));
   const setW=(v)=>{ v=Math.max(0,Math.min(dc.wounds,v)); op.wounds=v;
     const el=$("#npoWval"); if(el) el.textContent=v; save(); renderItems(); renderStatusStrip(op); };
