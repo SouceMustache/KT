@@ -377,7 +377,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v224</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v226</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -1493,6 +1493,23 @@ function renderMarkers(){
 }
 
 function itemR(t){ const {a,b}=baseAxes(t); return Math.max(a,b)*PPI; }
+// Rim status badges on operative tokens (ported from the Planner; positioned at absolute
+// world coords since Descent draws tokens without a translated group).
+function rimBadge(g,cx,cy,r,deg,fill,glyph,gcol){
+  const a=deg*Math.PI/180, bx=cx+Math.cos(a)*r, by=cy+Math.sin(a)*r, br=Math.max(r*0.34,6.5);
+  g.appendChild(attr(mk("circle"),{cx:bx,cy:by,r:br,fill,stroke:"rgba(0,0,0,.6)",
+    "stroke-width":1.4,"vector-effect":"non-scaling-stroke","pointer-events":"none"}));
+  if(glyph) g.appendChild(attr(Object.assign(mk("text"),{textContent:glyph}),{x:bx,y:by,
+    "text-anchor":"middle","dominant-baseline":"central","font-family":"var(--mono)",
+    "font-size":br*1.05,"font-weight":700,fill:gcol||"#12171c","pointer-events":"none"}));
+}
+function badgeBox(g,x,y,w,h,fill,txt,tcol){
+  g.appendChild(attr(mk("rect"),{x:x-w/2,y:y-h/2,width:w,height:h,rx:h*0.28,fill,
+    stroke:"rgba(0,0,0,.4)","stroke-width":1,"vector-effect":"non-scaling-stroke","pointer-events":"none"}));
+  g.appendChild(attr(Object.assign(mk("text"),{textContent:txt}),{x,y,"text-anchor":"middle",
+    "dominant-baseline":"central","font-family":"var(--mono)","font-size":h*0.6,
+    "font-weight":700,fill:tcol||"#0d1013","pointer-events":"none"}));
+}
 function renderItems(){
   gItem.replaceChildren();
   for(const t of S.items){
@@ -1547,6 +1564,15 @@ function renderItems(){
     const _pb=isOval(t)?baseAxes(t).b*PPI:itemR(t), _pa=isOval(t)?baseAxes(t).a*PPI:itemR(t);
     g.appendChild(attr(mk("circle"),{cx:t.x-_pa*0.66, cy:t.y-_pb*0.66, r:3.4,
       fill:_ord==="conceal"?"#5aa8ff":"#f2a03d", stroke:"#0d1013","stroke-width":1,"vector-effect":"non-scaling-stroke"}));
+    // rim status badges (mirroring the Planner): injured, APL modifier, elevation, wounds
+    if(!_dead){
+      const _rr=Math.max(_pa,_pb);
+      if(isInjured(t)) rimBadge(g,t.x,t.y,_rr,20,"var(--inj)","I","#12171c");
+      if(t.aplMod===1) rimBadge(g,t.x,t.y,_rr,125,"var(--aplup)","+","#12171c");
+      else if(t.aplMod===-1) rimBadge(g,t.x,t.y,_rr,125,"var(--apldn)","−","#12171c");
+      if((t.elev||0)>0) rimBadge(g,t.x,t.y,_rr,55,"var(--elev)",String(t.elev),"#12171c");
+      if(t.woundsMax) badgeBox(g,t.x,t.y+_rr+_rr*0.9,_rr*1.2,_rr*0.72,"#0d1013","♥"+(t.wounds||0),"#ff8a80");
+    }
     if(t.expended && !_dead) g.setAttribute("opacity","0.5");
     if(_dead){ g.setAttribute("opacity","0.42");
       g.appendChild(attr(mk("line"),{x1:t.x-_pa*0.6,y1:t.y-_pb*0.6,x2:t.x+_pa*0.6,y2:t.y+_pb*0.6,stroke:"#ff5a4d","stroke-width":2.5,"vector-effect":"non-scaling-stroke"}));
@@ -1882,10 +1908,11 @@ svg.addEventListener("pointerdown",e=>{
   // without unlocking). Dragging to move only happens when unlocked and no op is on top.
   if(S.mode==="move"){
     const io=instAt(w);
-    if(io && !itemAt(w)){
+    // Hard lock: a locked object is fully inert — no select, drag, rotate or delete. Tapping
+    // one just pans; unlock to interact with it at all.
+    if(io && !itemAt(w) && !S.lockObj){
       S.selInst=io.id; renderTerr(); showInstBar();
-      if(!S.lockObj){ drag={type:"inst",inst:io,ox:w.x-io.x,oy:w.y-io.y,moved:false,x0:io.x,y0:io.y,k0:io.k,board0:io.board}; }
-      else { drag={type:"pan",sx:e.clientX,sy:e.clientY}; }   // locked: tap selects, no drag
+      drag={type:"inst",inst:io,ox:w.x-io.x,oy:w.y-io.y,moved:false,x0:io.x,y0:io.y,k0:io.k,board0:io.board};
       return;
     }
   }
@@ -2073,7 +2100,7 @@ $("#opRailTab").addEventListener("click",restoreOpSheet);
 // Mighty Foe (Nightbringer) can never be Concealed — its order is always Engage.
 function canConceal(op){ return op.npoKey!=="nightbringer"; }
 function ordOf(op){ return canConceal(op) ? (op.order||"conceal") : "engage"; }
-function isInjured(op){ return !!op.woundsMax && (op.wounds||0) < op.woundsMax/2 && (op.wounds||0)>0; }
+function isInjured(op){ return !!op.injured || (!!op.woundsMax && (op.wounds||0) < op.woundsMax/2 && (op.wounds||0)>0); }
 function isDead(op){ return !!op.dead || (!!op.woundsMax && (op.wounds||0)<=0); }
 function aplOf(op){ const dc=opDatacard(op); const base=(dc&&dc.apl!=null)?dc.apl:(op.apl||0);
   return Math.max(0, base + (op.aplMod||0) - (isInjured(op)?1:0)); }
@@ -2093,7 +2120,12 @@ function renderStatusStrip(op){
     <div class="ostat-row"><span class="ostat-l">APL <b>${aplOf(op)}</b></span>
       <button class="mini oschip ${op.aplMod===1?"on":""}" data-st="aplup">+1</button>
       <button class="mini oschip ${op.aplMod===-1?"on":""}" data-st="apldn">−1</button>
-      <span class="ostat-inj ${inj?"on":""}">Injured</span>
+      <button class="mini oschip danger ${inj?"on":""}" data-st="inj">Injured</button>
+    </div>
+    <div class="ostat-row"><span class="ostat-l">Height</span>
+      <button class="mini oschip ${(op.elev||0)===0?"on":""}" data-st="elev0">Ground</button>
+      <button class="mini oschip ${(op.elev||0)===1?"on":""}" data-st="elev1">V1</button>
+      <button class="mini oschip ${(op.elev||0)===2?"on":""}" data-st="elev2">V2</button>
     </div>`;
 }
 $("#opStatus").addEventListener("click",e=>{ const b=e.target.closest("[data-st]"); if(!b||!sheetOp) return;
@@ -2103,6 +2135,10 @@ $("#opStatus").addEventListener("click",e=>{ const b=e.target.closest("[data-st]
   else if(st==="dead"){ op.dead=!op.dead; if(op.dead && (op.wounds||0)>0) {} }
   else if(st==="aplup") op.aplMod = op.aplMod===1?0:1;
   else if(st==="apldn") op.aplMod = op.aplMod===-1?0:-1;
+  else if(st==="inj") op.injured=!op.injured;
+  else if(st==="elev0") op.elev=0;
+  else if(st==="elev1") op.elev=1;
+  else if(st==="elev2") op.elev=2;
   renderStatusStrip(op); renderItems(); save();
 });
 function bindOpSheet(){
@@ -2662,7 +2698,9 @@ $("#palette").addEventListener("click",e=>{
 // (Objects lock here, and 🔒 in the Portals tool) drive the same state, kept mirrored.
 function setLock(v){ S.locked=v; S.lockObj=v; syncLockObjBtn();
   const lb=$("#lockToggle"); if(lb){ lb.classList.toggle("on",v); lb.textContent=v?"🔒 Locked":"🔓 Unlocked"; }
-  if(S.selInst) showInstBar(); save(); }
+  if(v){ S.selInst=null; hideInstBar(); renderTerr(); }   // hard lock: drop any object selection + its toolbar
+  else if(S.selInst) showInstBar();
+  save(); }
 $("#lockObjToggle").addEventListener("click",()=>{ setLock(!S.lockObj);
   note(S.lockObj?"Objects & pads locked.":"Objects & pads unlocked — drag to move, ↻ to rotate.",true); });
 function syncLockObjBtn(){ const b=$("#lockObjToggle");
@@ -3032,6 +3070,7 @@ $("#instRot").addEventListener("click",()=>{ const inst=S.insts.find(i=>i.id===S
   rotateInst(inst); });
 $("#instDel").addEventListener("click",()=>{ const inst=S.insts.find(i=>i.id===S.selInst);
   if(!inst) return;
+  if(S.lockObj){ note("Objects are locked. Unlock to delete."); return; }
   S.insts=S.insts.filter(i=>i!==inst); S.selInst=null; hideInstBar(); save(); renderTerr(); hud("Object deleted"); });
 $("#instDone").addEventListener("click",()=>{ S.selInst=null; hideInstBar(); renderTerr(); });
 
