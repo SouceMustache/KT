@@ -227,6 +227,9 @@
   .dc-wounds .wval{font-family:var(--mono);font-size:16px;font-weight:700;min-width:30px;text-align:center;}
   #opLabel{width:84px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;
     color:var(--ink);font:inherit;font-family:var(--mono);font-size:14px;padding:7px 9px;text-transform:uppercase;}
+  #opTitle{font-weight:700;font-size:15px;color:var(--ink);padding:7px 2px;line-height:1.2;
+    max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #opTitle.hidden{display:none;}
   .oshead .spacer{flex:1 1 auto;}
   .osphoto{position:absolute;top:0;right:16px;transform:translateY(-46%);z-index:2;
     width:88px;height:88px;border-radius:50%;flex:0 0 auto;border:3px solid var(--orange);
@@ -377,7 +380,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v227</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v228</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -436,6 +439,7 @@
     <div id="opSheet" class="hidden">
       <div class="oshead">
         <input id="opLabel" maxlength="6" placeholder="OP" autocomplete="off" spellcheck="false">
+        <span id="opTitle" class="hidden"></span>
         <span class="spacer"></span>
         <button class="mini" id="opDelete">Delete</button>
         <button class="iconbtn" id="opClose" aria-label="Close"><svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg></button>
@@ -1105,14 +1109,27 @@ function losCheck(a,b){
     if(dB<=1.0 && distH>2.0){ if(cls==="heavy") cover="heavy"; else if(cover!=="heavy") cover="light"; }
     else if(cls==="heavy" && dA>1.0) obscured=true;
   });
-  // standing on a Vantage platform gives Light cover in its own right
+  // Vantage cover. In Descent, elevation is an operative STATUS (elev 0/1/2 on the card),
+  // decoupled from Vantage polygons — so the canonical "standing inside a Vantage poly" test
+  // rarely matches. The KT effect is the same: a target that is HIGHER than the shooter is on
+  // Vantage from below and gains Light cover (unless within 2"). We honour both: the elevation
+  // status (target floor above shooter floor) AND an op physically on a mapped Vantage platform.
   if(!cover){
-    const onV=boardZones(board).some(z=>z.class==="Vantage" && (z.top||0)>0.05 &&
+    const higher = opFloor(b) > opFloor(a) + 0.05;
+    const onVpoly = boardZones(board).some(z=>z.class==="Vantage" && (z.top||0)>0.05 &&
       losPointInPoly(B[0],B[1],z.poly));
-    if(onV && distH>2.0) cover="light";
+    if((higher||onVpoly) && distH>2.0) cover="light";
   }
   const coverChoice=!!(cover&&obscured);
-  return {sameBoard:true, clear:!blocked, blocked, blockers, cover, obscured, coverChoice, cone, distH, A, B};
+  // Valid target: a Concealed target that is in cover or obscured cannot be selected at all
+  // (KT — no valid target while concealed + in cover; the within-2" exception is already
+  // covered because cover itself requires distH>2"). Nightbringer can't conceal, so it is
+  // never hidden this way. This makes the ground→Vantage case correct: a concealed operative
+  // on Vantage is visible but NOT a valid target because it holds Light cover.
+  const targetConcealed = (typeof ordOf==="function") && ordOf(b)==="conceal";
+  const validTarget = !blocked && !(targetConcealed && (cover||obscured));
+  return {sameBoard:true, clear:!blocked, blocked, blockers, cover, obscured, coverChoice,
+          targetConcealed, validTarget, cone, distH, A, B};
 }
 
 /* ============================================================ PHASE 4 — Kawałek B
@@ -1559,7 +1576,10 @@ function renderItems(){
         if(frac>0.001) g.appendChild(attr(mk("path"),{d:`M${x0} ${y0} A ${rr} ${rr} 0 ${large} 1 ${x1} ${y1}`,
           fill:"none",stroke:frac>0.34?"#4fd18b":"#ff5a4d","stroke-width":2.5,"vector-effect":"non-scaling-stroke","stroke-linecap":"round"})); }
     }
-    if(t.label && !photo){
+    // Initial abbreviation is only for DEFAULT markers — generic ops and core NPOs with no
+    // photo. Roster operatives (op.model) and anything with a photo carry their own identity,
+    // so they never show the cryptic initials on the board.
+    if(t.label && !photo && !t.model){
       g.appendChild(attr(Object.assign(mk("text"),{textContent:t.label}),
         {x:t.x,y:t.y+3,"text-anchor":"middle","font-size":10,"font-family":"var(--mono)",
          fill:"#0d1013","font-weight":700,"pointer-events":"none"}));
@@ -1698,6 +1718,7 @@ function showLosReadout(r){
   const dist = r.distH!=null ? r.distH.toFixed(1)+'"' : "—";
   let stateTag, stateCol;
   if(r.blocked){ stateTag="NOT VISIBLE"; stateCol="var(--inj)"; }
+  else if(r.validTarget===false){ stateTag="VISIBLE · NOT A VALID TARGET"; stateCol="#f2a03d"; }
   else { stateTag="VISIBLE"; stateCol="#4fd18b"; }
   let coverTag="";
   if(!r.blocked){
@@ -1708,9 +1729,11 @@ function showLosReadout(r){
   }
   const hint = r.blocked
     ? `<div class="lrhint">Terrain blocks the sightline — the target cannot be selected as a valid target.</div>`
-    : (r.obscured && !r.cover
-        ? `<div class="lrhint">Heavy terrain intervenes &gt;1" from both — worse shot, still selectable.</div>`
-        : "");
+    : (r.validTarget===false
+        ? `<div class="lrhint">Target has a Conceal order and holds cover (it is higher — on Vantage), so it is visible but cannot be selected as a valid target, unless you are within 2".</div>`
+        : (r.obscured && !r.cover
+            ? `<div class="lrhint">Heavy terrain intervenes &gt;1" from both — worse shot, still selectable.</div>`
+            : ""));
   el.innerHTML = `<div class="lrv" style="color:${stateCol}">${stateTag}</div>`
     +`<div class="lrl">base-to-base ${dist}</div>`
     +coverTag+hint;
@@ -2156,6 +2179,15 @@ function bindOpSheet(){
   $("#opTabs").classList.toggle("hidden", !hasCard);
   $("#opLabel").value=op.label||"";
   $("#opLabel").disabled = isNPO;           // NPO names are fixed; roster ops can be renamed
+  // Card ops (NPO / roster) show their FULL name in the header; the short editable label is
+  // only for generic player/enemy markers (which have no datacard). Markers on the board still
+  // use the short abbreviation — this only changes what the card header reads.
+  const _title=$("#opTitle");
+  if(_title){
+    if(hasCard){ _title.textContent=(opDatacard(op)||{}).name || op.label || "Op";
+      _title.classList.remove("hidden"); $("#opLabel").classList.add("hidden"); }
+    else { _title.classList.add("hidden"); $("#opLabel").classList.remove("hidden"); }
+  }
   // Header avatar (top-right circle) — datacard photo, else initials. Tapping it minimises.
   const ph=$("#opPhoto"), dcard=opDatacard(op), pic=dcard&&dcard.photo&&(dcard.photo.card||dcard.photo.marker);
   if(ph){ if(pic){ ph.style.backgroundImage=`url("${pic}")`; ph.textContent=""; }
