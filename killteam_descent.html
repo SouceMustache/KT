@@ -482,7 +482,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v234</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v235</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -799,6 +799,12 @@ const $$=(s,r=document)=>[...r.querySelectorAll(s)];
 // Same fixed scale as the Planner so prefabs, bases and distances are interchangeable
 // across the suite. 1 inch = 40 px.
 const PPI=40;
+// Off-killzone staging (ported from Planner): an operative can be active but not on the
+// board — in reserve, underground, or otherwise out of the killzone until its own rules
+// bring it on. It keeps its own board tag so it stages under the plate it came from.
+const OFF_STATES=[null,"reserve","underground","out"];
+const OFF_LABEL={reserve:"Reserve",underground:"Underground",out:"Out of KZ"};
+function boardStageDepth(b){ return S.items.some(t=>t.off && t.board===b.id) ? 2.4*PPI : 0; }
 const GUTTER=2.0;   // inches of empty space drawn between stacked boards
 const AKEY="ktDescentState", PACKKEY="ktDescentPack";
 
@@ -1058,7 +1064,7 @@ function resolveBoards(){
 function worldExtent(){
   let x1=0,y1=0,x0=Infinity,y0=Infinity;
   for(const b of S.boards){ x0=Math.min(x0,b.ox); y0=Math.min(y0,b.oy);
-    x1=Math.max(x1,b.ox+b.wpx); y1=Math.max(y1,b.oy+b.hpx); }
+    x1=Math.max(x1,b.ox+b.wpx); y1=Math.max(y1,b.oy+b.hpx+boardStageDepth(b)); }
   if(!isFinite(x0)){x0=0;y0=0;x1=PPI;y1=PPI;}
   return {x0,y0,w:x1-x0,h:y1-y0};
 }
@@ -1787,6 +1793,22 @@ function badgeBox(g,x,y,w,h,fill,txt,tcol){
 }
 function renderItems(){
   gItem.replaceChildren();
+  // Off-killzone staging: for each board, lay its staged operatives in a strip below the
+  // plate and sync their stored x/y to the drawn slot, so "not on the table" is an explicit
+  // state rather than a guess (Planner pattern). The main draw loop below reads t.x/t.y, so
+  // once slotted the ops render in the strip with no special-casing.
+  for(const b of S.boards){
+    const staged=S.items.filter(x=>x.off && x.board===b.id);
+    if(!staged.length) continue;
+    const sy=b.oy+b.hpx+1.05*PPI, sx0=b.ox+0.9*PPI, gap=1.5*PPI;
+    gItem.appendChild(attr(mk("line"),{x1:b.ox,y1:b.oy+b.hpx+0.28*PPI,x2:b.ox+b.wpx,y2:b.oy+b.hpx+0.28*PPI,
+      stroke:"#2c3742","stroke-width":1,"stroke-dasharray":"6 5","vector-effect":"non-scaling-stroke"}));
+    gItem.appendChild(attr(Object.assign(mk("text"),{textContent:"OFF KILLZONE"}),
+      {x:b.ox+4,y:b.oy+b.hpx+0.66*PPI,fill:"#4a5765","font-size":9,"font-family":"var(--mono)",
+       "letter-spacing":"1.5","pointer-events":"none"}));
+    staged.forEach((t,i)=>{ const ix=sx0+i*gap;
+      if(Math.abs(t.x-ix)>0.5||Math.abs(t.y-sy)>0.5){ t.x=ix; t.y=sy; } });
+  }
   for(const t of S.items){
     const photo = t.photo
       || (t.model && t.model.photo ? t.model.photo.marker : null)
@@ -2255,7 +2277,11 @@ function onMove(e){
   if(!drag) return;
   const w=clientToWorld(e.clientX,e.clientY); S._lastWorld=[w.x,w.y];
   if(drag.type==="pan"){ panClient(e.clientX-drag.sx,e.clientY-drag.sy); drag.sx=e.clientX; drag.sy=e.clientY; }
-  else if(drag.type==="item"){ drag.t.x=w.x-drag.ox; drag.t.y=w.y-drag.oy; drag.moved=true;
+  else if(drag.type==="item"){
+    // A tap on a staged op just inspects it; the first actual drag pulls it back into play,
+    // so the render pre-pass no longer snaps it back to its strip slot.
+    if(drag.t.off){ delete drag.t.off; }
+    drag.t.x=w.x-drag.ox; drag.t.y=w.y-drag.oy; drag.moved=true;
     if(S.moveTrail){ S.moveTrail.x1=drag.t.x; S.moveTrail.y1=drag.t.y; }
     renderItems(); renderOverlay(); }
   else if(drag.type==="marker"){ drag.m.x=w.x-drag.ox; drag.m.y=w.y-drag.oy; drag.moved=true;
@@ -2274,6 +2300,7 @@ function endP(e){
     const din=Math.hypot(drag.t.x-drag.x0,drag.t.y-drag.y0)/PPI;
     pushUndo({kind:"move",id:drag.t.id,x:drag.x0,y:drag.y0,board:drag.board0});
     S.moveTrail=null; hideMoveReadout(); save(); renderOverlay();
+    if(sheetOp===drag.t && !sheetMin) renderStatusStrip(drag.t);
     hud(`Moved ${din.toFixed(1)}"`);
   } else if(drag&&drag.type==="item"){ S.moveTrail=null; hideMoveReadout(); renderOverlay(); }
   if(drag&&drag.type==="marker"&&drag.moved){
@@ -2412,6 +2439,9 @@ function renderStatusStrip(op){
       <button class="mini oschip ${(op.elev||0)===0?"on":""}" data-st="elev0">Ground</button>
       <button class="mini oschip ${(op.elev||0)===1?"on":""}" data-st="elev1">V1</button>
       <button class="mini oschip ${(op.elev||0)===2?"on":""}" data-st="elev2">V2</button>
+    </div>
+    <div class="ostat-row"><span class="ostat-l">Placement</span>
+      <button class="mini oschip ${op.off?"on":""}" data-st="off" title="Cycle: On board → Reserve → Underground → Out of KZ. Drag from the strip to bring it back.">${op.off?OFF_LABEL[op.off]:"On board"}</button>
     </div>`;
 }
 $("#opStatus").addEventListener("click",e=>{ const b=e.target.closest("[data-st]"); if(!b||!sheetOp) return;
@@ -2425,7 +2455,9 @@ $("#opStatus").addEventListener("click",e=>{ const b=e.target.closest("[data-st]
   else if(st==="elev0") op.elev=0;
   else if(st==="elev1") op.elev=1;
   else if(st==="elev2") op.elev=2;
-  renderStatusStrip(op); renderItems(); save();
+  else if(st==="off"){ const i=OFF_STATES.indexOf(op.off||null); const nx=OFF_STATES[(i+1)%OFF_STATES.length];
+    if(nx) op.off=nx; else delete op.off; }
+  renderStatusStrip(op); renderItems(); renderOverlay(); save();
 });
 function bindOpSheet(){
   const op=sheetOp; if(!op) return;
