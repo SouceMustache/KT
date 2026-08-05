@@ -383,6 +383,39 @@
   .wtype.melee{background:rgba(224,120,110,.18);color:#e0918a;}
   #dice{position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);padding:16px;padding-top:calc(16px + env(safe-area-inset-top));}
   #dice.open{display:flex;}
+  /* OPS panel (Ploys | NPO Gambit | Mission Rules) */
+  #ops{position:fixed;inset:0;z-index:72;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);padding:16px;padding-top:calc(16px + env(safe-area-inset-top));}
+  #ops.open{display:flex;}
+  #ops .dbox{display:flex;flex-direction:column;max-height:88vh;}
+  .otabs{display:flex;gap:4px;padding:12px 14px 0;flex-wrap:wrap;}
+  .otab{flex:1;min-width:74px;font:inherit;font-size:12px;padding:7px 6px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;-webkit-appearance:none;}
+  .otab.active{background:var(--panel2);color:var(--orange);border-color:var(--orange);}
+  .oside{display:flex;gap:6px;align-items:center;padding:10px 14px 0;}
+  .sidebtn{font:inherit;font-size:12px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:6px;-webkit-appearance:none;}
+  .sidebtn.on{border-color:var(--muted);color:var(--ink);background:var(--panel2);}
+  #ops #pFac{padding:7px 8px;-webkit-appearance:none;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:8px;font:inherit;font-size:12px;}
+  .opane{overflow:auto;padding:10px 14px 20px;-webkit-overflow-scrolling:touch;}
+  .skill-empty{padding:16px 4px;font-size:13px;color:var(--muted);line-height:1.5;}
+  .psec{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--orange);margin:12px 2px 6px;}
+  .pitem{border:1px solid var(--line);border-radius:9px;margin-bottom:8px;background:var(--panel2);overflow:hidden;}
+  .pitem.used{border-color:var(--orange);}
+  .pitem-h{display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;}
+  .pitem-n{flex:1;font-weight:600;color:var(--ink);font-size:13px;}
+  .tps{display:flex;gap:4px;flex:0 0 auto;}
+  .tp{width:24px;height:24px;border-radius:50%;padding:0;-webkit-appearance:none;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:11px;}
+  .tp.on{background:var(--orange);border-color:var(--orange);color:#0d1013;}
+  .pitem.rule{background:rgba(255,255,255,.03);}
+  .pitem.rule .pitem-n{color:var(--orange);}
+  .pitem-b{padding:0 12px 12px;font-size:13px;color:var(--muted);line-height:1.5;white-space:pre-wrap;}
+  .miss-item-chevron{color:var(--muted);font-size:11px;transition:transform .15s;flex:0 0 auto;}
+  .miss-item-chevron.open{transform:rotate(90deg);}
+  .mrblock{margin-bottom:8px;}
+  .mrblock .mrhead{font-size:13px;font-weight:700;color:var(--ink);margin:0 2px 4px;}
+  .mrblock .mrbody{font-size:13px;color:var(--muted);line-height:1.5;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 12px;white-space:pre-wrap;}
+  .mr-victory .mrhead{color:var(--orange);}
+  .mr-none{padding:14px 4px;font-size:13px;color:var(--muted);line-height:1.5;}
+  #ops .omiss{padding:2px 4px 8px;font-size:12px;color:var(--muted);}
+  #ops .omiss b{color:var(--orange);font-weight:600;}
   .dbox{background:var(--panel);border:1px solid var(--line);border-radius:14px;width:min(440px,94vw);max-height:84vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.5);-webkit-overflow-scrolling:touch;}
   .dbox header{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);}
   .dbox header span{font-weight:700;flex:1;}
@@ -449,7 +482,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v233</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v234</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -463,6 +496,7 @@
       <button class="iconbtn" id="missionBtn" title="Mission &amp; trackers"><svg viewBox="0 0 20 20"><path d="M5 3v14"/><path d="M5 4h9l-2 3 2 3H5"/></svg></button>
       <button class="iconbtn" id="metaBtn" title="Which NPO to activate"><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="6"/><circle cx="10" cy="10" r="2.2"/><path d="M10 1v3M10 16v3M1 10h3M16 10h3"/></svg></button>
       <button class="iconbtn" id="diceBtn" title="Dice roller"><svg viewBox="0 0 20 20"><rect x="3.5" y="3.5" width="13" height="13" rx="3"/><circle cx="7" cy="7" r="1.1" fill="currentColor" stroke="none"/><circle cx="13" cy="7" r="1.1" fill="currentColor" stroke="none"/><circle cx="10" cy="10" r="1.1" fill="currentColor" stroke="none"/><circle cx="7" cy="13" r="1.1" fill="currentColor" stroke="none"/><circle cx="13" cy="13" r="1.1" fill="currentColor" stroke="none"/></svg></button>
+      <button class="iconbtn" id="opsBtn" title="Ploys, NPO gambit & mission rules"><svg viewBox="0 0 20 20"><path d="M10 2.8 16.4 5.9v4.6c0 3.2-2.6 5.4-6.4 6.7-3.8-1.3-6.4-3.5-6.4-6.7V5.9z"/><path d="M7.7 10.1 9.4 11.9l3.2-3.6"/></svg></button>
       <button class="iconbtn" id="fitBtn" title="Reset view"><svg viewBox="0 0 20 20"><path d="M3 7V3h4M17 7V3h-4M3 13v4h4M17 13v4h-4"/></svg></button>
       <button class="iconbtn" id="packBtn" title="Change pack"><svg viewBox="0 0 20 20"><path d="M3 6l7-3 7 3-7 3-7-3z"/><path d="M3 10l7 3 7-3M3 14l7 3 7-3"/></svg></button>
     </div>
@@ -736,6 +770,25 @@
     </div>
   </div></div>
 
+  <!-- OPS panel: Ploys (Mine/Enemy, ported from the Planner) + per-mission NPO Strategic Gambit
+       and Mission Rules (Shadowhunt mission data). -->
+  <div id="ops"><div class="dbox">
+    <header><span id="opsTitle">Ops</span><button class="mini" id="opsClose">Close</button></header>
+    <div class="otabs" id="opsTabs">
+      <button class="otab" data-otab="ploys">Ploys</button>
+      <button class="otab" data-otab="gambit">NPO Gambit</button>
+      <button class="otab" data-otab="mrules">Mission Rules</button>
+    </div>
+    <div class="oside" id="opsSideRow">
+      <button class="sidebtn" id="oSideM" data-oside="mine"><span class="dotm"></span>Mine</button>
+      <button class="sidebtn" id="oSideE" data-oside="enemy"><span class="dote"></span>Enemy</button>
+      <select id="pFac" style="flex:1;min-width:0"></select>
+    </div>
+    <div id="ployList" class="opane"></div>
+    <div id="gambitList" class="opane"></div>
+    <div id="mrulesList" class="opane"></div>
+  </div></div>
+
 <script>
 "use strict";
 const SVGNS="http://www.w3.org/2000/svg";
@@ -841,6 +894,77 @@ const PACKS = {
   },
 };
 
+/* ---- Shadowhunt mission data (Mission Rules + NPO Strategic Gambit, per mission) --------
+   Keyed by packId → array indexed by S.mission.missionIdx (matches PACKS[id].missions order).
+   Compiled from the Shadowhunt mission pack; verify against the physical pack. `gambit` is the
+   NPO strategic gambit / reinforcement rule for that mission, or null where the mission
+   specifies none (NPOs then always pass after any required gambits). */
+const SH_MISSIONS = {
+  "shadowhunt-joint": [
+    { // 01 Find the Source
+      rules:[
+        {n:"NPOs", text:"Any combination of NPOs with a combined Wounds stat of up to 110. Set up with a Conceal order wholly within the NPOs' territories, in cover and evenly distributed between the two killzones."},
+        {n:"Locate Signature", text:"In the lower killzone, if the sarcophagus (C1) hasn't been set up, the first time a player operative enters each room that has an objective marker, roll one D3, +1 for each room already searched this battle. On a 4+, set up the sarcophagus on the centre of that objective marker in the mapped orientation. If it's the last such room to be entered, the D3 is automatically a 4+."},
+      ],
+      gambit:{n:"NPO Reinforcements", text:"As an NPO STRATEGIC GAMBIT in each Strategy phase after the first, set up D3+1 NPO Reinforcements ready with a Conceal order in the lower killzone. Each must be set up so a randomly determined hatchway's access point is within its control range (3 hatchways — roll one D3; a closed hatchway still counts)."},
+      victory:"Whenever a player operative ends an activation with the sarcophagus (C1) within its control range, it's scanned. When the sarcophagus has been scanned 3 times, the battle ends and the player(s) win. If all player operatives are incapacitated, the player(s) lose.",
+    },
+    { // 02 The Sarcophagus
+      rules:[
+        {n:"NPOs", text:"Any combination of NPOs with a combined Wounds stat of up to 110. Set up with a Conceal order wholly within the NPOs' territories, in cover and evenly distributed between the two killzones."},
+        {n:"Split Mission", text:"Half the player operatives set up in the player drop zone in the lower killzone. The other half set up on the Vantage terrain in Stronghold B in the upper killzone."},
+        {n:"Extraction", text:"Before the battle, select one operative in the upper killzone to carry your Extraction marker. Friendly operatives can Pick Up Marker on it. While carrying it, an operative can't be removed and set up again more than 6\" away, and can't perform Charge or Dash."},
+        {n:"Core Extraction", text:"Treat the sarcophagus (C1) as an objective marker (in addition to its normal terrain rules). It begins the battle with 2 Integrity points."},
+        {n:"Mission Action — Extract Core (1AP)", text:"If the active operative is carrying your Extraction marker, controls the sarcophagus (C1) and it isn't contested by NPOs, remove one Integrity point from it. Not during the first turning point, not while within control range of an enemy operative, and not if a friendly operative has already performed this action this turning point."},
+      ],
+      gambit:{n:"NPO Reinforcements", text:"As an NPO STRATEGIC GAMBIT in each Strategy phase after the first, set up D3+1 NPO Reinforcements ready with a Conceal order in the lower killzone. Each set up so a randomly determined hatchway's access point is within its control range (4 hatchways — roll one D6, re-roll a 5 or 6; a closed hatchway still counts)."},
+      victory:"If the sarcophagus (C1) has no Integrity points, the battle ends and the player(s) win. If every player operative is incapacitated, the player(s) lose.",
+    },
+    { // 03 Rising Doom
+      rules:[
+        {n:"NPOs", text:"Any combination of NPOs with a combined Wounds stat of up to 90. Set up with a Conceal order wholly within the NPOs' territories, in cover and evenly distributed between the two killzones. At the end of the first turning point, remove the sarcophagus (C1) from the lower killzone and place the C'tan Shard of the Nightbringer NPO in the centre of that room."},
+        {n:"Escape", text:"Whenever a player operative ends its activation on the Vantage terrain of Stronghold B and not within control range of enemy operatives, you can remove it from the killzone — it has escaped."},
+      ],
+      gambit:null,
+      victory:"When all player operatives have been removed from the killzone, the battle ends. If at least one third of player operatives (rounding up) have escaped, the player(s) win. Otherwise, the player(s) lose.",
+    },
+  ],
+  "shadowhunt-adversary": [
+    { // 01 Into the Depths
+      rules:[
+        {n:"Restricted Deployment", text:"In the Set Up Operatives step, operatives cannot be set up in the lower killzone; equipment cannot be set up in the lower killzone (nor markers set up during this step, e.g. Minefield or Trip Alarm markers)."},
+        {n:"NPOs", text:"For the lower killzone, the first time each room is opened by a player operative, or the first time a player operative is within that room (whichever comes first), their opponent sets up one NPO wholly within that room, more than 2\" from other operatives (if possible)."},
+        {n:"Mission Action — Secure (1AP)", text:"One objective marker the active operative controls is secured by your kill team until your opponent's kill team secures that marker. Not during the first turning point, or while within control range of an enemy operative."},
+      ],
+      gambit:null,
+      victory:"1VP for each objective marker secured by your kill team. 1VP for each objective marker friendly operatives control. At the end of any turning point after the third, if any player has scored VP, they can choose to end the battle. If every player operative is incapacitated, the battle ends.",
+    },
+    { // 02 Unlock the Vault
+      rules:[
+        {n:"Restricted Deployment", text:"In the Set Up Operatives step, one third of each player's kill team must be set up in the lower killzone; the remaining two thirds in the upper killzone."},
+        {n:"NPOs", text:"In Set Up Operatives, after equipment but before kill teams, each player alternates setting up NPOs until they've set up two each, starting with the initiative player. Each NPO set up in the lower killzone, more than 8\" from drop zones and more than 4\" from each other (if possible)."},
+        {n:"Locked Vault", text:"The objective marker begins the battle locked. At the end of any turning point after the third, if the objective marker is unlocked and a player's operatives control it, that player can end the battle."},
+        {n:"Mission Action — Unlock Vault (1AP)", text:"Roll one D3 and add the turning point number: 6 or more → one locked objective marker the active operative controls becomes unlocked; 5 or less and fewer than 4 NPOs in the lower killzone → your opponent sets up one ready NPO with a Conceal order within 3\" of the right top or bottom corner of the lower killzone. Not during the first turning point, or while within control range of an enemy operative."},
+      ],
+      gambit:{n:"NPO Reinforcements", text:"In the Ready step of each Strategy phase, after readying all operatives, if there are no NPOs in the lower killzone, the player without initiative sets up one NPO ready with a Conceal order within 3\" of the right top or bottom corner of the lower killzone. (Also triggered by a failed Unlock Vault action while there are fewer than 4 NPOs in the lower killzone.)"},
+      victory:"1VP if a friendly operative unlocks the objective marker. At the end of the battle: 1VP if friendly operatives control the unlocked objective marker; 1VP for each Entryway marker friendly operatives control (control = total APL contesting its two matching numbered markers exceeds the enemy's).",
+    },
+    { // 03 Awakening
+      rules:[
+        {n:"Restricted Deployment", text:"In the Set Up Operatives step, at least one third of each player's kill team must be set up in each killzone; equipment cannot be set up within the lower killzone's central room (nor markers set up during this step)."},
+        {n:"NPOs", text:"Don't set up any NPOs in this mission (the C'tan Shard of the Nightbringer arrives later — see Awoken Nightmare)."},
+        {n:"Breach the Vault", text:"Entryway markers begin the battle unclimbable. Player operatives can perform the Breach action (Killzone: Tomb World) while an Entryway marker is within their control range (instead of a breach point); instead of resolving that action's effects, you can make that Entryway marker climbable in both killzones."},
+        {n:"Find the Relic", text:"Pick Up Marker can be performed on the objective marker. While carried, worsen the Hit stat of the carrier's weapons by 1, and it can't be removed and set up again more than 6\" away. A carrier can move over either player's killzone edge in the upper killzone; if any part of its base does, it's removed from the killzone — it has escaped."},
+        {n:"Awoken Nightmare", text:"The first time Pick Up Marker is performed on the objective marker, roll 2D3. After that many activations complete (excluding the current one), set up the C'tan Shard of the Nightbringer NPO ready with an Engage order on a random teleport pad (T). Any player operatives on that pad are incapacitated and removed from the battle (this takes precedence over all other rules)."},
+      ],
+      gambit:null,
+      victory:"If a friendly operative carrying the objective marker escapes, the battle ends and you win. If every player operative is incapacitated, the battle ends and it's a draw.",
+    },
+  ],
+};
+function missionData(){ const arr=SH_MISSIONS[S.packId]; if(!arr) return null;
+  return arr[(S.mission&&S.mission.missionIdx)||0]||null; }
+
 /* ------------------------------------------------------------------ state */
 const S = {
   packId:null, pack:null,
@@ -869,6 +993,9 @@ const S = {
   rosterEdit:null,    // active team id in the roster UI
   armedModel:null,    // roster model armed for placement (tap board to drop)
   codex:null,         // synced codex {factionKey:[{id,name,side,weapons,abilities}]} for OP skills
+  ploys:null,         // synced ploys {factionKey:{name,strat:[],fight:[],rules:[]}} for the OPS panel
+  ployFac:{mine:"",enemy:""}, // picked faction per side in the Ploys tab (manual, Planner-style)
+  ployUse:{},         // per-TP ploy usage dots {"side:fac:type:i":[1,2,..]}
   moveTrail:null,     // {x0,y0,x1,y1,t} while dragging a model — shows trail + distance
   los:{a:null,b:null,r:null},  // Line-of-sight tool: shooter id, target id, last result
   mission:{},         // mission trackers: {missionIdx, tp, scans, escaped, ...} per pack
@@ -2583,7 +2710,8 @@ function save(){
     const boardMaps={}; (S.boards||[]).forEach(b=>{ if(b.map) boardMaps[b.id]={map:b.map,mapOX:b.mapOX,mapOY:b.mapOY,mapSX:b.mapSX,mapSY:b.mapSY}; });
     localStorage.setItem(AKEY,JSON.stringify({packId:S.packId,items:S.items,markers:S.markers,
       nextPair:S.nextPair,locked:S.locked,lockObj:S.lockObj,insts:S.insts,prefabs:S.prefabs,
-      rulers:S.rulers,rooms:S.rooms,npoPool:S.npoPool,npoTheme:S.npoTheme,boardMaps,mission:S.mission,reanim:S.reanim})); }catch(_){}
+      rulers:S.rulers,rooms:S.rooms,npoPool:S.npoPool,npoTheme:S.npoTheme,boardMaps,mission:S.mission,reanim:S.reanim,
+      ployFac:S.ployFac,ployUse:S.ployUse})); }catch(_){}
 }
 function restore(){
   let d=null;
@@ -2594,6 +2722,7 @@ function restore(){
   S.lockObj=(d.lockObj!==false); S.locked=S.lockObj; S.insts=d.insts||[]; S.prefabs=d.prefabs||{};
   S.rulers=d.rulers||[]; S.rooms=d.rooms||[]; S.npoPool=d.npoPool||[]; S.npoTheme=d.npoTheme||"tomb"; S.selected=null; S.traverse=null; S.selInst=null;
   S.mission=(d.mission&&d.mission.missionIdx!=null)?d.mission:null; if(!S.mission) initMission();
+  S.ployFac=d.ployFac||{mine:"",enemy:""}; S.ployUse=d.ployUse||{};
   S.reanim=d.reanim||null;
   resolveBoards();
   // reapply per-board maps saved separately (boards are rebuilt from the pack on load)
@@ -2611,7 +2740,7 @@ if(window.ResizeObserver) new ResizeObserver(()=>{ syncAspect(); applyVB(); }).o
 function resetPointers(){ pointers.clear(); drag=null; lastPinch=null; }
 document.addEventListener("visibilitychange",resetPointers);
 window.addEventListener("blur",resetPointers);
-document.addEventListener("touchmove",e=>{ if(!e.target.closest("#picker,#note,#opSheet,#drawer,#instBar,#missionPanel,#dice")) e.preventDefault(); },{passive:false});
+document.addEventListener("touchmove",e=>{ if(!e.target.closest("#picker,#note,#opSheet,#drawer,#instBar,#missionPanel,#dice,#ops")) e.preventDefault(); },{passive:false});
 
 /* ------------------------------------------------------------------ dev seed
    A couple of placeholder tokens so the two-board hull is visibly alive: one player
@@ -2997,7 +3126,7 @@ function layoutPayload(withMaps){
   return { v:1, kind:withMaps?"kt-descent-layouts":"kt-descent-layout", packId:S.packId,
     boards, insts:S.insts, markers:S.markers, items:S.items, rooms:S.rooms, rulers:S.rulers,
     npoPool:S.npoPool, npoTheme:S.npoTheme, nextPair:S.nextPair, mission:S.mission, reanim:S.reanim,
-    objects:usedPrefabDefs() };
+    ployFac:S.ployFac, ployUse:S.ployUse, objects:usedPrefabDefs() };
 }
 function downloadJSON(obj, name, msg){
   const blob=new Blob([JSON.stringify(obj)],{type:"application/json"});
@@ -3093,13 +3222,21 @@ function makeOpFromModel(m, side, boardId, x, y){
 
 /* ---- K2b: codex sync (skills for player ops), ported 1:1 from the Planner ---- */
 const CXKEY="kt-descent-codex-v1";
+const PLKEY="kt-descent-ploys-v1";
 const FAC_LEGACY={MINE:"murderwing", mine:"murderwing"};
 function loadCodexLS(){ try{ const c=JSON.parse(localStorage.getItem(CXKEY)); if(c) S.codex=c; }catch(_){} }
+function loadPloysLS(){ try{ const p=JSON.parse(localStorage.getItem(PLKEY)); if(p) S.ploys=p; }catch(_){} }
 function cxExtract(src,start){ let i=src.indexOf('[',start); const open=i; let depth=0,s=null,esc=false;
   for(;i<src.length;i++){ const c=src[i];
     if(s){ if(esc)esc=false; else if(c==='\\')esc=true; else if(c===s)s=null; continue; }
     if(c==='"'||c==="'"||c==='`'){ s=c; continue; }
     if(c==='[')depth++; else if(c===']'){ depth--; if(depth===0) return src.slice(open,i+1); } }
+  return null; }
+function objExtract(src,from){ let i=src.indexOf("{",from); const open=i; let depth=0,s=null,esc=false;
+  for(;i<src.length;i++){ const c=src[i];
+    if(s){ if(esc){esc=false;} else if(c==="\\"){esc=true;} else if(c===s){s=null;} continue; }
+    if(c==='"'||c==="'"||c==='`'){ s=c; continue; }
+    if(c==='{')depth++; else if(c==='}'){ depth--; if(depth===0) return src.slice(open,i+1); } }
   return null; }
 function wpnIsRanged(name,wr){ const nl=(name||"").toLowerCase(); wr=wr||"";
   if(/\(point-blank\)|\(stab\)|\(strike\)|\(sweep\)/.test(nl)) return false;
@@ -3145,10 +3282,17 @@ async function syncCodex(btn){ const t0=btn?btn.textContent:""; if(btn){ btn.tex
           type:(w.type||(wpnIsRanged(w.name,w.wr)?"ranged":"melee"))})),
         abilities:(o.abilities||[]).map(a=>({name:a.name,desc:a.desc||"",ap:a.ap||"",restrict:a.restrict||"",unique:!!a.unique,track:a.track||null}))})); }
     if(!Object.keys(cx).length) throw new Error("no operative data found");
+    // Ploys: the viewer exposes FACTION_RULES = {fac:{name,strat,fight,rules}} — same shape the
+    // Planner uses. Extract it with objExtract (already ported) into S.ploys for the OPS panel.
+    let ploys=null;
+    try{ const fm=/(?:var|const|let)\s+FACTION_RULES\s*=\s*\{/.exec(src);
+      if(fm){ const t=objExtract(src,fm.index); if(t){ const FR=Function("return ("+t+")")(); ploys={};
+        for(const k in FR){ const f=FR[k]; ploys[k]={name:f.name||k,strat:f.strat||[],fight:f.fight||[],rules:f.rules||[]}; } } } }catch(_){}
     let ops=0; Object.values(cx).forEach(a=>ops+=a.length);
     S.codex=cx; try{ localStorage.setItem(CXKEY,JSON.stringify(cx)); }catch(_){}
+    if(ploys){ S.ploys=ploys; try{ localStorage.setItem(PLKEY,JSON.stringify(ploys)); }catch(_){} }
     if(sheetOp) renderNPOCard(sheetOp);
-    note(`Codex synced: ${Object.keys(cx).length} factions, ${ops} operatives.`,true); }
+    note(`Codex synced: ${Object.keys(cx).length} factions, ${ops} operatives${ploys?`, ${Object.keys(ploys).length} ploy sets`:""}.`,true); }
   catch(err){ note("Codex sync failed: "+(err.message||err)+" — open the app from GitHub Pages (same origin as the viewer)."); }
   finally{ if(btn){ btn.textContent=t0; btn.disabled=false; } } }
 function curRosterTeam(){ return (S.roster.teams||[]).find(t=>t.id===S.rosterEdit) || S.roster.teams[0] || null; }
@@ -3206,6 +3350,7 @@ function importLayout(d){
   S.rooms=d.rooms||[]; S.rulers=d.rulers||[]; S.npoPool=d.npoPool||[]; S.nextPair=d.nextPair||1;
   if(d.npoTheme) S.npoTheme=d.npoTheme;
   S.mission=(d.mission&&d.mission.missionIdx!=null)?d.mission:S.mission; S.reanim=d.reanim||null;
+  if(d.ployFac) S.ployFac=d.ployFac; if(d.ployUse) S.ployUse=d.ployUse;
   S.selected=null; S.selInst=null; S.traverse=null; S.advisorPick=null; S.activeRoom=S.rooms[0]?S.rooms[0].id:null;
   // reapply per-board transform; only overwrite the map image when the file actually carries one
   // (a lean state export has no base64 maps — keep whatever the loaded library already provided).
@@ -3466,6 +3611,91 @@ $("#drefMods").addEventListener("click",e=>{ const b=e.target.closest("[data-mod
   const k=b.dataset.mod; M[k]=!M[k];
   b.classList.toggle("on",M[k]); renderDrefCard(); });
 
+/* ------------------------------------------------------------------ OPS panel
+   Ploys (Mine/Enemy) ported 1:1 from the Planner; NPO Gambit + Mission Rules read the
+   per-mission SH_MISSIONS data for the active pack + S.mission.missionIdx. */
+let opsSide="mine", opsTab="ploys", pExpand={};
+function openOps(tab){ opsTab=tab||opsTab; renderOps(); $("#ops").classList.add("open"); }
+function renderOps(){
+  $$("#opsTabs .otab").forEach(b=>b.classList.toggle("active",b.dataset.otab===opsTab));
+  // Side row (Mine/Enemy + faction) only applies to the Ploys tab.
+  $("#opsSideRow").style.display = opsTab==="ploys" ? "flex" : "none";
+  $("#oSideM").classList.toggle("on",opsSide==="mine");
+  $("#oSideE").classList.toggle("on",opsSide==="enemy");
+  $("#ployList").style.display  = opsTab==="ploys"?"":"none";
+  $("#gambitList").style.display= opsTab==="gambit"?"":"none";
+  $("#mrulesList").style.display= opsTab==="mrules"?"":"none";
+  const titles={ploys:"Ploys",gambit:"NPO Strategic Gambit",mrules:"Mission Rules"};
+  $("#opsTitle").textContent=titles[opsTab]||"Ops";
+  if(opsTab==="ploys") renderPloys();
+  else if(opsTab==="gambit") renderGambit();
+  else renderMissionRules();
+}
+// ---- Ploys (ported from the Planner) ----
+function ployFacs(){ return S.ploys?Object.keys(S.ploys):[]; }
+function tpDots(key){ const set=S.ployUse[key]||[];
+  return `<div class="tps">`+[1,2,3,4].map(n=>
+    `<button class="tp ${set.includes(n)?"on":""}" data-ptp="${key}|${n}">${n}</button>`).join("")+`</div>`; }
+function opsFac(){ const facs=ployFacs();
+  if(!S.ployFac[opsSide]||!S.ploys||!S.ploys[S.ployFac[opsSide]]) S.ployFac[opsSide]=facs[0]||"";
+  const fac=S.ployFac[opsSide];
+  if(S.ploys) $("#pFac").innerHTML=facs.map(f=>`<option value="${f}" ${f===fac?"selected":""}>${esc(S.ploys[f].name||f)}</option>`).join("");
+  return fac; }
+function renderPloys(){
+  if(!S.ploys){ $("#ployList").innerHTML=`<div class="skill-empty">No ploy data yet. Open the roster and run “Sync codex” once, then reopen this panel.</div>`;
+    $("#pFac").innerHTML=""; return; }
+  const fac=opsFac(), F=S.ploys[fac];
+  if(!F){ $("#ployList").innerHTML=""; return; }
+  const sec=(label,type,arr)=> !arr.length?"":`<div class="psec">${label}</div>`+arr.map((p,i)=>{
+    const key=`${opsSide}:${fac}:${type}:${i}`, used=(S.ployUse[key]||[]).length, ex=pExpand[key];
+    return `<div class="pitem ${used?"used":""}">
+      <div class="pitem-h" data-pex="${key}">
+        <span class="pitem-n">${esc(p.name)}</span>
+        ${tpDots(key)}
+      </div>
+      <div class="pitem-b" style="${ex?"":"display:none"}">${esc(htmlToText(p.desc||""))}</div></div>`; }).join("");
+  const rules=(F.rules||[]).length?`<div class="psec">Faction rules</div>`+(F.rules||[]).map((p,i)=>{
+    const key=`r:${fac}:${i}`, ex=pExpand[key];
+    return `<div class="pitem rule">
+      <div class="pitem-h" data-pex="${key}"><span class="pitem-n">${esc(p.name)}</span>
+        <span class="miss-item-chevron ${ex?"open":""}">&#9658;</span></div>
+      <div class="pitem-b" style="${ex?"":"display:none"}">${esc(htmlToText(p.desc||""))}</div></div>`; }).join(""):"";
+  $("#ployList").innerHTML=rules+sec("Strategy ploys","s",F.strat||[])+sec("Firefight ploys","f",F.fight||[]); }
+// ---- NPO Strategic Gambit (per mission) ----
+function omissHead(){ return `<div class="omiss"><b>${esc(missionName())}</b></div>`; }
+function renderGambit(){
+  const md=missionData();
+  if(!md){ $("#gambitList").innerHTML=`<div class="mr-none">No mission gambit data for this pack. (Only the Shadowhunt packs carry per-mission gambits.)</div>`; return; }
+  if(!md.gambit){ $("#gambitList").innerHTML=omissHead()+`<div class="mr-none">This mission specifies no NPO strategic gambit. NPOs always pass after any required gambits have been used.</div>`; return; }
+  const g=md.gambit;
+  $("#gambitList").innerHTML=omissHead()+
+    `<div class="mrblock"><div class="mrhead">${esc(g.n||"NPO Strategic Gambit")}</div><div class="mrbody">${esc(g.text||"")}</div></div>`; }
+// ---- Mission Rules (per mission) ----
+function renderMissionRules(){
+  const md=missionData();
+  if(!md){ $("#mrulesList").innerHTML=`<div class="mr-none">No mission-rules data for this pack. (Only the Shadowhunt packs carry per-mission rules.)</div>`; return; }
+  const rules=(md.rules||[]).map(r=>
+    `<div class="mrblock"><div class="mrhead">${esc(r.n)}</div><div class="mrbody">${esc(r.text)}</div></div>`).join("");
+  const vic=md.victory?`<div class="mrblock mr-victory"><div class="mrhead">Victory</div><div class="mrbody">${esc(md.victory)}</div></div>`:"";
+  $("#mrulesList").innerHTML=omissHead()+rules+vic; }
+function opsPane(){ renderOps(); }
+function opsListClick(e){
+  const t=e.target.closest("[data-ptp]");
+  if(t){ e.stopPropagation(); const [key,n]=t.dataset.ptp.split("|"), tp=+n;
+    const set=S.ployUse[key]||[];
+    S.ployUse[key]= set.includes(tp) ? set.filter(x=>x!==tp) : [...set,tp].sort();
+    if(!S.ployUse[key].length) delete S.ployUse[key];
+    save(); renderPloys(); return; }
+  const h=e.target.closest("[data-pex]"); if(h){ const k=h.dataset.pex; pExpand[k]=!pExpand[k]; renderPloys(); } }
+$("#opsBtn").addEventListener("click",()=>openOps(opsTab));
+$("#opsClose").addEventListener("click",()=>$("#ops").classList.remove("open"));
+$("#ops").addEventListener("click",e=>{ if(e.target===$("#ops")) $("#ops").classList.remove("open"); });
+$("#opsTabs").addEventListener("click",e=>{ const b=e.target.closest("[data-otab]"); if(!b) return; opsTab=b.dataset.otab; renderOps(); });
+$("#oSideM").addEventListener("click",()=>{ opsSide="mine"; renderOps(); });
+$("#oSideE").addEventListener("click",()=>{ opsSide="enemy"; renderOps(); });
+$("#pFac").addEventListener("change",e=>{ S.ployFac[opsSide]=e.target.value; save(); renderPloys(); });
+$("#ployList").addEventListener("click",opsListClick);
+
 /* ------------------------------------------------------------------ service worker */
 if("serviceWorker" in navigator){
   window.addEventListener("load",()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
@@ -3476,7 +3706,7 @@ if("serviceWorker" in navigator){
   renderPackList();
   const saved=localStorage.getItem(PACKKEY);
   $("#resumeBtn").style.display = saved ? "" : "none";
-  loadRosterLS(); loadCodexLS();
+  loadRosterLS(); loadCodexLS(); loadPloysLS();
   // Auto-resume a prior session so a returning player lands straight on their board;
   // if there's nothing to resume, the picker stays up as the first screen.
   if(!restore()){
