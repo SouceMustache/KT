@@ -241,6 +241,8 @@
   .ostat-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:5px 0;}
   .ostat-l{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;min-width:52px;}
   .ostat-l b{color:var(--ink);font-size:13px;}
+  .coordin{width:54px;background:var(--panel2);border:1px solid var(--line);border-radius:7px;
+    color:var(--ink);font-family:var(--mono);font-size:13px;padding:5px 6px;text-align:center;-webkit-appearance:none;}
   .oschip{padding:5px 10px;font-size:12px;line-height:1;}
   .oschip.on{background:rgba(242,160,61,.16);color:var(--orange);border-color:rgba(242,160,61,.5);}
   .oschip.blue.on{background:rgba(90,168,255,.16);color:#5aa8ff;border-color:rgba(90,168,255,.5);}
@@ -482,7 +484,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v236</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v237</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -1717,6 +1719,16 @@ function renderGrid(){
       for(let y=step;y<b.hpx-.5;y+=step)
         gGrid.appendChild(attr(mk("line"),{x1:b.ox,y1:b.oy+y,x2:b.ox+b.wpx,y2:b.oy+y,
           stroke:"#242d35","stroke-width":.7,"vector-effect":"non-scaling-stroke"}));
+      // Coordinate rulers (ported from the Planner): a board-local inch scale down the top
+      // and left edge so a position read off the board can be typed straight into the op
+      // sheet's coordinate field. Numbers are inches from THIS board's own top-left origin,
+      // which is what the coord entry writes back — so every board reads on its own scale.
+      const inch=g.inch||1, every=inch<=1?5:1;
+      const lab=(v,x,y)=>gGrid.appendChild(attr(Object.assign(mk("text"),{textContent:v}),
+        {x,y,fill:"#4a5765","font-size":8,"font-family":"var(--mono)","text-anchor":"middle",
+         "dominant-baseline":"middle","pointer-events":"none"}));
+      for(let i=1;i*inch*PPI<b.wpx-.5;i++){ if(i%every===0) lab(String(Math.round(i*inch)),b.ox+i*inch*PPI,b.oy+7); }
+      for(let j=1;j*inch*PPI<b.hpx-.5;j++){ if(j%every===0) lab(String(Math.round(j*inch)),b.ox+9,b.oy+j*inch*PPI); }
     }
   }
 }
@@ -2421,6 +2433,11 @@ function renderStatusStrip(op){
   const host=$("#opStatus"); if(!host) return;
   if(!op){ host.innerHTML=""; return; }
   const ord=ordOf(op), expended=!!op.expended, dead=isDead(op), inj=isInjured(op);
+  // K3: coordinate entry — board-local inches from this operative's board origin, matching
+  // the edge rulers. Blank while off-board with no board (can't resolve a scale).
+  const _bd=boardById(op.board);
+  const _cx=_bd?((op.x-_bd.ox)/PPI).toFixed(1):"", _cy=_bd?((op.y-_bd.oy)/PPI).toFixed(1):"";
+  const _bl=(S.boards.length>1&&_bd)?`<span class="ostat-l" style="min-width:0;opacity:.6">${_bd.name||_bd.id}</span>`:"";
   const orderBtn = canConceal(op)
     ? `<button class="mini oschip blue ${ord==="conceal"?"on":""}" data-st="order">${ord==="conceal"?"Conceal":"Engage"}</button>`
     : `<button class="mini oschip" disabled title="Mighty Foe — always Engage">Engage</button>`;
@@ -2442,6 +2459,12 @@ function renderStatusStrip(op){
     </div>
     <div class="ostat-row"><span class="ostat-l">Placement</span>
       <button class="mini oschip ${op.off?"on":""}" data-st="off" title="Cycle: On board → Reserve → Underground → Out of KZ. Drag from the strip to bring it back.">${op.off?OFF_LABEL[op.off]:"On board"}</button>
+    </div>
+    <div class="ostat-row"><span class="ostat-l" title="Board-local inches from this board's top-left, matching the edge rulers">Coords</span>
+      <input id="opCX" class="coordin" type="number" step="0.1" inputmode="decimal" placeholder="x" value="${_cx}">
+      <input id="opCY" class="coordin" type="number" step="0.1" inputmode="decimal" placeholder="y" value="${_cy}">
+      <button class="mini oschip" data-st="place" title="Move to these coordinates (also lands the piece on the board)">Place</button>
+      ${_bl}
     </div>`;
 }
 $("#opStatus").addEventListener("click",e=>{ const b=e.target.closest("[data-st]"); if(!b||!sheetOp) return;
@@ -2457,8 +2480,16 @@ $("#opStatus").addEventListener("click",e=>{ const b=e.target.closest("[data-st]
   else if(st==="elev2") op.elev=2;
   else if(st==="off"){ const i=OFF_STATES.indexOf(op.off||null); const nx=OFF_STATES[(i+1)%OFF_STATES.length];
     if(nx) op.off=nx; else delete op.off; }
+  else if(st==="place"){ const bd=boardById(op.board); if(!bd){ note("No board resolved for this operative."); return; }
+    const x=parseFloat($("#opCX").value), y=parseFloat($("#opCY").value);
+    if(isNaN(x)||isNaN(y)){ note("Enter x and y in inches."); return; }
+    op.x=bd.ox+x*PPI; op.y=bd.oy+y*PPI; delete op.off;   // typing coords also lands it on the board
+    hud(`Placed ${op.label||"op"} at ${x.toFixed(1)}, ${y.toFixed(1)}`); }
   renderStatusStrip(op); renderItems(); renderOverlay(); save();
 });
+// Enter in either coord field commits the placement (mobile keyboards show a "go" key)
+$("#opStatus").addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.classList.contains("coordin")){
+  e.preventDefault(); const b=$("#opStatus").querySelector('[data-st="place"]'); if(b) b.click(); } });
 function bindOpSheet(){
   const op=sheetOp; if(!op) return;
   renderStatusStrip(op);
