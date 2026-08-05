@@ -482,7 +482,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v235</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v236</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -1152,7 +1152,7 @@ function climbThrough(op, marker){
   if(marker.mtype==="teleport"){
     // land on the twin pad's centre (guarantees wholly-within). Only one op per pad: if the
     // twin pad is occupied, swap that operative back onto the origin pad (rules: swap around).
-    const occupant=S.items.find(o=>o!==op && o.board===twin.board && whollyWithinPad(o,twin));
+    const occupant=S.items.find(o=>o!==op && !o.off && o.board===twin.board && whollyWithinPad(o,twin));
     if(occupant){ occupant.x=marker.x; occupant.y=marker.y; occupant.board=marker.board;
       extra+=` Swapped with ${occupant.label||"an operative"}.`; }
     op.x=twin.x; op.y=twin.y; op.board=twin.board;
@@ -1459,7 +1459,7 @@ function edgeDist(a,b){
 // A weapon's Range X" cap (null = unlimited). Reads the weapon-rules string.
 function weaponRange(w){ const m=/Range\s*(\d+)/i.exec(w&&w.wr||""); return m?+m[1]:null; }
 // The NPO's targets: every operative on the same board that isn't itself an NPO.
-function npoTargets(npo){ return S.items.filter(o=>o!==npo && o.kind==="op" && o.board===npo.board && o.side!=="npo"); }
+function npoTargets(npo){ return S.items.filter(o=>o!==npo && o.kind==="op" && o.board===npo.board && o.side!=="npo" && !o.off); }
 
 // Build the candidate-action list for an NPO. Each candidate:
 //   {action, targetId?, weapon?, reachable, ap, dist, need?, cover?, obscured?, blocked?, note}
@@ -2886,14 +2886,14 @@ $("#missionClose").addEventListener("click",()=>{ $("#missionPanel").classList.a
 /* ---- K2c: meta-advisor — which NPO to activate this turn ---- */
 // Rank every READY npo (not expended, not dead) by the score of its single best available action.
 function rankReadyNPOs(){
-  const ready=S.items.filter(o=>o.kind==="op" && o.side==="npo" && !o.expended && !isDead(o));
+  const ready=S.items.filter(o=>o.kind==="op" && o.side==="npo" && !o.expended && !isDead(o) && !o.off);
   return ready.map(npo=>{ const rk=rankNPOActions(npo); return {npo, best:rk.best, score:rk.best?rk.best.score:-999}; })
     .sort((a,b)=> b.score-a.score);
 }
 function buildMeta(){
   const body=$("#metaBody"); if(!body) return;
   const list=rankReadyNPOs();
-  if(!list.length){ body.innerHTML=`<div class="dwhint">No ready NPOs on the board. (Expended and dead NPOs are excluded.)</div>`; return; }
+  if(!list.length){ body.innerHTML=`<div class="dwhint">No ready NPOs on the board. (Expended, dead, and off-killzone NPOs are excluded.)</div>`; return; }
   body.innerHTML=list.map((r,i)=>{
     const dc=NPO_LIB[r.npo.npoKey]||{}; const tgt=r.best&&r.best.targetId&&S.items.find(o=>o.id===r.best.targetId);
     const act=r.best?`${r.best.action}${tgt?` → ${esc(tgt.label||"target")}`:""}`:"no action";
@@ -3435,7 +3435,7 @@ $("#instDone").addEventListener("click",()=>{ S.selInst=null; hideInstBar(); ren
    arm a random pooled unit from it, and place datacard-driven NPOs on the board. */
 function npoBudget(){ return (S.pack&&S.pack.npoBudget)||110; }
 function poolWounds(){ return S.npoPool.reduce((s,k)=>s+(NPO_LIB[k]?NPO_LIB[k].wounds:0),0); }
-function npoInKillzone(){ return S.items.filter(i=>i.side==="npo").length; }
+function npoInKillzone(){ return S.items.filter(i=>i.side==="npo" && !i.off).length; }
 
 function buildNPOSection(){
   const sec=$("#npoSec"); if(!sec) return;
