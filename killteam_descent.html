@@ -402,8 +402,8 @@
   .side{display:inline-flex;align-items:center;gap:6px;}
   .faces{display:flex;gap:6px;flex-wrap:wrap;}
   .fbtn{border:1px solid var(--line);background:var(--panel2);color:var(--ink);font:inherit;font-size:13px;width:32px;height:32px;border-radius:7px;cursor:pointer;-webkit-appearance:none;}
-  .dotm,.dote{width:10px;height:10px;border-radius:50%;display:inline-block;}
-  .dotm{background:var(--red);} .dote{background:var(--teal);}
+  .dotm,.dote,.dotn{width:10px;height:10px;border-radius:50%;display:inline-block;}
+  .dotm{background:var(--red);} .dote{background:var(--teal);} .dotn{background:var(--orange);}
   #diceResults{padding:0 16px 18px;display:flex;flex-direction:column;gap:14px;}
   #diceRef{margin:12px 16px 0;border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:7px;padding-bottom:16px;}
   .drefrow{display:flex;gap:6px;}
@@ -449,7 +449,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v232</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v233</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -719,6 +719,7 @@
       <div class="drefrow">
         <button class="drefside mine on" id="drefSideM" data-side="mine"><span class="dotm"></span>Mine</button>
         <button class="drefside enemy" id="drefSideE" data-side="enemy"><span class="dote"></span>Enemy</button>
+        <button class="drefside npo" id="drefSideN" data-side="npo"><span class="dotn"></span>NPOs</button>
       </div>
       <select id="drefOp" class="full" style="font-family:var(--mono)"></select>
       <select id="drefWpn" class="full" style="font-family:var(--mono)"></select>
@@ -879,7 +880,7 @@ const S = {
   // Dice roller (ported from the Planner). mine/enemy = pool sizes; rm/re rolled pools,
   // km/ke kept dice. dref = attacker reference (which op/weapon + hit/dmg/atk modifiers).
   dice:{mine:3, enemy:3, rm:[], re:[], km:[], ke:[]},
-  dref:{side:"mine", pick:{mine:null, enemy:null}, wpn:{mine:0, enemy:0}, mods:{mine:{}, enemy:{}}},
+  dref:{side:"mine", pick:{mine:null, enemy:null, npo:null}, wpn:{mine:0, enemy:0, npo:0}, mods:{mine:{}, enemy:{}, npo:{}}},
 };
 
 // Keywords whose *faction reposition rule* (remove-and-set-up) may NOT cross between
@@ -3390,19 +3391,33 @@ $("#diceResults").addEventListener("click",e=>{ const el=e.target.closest("[data
 function drefOps(side){
   return S.items.filter(t=>t.kind==="op" && t.side===side && !isDead(t))
     .map(t=>({item:t, dc:opDatacard(t)})).filter(x=>x.dc); }
+// NPOs section: the ACTIVE pool (Tomb World OR Core, per S.npoTheme — never mixed) PLUS the
+// pack's Nemesis. Mirrors the roster-phase Pool filter (buildNPOSection); library entries, not
+// board tokens, so it shows the base datacard regardless of what's placed/dead. Modifiers manual.
+function drefNPOs(){
+  if(!S.pack) return [];
+  const out=[], seen=new Set();
+  const add=key=>{ const dc=NPO_LIB[key]; if(dc && !seen.has(key)){ seen.add(key); out.push({item:{id:key, npoKey:key}, dc}); } };
+  (S.pack.npoRoster||[]).filter(key=>NPO_LIB[key] && NPO_LIB[key].cat===S.npoTheme).forEach(add);
+  if(S.pack.nemesis_key) add(S.pack.nemesis_key);
+  return out; }
+// Dispatch: NPOs read the active pool; Mine/Enemy read ops in play.
+function drefList(side){ return side==="npo" ? drefNPOs() : drefOps(side); }
 function renderDref(){
   const side=S.dref.side;
   const M=(S.dref.mods&&S.dref.mods[side])||{};
   $$("#drefMods [data-mod]").forEach(b=>b.classList.toggle("on",!!M[b.dataset.mod]));
   $("#drefSideM").classList.toggle("on",side==="mine");
   $("#drefSideE").classList.toggle("on",side==="enemy");
-  const ops=drefOps(side);
+  $("#drefSideN").classList.toggle("on",side==="npo");
+  const ops=drefList(side);
   if(!ops.find(o=>o.item.id===S.dref.pick[side])) S.dref.pick[side]=ops[0]?ops[0].item.id:null;
   const pickId=S.dref.pick[side];
+  const emptyMsg = side==="npo" ? "No NPOs in the active pool" : "No operatives in play on this side";
   $("#drefOp").innerHTML=ops.length?ops.map(o=>{
     const inj=isInjured(o.item)?" ⚕":"";
     return `<option value="${o.item.id}" ${o.item.id===pickId?"selected":""}>${esc(o.dc.name||o.item.label||"Op")}${inj}</option>`;
-  }).join(""):`<option value="">No operatives in play on this side</option>`;
+  }).join(""):`<option value="">${emptyMsg}</option>`;
   const cur=ops.find(o=>o.item.id===pickId);
   const wpns=cur&&cur.dc.weapons?cur.dc.weapons:[];
   if(S.dref.wpn[side]>=wpns.length) S.dref.wpn[side]=0;
@@ -3411,7 +3426,7 @@ function renderDref(){
   renderDrefCard();
 }
 function renderDrefCard(){
-  const side=S.dref.side, ops=drefOps(side), cur=ops.find(o=>o.item.id===S.dref.pick[side]);
+  const side=S.dref.side, ops=drefList(side), cur=ops.find(o=>o.item.id===S.dref.pick[side]);
   if(!cur){ $("#drefCard").innerHTML=""; return; }
   const w=(cur.dc.weapons||[])[S.dref.wpn[side]]; const inj=isInjured(cur.item);
   const M=(S.dref.mods&&S.dref.mods[side])||{};
@@ -3443,6 +3458,7 @@ function renderDrefCard(){
 }
 $("#drefSideM").addEventListener("click",()=>{ S.dref.side="mine"; renderDref(); });
 $("#drefSideE").addEventListener("click",()=>{ S.dref.side="enemy"; renderDref(); });
+$("#drefSideN").addEventListener("click",()=>{ S.dref.side="npo"; renderDref(); });
 $("#drefOp").addEventListener("change",e=>{ S.dref.pick[S.dref.side]=e.target.value; S.dref.wpn[S.dref.side]=0; renderDref(); });
 $("#drefWpn").addEventListener("change",e=>{ S.dref.wpn[S.dref.side]=+e.target.value||0; renderDrefCard(); });
 $("#drefMods").addEventListener("click",e=>{ const b=e.target.closest("[data-mod]"); if(!b) return;
