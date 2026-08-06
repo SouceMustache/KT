@@ -9,7 +9,7 @@
    • Consul zawężony do kolekcji: Herald, Primus Medicae, Caster of Runes,
      Speaker of the Dead (Caster/Speaker = warianty Space Wolves).
    ----------------------------------------------------------------------------
-   STAN: Etap 1 — HQ: 3 Centuriony + 3 Praetorzy. Dalej: Command Squady, named characters.
+   STAN: Etap 1 — HQ: 3 Centuriony + 3 Praetorzy + 3 Command Squady. Dalej: named characters (Leman Russ, Geigor, Hvarl, Wolf-kin).
 ============================================================================ */
 
 /* ── wspólny blok Consul (identyczny na wszystkich Centurionach) ──────────── */
@@ -58,10 +58,11 @@ const TERM_CENTURION_OPTS = [
 ];
 
 /* ── wspólna reguła Master of the Legion (Praetorzy) ─────────────────────── */
-const MASTER_OF_LEGION = { name:'Master of the Legion', text:
-  'Rites of War: Detachment z co najmniej jednym modelem z tą regułą może wybrać jeden Rite of War. '+
-  'The Few and the Proud: max 1 model z tą regułą na każde 1000 pkt armii (łącznie we wszystkich Detachmentach). '+
-  'Retinue: taki model może włączyć Legion / Cataphractii / Tartaros Command Squad do tego samego slotu FOC.' };
+const MASTER_OF_LEGION = { name:'Master of the Legion', parts:[
+  {label:'Rites of War', text:'Detachment z co najmniej jednym modelem z tą regułą może wybrać jeden Rite of War.'},
+  {label:'The Few and the Proud', text:'Max 1 model z tą regułą na każde 1000 pkt armii (łącznie we wszystkich Detachmentach).'},
+  {label:'Retinue', text:'Taki model może włączyć Legion / Cataphractii / Tartaros Command Squad do tego samego slotu FOC.'},
+] };
 
 /* ── wspólne opcje Praetora terminatorskiego (Cataphractii/Tartaros) ─────── */
 const TERM_PRAETOR_OPTS = [
@@ -84,6 +85,53 @@ const TERM_PRAETOR_OPTS = [
   { id:'grenade_harness', label:'May take:', mode:'toggle', scope:'model',
     choices:[ {id:'grenade_harness', name:'Grenade harness', cost:5, costMode:'flat'} ]},
 ];
+
+/* ── fabryka terminatorskiego Command Squad (Cataphractii/Tartaros) ──────── */
+function termCmdSquad(o){
+  return {
+    id:o.id, name:o.name, slot:'HQ', baseCost:o.baseCost,
+    profileType:'model', composition:{start:3, min:3, max:5},
+    profiles:[
+      {name:o.chosen, M:o.M, WS:5, BS:4, S:4, T:4, W:2, I:4, A:2, Ld:8, Sv:'2+', Inv:o.inv, base:'40mm'},
+      {name:o.bearer, M:o.M, WS:5, BS:4, S:4, T:4, W:2, I:4, A:2, Ld:8, Sv:'2+', Inv:o.inv, base:'40mm'},
+    ],
+    wargear:['Legion standard (Standard Bearer only)','Combi-bolter (Chosen only)','Power weapon', o.armour],
+    unitType:o.unitType,
+    rules:['Legiones Astartes (Space Wolves)','Chosen Warriors','Relentless','Inexorable','Retinue','Bulky (2)'],
+    rulesText:[],
+    transportNote:'Legion Land Raider Proteus Carrier jako Dedicated Transport (nie zużywa slotu FOC; koszt płatny).',
+    options:[
+      { id:'extra', label:'May include up to 2 additional Chosen:', mode:'add-models', scope:'unit', min:0, max:2,
+        choices:[ {id:'chosen', name:o.chosen, cost:o.addCost, costMode:'per-model'} ]},
+      { id:'chosen_combi', label:'Any Chosen may exchange combi-bolter for one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        note:'Dotyczy Chosen.',
+        choices:[
+          {id:'magna_combi', name:'Magna combi-weapon', cost:10, costMode:'per-each'},
+          {id:'minor_combi', name:'Minor combi-weapon', cost:5,  costMode:'per-each'},
+          {id:'volkite_charger', name:'Volkite charger', cost:2,  costMode:'per-each'},
+        ]},
+      { id:'bearer_ranged', label:'Standard Bearer may exchange power weapon for one of:', mode:'pick-one', scope:'standard',
+        choices:[
+          {id:'combi_bolter', name:'Combi-bolter', cost:0, costMode:'flat', free:true},
+          {id:'magna_combi',  name:'Magna combi-weapon', cost:10, costMode:'flat'},
+          {id:'minor_combi',  name:'Minor combi-weapon', cost:5,  costMode:'flat'},
+          {id:'volkite_charger', name:'Volkite charger', cost:2,  costMode:'flat'},
+        ]},
+      { id:'power_swap', label:'Any model may exchange power weapon for one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        choices:[
+          {id:'power_fist',     name:'Power fist',     cost:10, costMode:'per-each'},
+          {id:'lightning_claw', name:'Lightning claw', cost:5,  costMode:'per-each'},
+          {id:'chainfist',      name:'Chainfist',      cost:15, costMode:'per-each'},
+          {id:'thunder_hammer', name:'Thunder hammer', cost:15, costMode:'per-each'},
+        ]},
+      { id:'dual_claws', label:'Any Chosen may exchange combi-bolter AND power weapon for:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        note:'Dotyczy Chosen.',
+        choices:[ {id:'two_lightning_claws', name:'Two lightning claws', cost:10, costMode:'per-each'} ]},
+      { id:'grenade_harness', label:'Standard Bearer may take:', mode:'toggle', scope:'standard',
+        choices:[ {id:'grenade_harness', name:'Grenade harness', cost:5, costMode:'flat'} ]},
+    ],
+  };
+}
 
 const HERESY_UNITS = [
 
@@ -256,6 +304,69 @@ const HERESY_UNITS = [
     rulesText:[ MASTER_OF_LEGION ],
     options:[ ...TERM_PRAETOR_OPTS ],
   },
+
+  /* ── HQ · Legion Command Squad (power armour) ────────────────────────────── */
+  {
+    id:'legion_command_squad', name:'Legion Command Squad', slot:'HQ', baseCost:85,
+    profileType:'model', composition:{start:3, min:3, max:9},
+    profiles:[
+      {name:'Legion Chosen',          M:7, WS:5, BS:4, S:4, T:4, W:2, I:4, A:2, Ld:8, Sv:'2+', Inv:'—', base:'32mm'},
+      {name:'Legion Standard Bearer', M:7, WS:5, BS:4, S:4, T:4, W:2, I:4, A:2, Ld:8, Sv:'2+', Inv:'—', base:'32mm'},
+    ],
+    wargear:['Bolter (Chosen only)','Legion standard (Standard Bearer only)','Bolt pistol','Chainsword','Artificer armour','Frag grenades','Krak grenades'],
+    unitType:['Infantry'],
+    rules:['Legiones Astartes (Space Wolves)','Chosen Warriors','Relentless','Retinue'],
+    rulesText:[],
+    transportNote:'Rhino / Land Raider Proteus jako Dedicated Transport (≤5 modeli: zamiast tego Damocles Command Rhino). Nie zużywa slotu FOC; koszt płatny.',
+    options:[
+      { id:'extra', label:'May include up to 6 additional Legion Chosen:', mode:'add-models', scope:'unit', min:0, max:6,
+        choices:[ {id:'chosen', name:'Legion Chosen', cost:18, costMode:'per-model'} ]},
+      { id:'bayonet', label:'Any model with a bolter may take one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        choices:[
+          {id:'bayonet',       name:'Bayonet',       cost:1, costMode:'per-each'},
+          {id:'chain_bayonet', name:'Chain bayonet', cost:2, costMode:'per-each'},
+        ]},
+      { id:'bolter_swap', label:'Any model may exchange bolter for one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        choices:[
+          {id:'combi_bolter', name:'Combi-bolter', cost:5,  costMode:'per-each'},
+          {id:'volkite_charger', name:'Volkite charger', cost:2, costMode:'per-each'},
+          {id:'magna_combi', name:'Magna combi-weapon', cost:10, costMode:'per-each'},
+          {id:'minor_combi', name:'Minor combi-weapon', cost:5,  costMode:'per-each'},
+        ]},
+      { id:'melee_swap', label:'Any model may exchange chainsword and/or bolt pistol for one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        note:'Boarding shield: +Heavy; niedostępny z jump pack / bike / jetbike.',
+        choices:[
+          {id:'charnabal',       name:'Charnabal weapon', cost:5,  costMode:'per-each'},
+          {id:'power_weapon',    name:'Power weapon',     cost:5,  costMode:'per-each'},
+          {id:'power_fist',      name:'Power fist',       cost:15, costMode:'per-each'},
+          {id:'lightning_claw',  name:'Lightning claw',   cost:5,  costMode:'per-each'},
+          {id:'plasma_pistol',   name:'Plasma pistol',    cost:10, costMode:'per-each'},
+          {id:'boarding_shield', name:'Boarding shield',  cost:5,  costMode:'per-each', note:'+Heavy'},
+        ]},
+      { id:'dual_claws', label:'Any Legion Chosen may exchange bolt pistol AND chainsword for:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        note:'Dotyczy Chosen; nie z bike/jetbike.',
+        choices:[ {id:'two_lightning_claws', name:'Two lightning claws', cost:10, costMode:'per-each'} ]},
+      { id:'nuncio', label:'Any model may select:', mode:'toggle', scope:'each-model',
+        choices:[ {id:'nuncio_vox', name:'Nuncio-vox', cost:5, costMode:'per-each'} ]},
+      { id:'combat_shield', label:'Any model may select:', mode:'toggle', scope:'each-model',
+        choices:[ {id:'combat_shield', name:'Combat shield', cost:2, costMode:'per-each', statMods:{Inv:'6++'}} ]},
+      { id:'retinue_mount', label:'Musi dopasować mount do przyłączonego bohatera (Retinue):', mode:'pick-one', scope:'each-model',
+        note:'Tylko jeśli przyłączony model ma jump pack / bike / jetbike — squad bierze to samo.',
+        choices:[
+          {id:'jump_pack',    name:'Legion Warhawk jump pack',  cost:10, costMode:'per-each'},
+          {id:'spatha_bike',  name:'Legion Spatha combat bike', cost:10, costMode:'per-each'},
+          {id:'scimitar_jet', name:'Legion Scimitar jetbike',   cost:30, costMode:'per-each'},
+        ]},
+    ],
+  },
+
+  termCmdSquad({ id:'legion_cataphractii_command_squad', name:'Legion Cataphractii Command Squad', baseCost:125,
+    M:6, inv:'4++', addCost:35, armour:'Legion Cataphractii Terminator armour', unitType:['Infantry (Heavy)'],
+    chosen:'Legion Cataphractii Chosen', bearer:'Legion Cataphractii Standard Bearer' }),
+
+  termCmdSquad({ id:'legion_tartaros_command_squad', name:'Legion Tartaros Command Squad', baseCost:110,
+    M:7, inv:'5++', addCost:30, armour:'Legion Tartaros Terminator armour', unitType:['Infantry'],
+    chosen:'Legion Tartaros Chosen', bearer:'Legion Tartaros Standard Bearer' }),
 
 ];
 
