@@ -1,0 +1,161 @@
+/* ============================================================================
+   heresy-units.js  —  DataBase jednostek (Space Wolves, kolekcja Daniela)
+   Pełna dokumentacja schematu: patrz heresy-units.schema.js
+   ----------------------------------------------------------------------------
+   Zasady stałe:
+   • Nic nie blokujemy na twardo — composer liczy, UI sygnalizuje kolorem.
+   • Stały wargear WPISANY w profil (invuln z Refractor field / Terminator armour).
+   • Nazwy broni/wargearu EN (spinają się ze słownikiem i glosariuszem).
+   • Consul zawężony do kolekcji: Herald, Primus Medicae, Caster of Runes,
+     Speaker of the Dead (Caster/Speaker = warianty Space Wolves).
+   ----------------------------------------------------------------------------
+   STAN: Etap 1 — HQ, batch 1/… (3 Centuriony). Kolejne dopisujemy poniżej.
+============================================================================ */
+
+/* ── wspólny blok Consul (identyczny na wszystkich Centurionach) ──────────── */
+const CONSUL_SW = {
+  id:'consul', label:'Legiones Consularis — Consul upgrade (jeden na model):',
+  mode:'consul', scope:'model',
+  choices:[
+    {id:'herald', name:'Herald', cost:20, costMode:'flat',
+      addsRules:['Fearless','Fear (1)'], grantsWargear:['Legion standard'],
+      note:'Wymienia bolt pistol/bolter/combi-bolter na Legion standard (za darmo).'},
+    {id:'primus_medicae', name:'Primus Medicae', cost:45, costMode:'flat',
+      addsRules:['Sacred Trust'], grantsWargear:['Narthecium'],
+      note:'Może wymienić bolt pistol/combi-bolter na needle pistol (+5). Bez dwóch lightning claws / boarding shield.'},
+    {id:'caster_of_runes', name:'Caster of Runes', cost:45, costMode:'flat',
+      addsRules:['Psyker','Adamantium Will (4+)'], discipline:'winds_of_fenris',
+      note:'Dyscyplina: Winds of Fenris / Divination / Telekinesis / Biomancy. Force weapon swap za darmo; psychic hood +15.'},
+    {id:'speaker_of_the_dead', name:'Speaker of the Dead', cost:65, costMode:'flat',
+      addsRules:['Stubborn','Hatred (Everything)'], grantsWargear:['Narthecium','Master-crafted power maul'],
+      note:'Ld→10. Bez dwóch lightning claws / boarding shield.'},
+  ]
+};
+
+/* ── wspólny blok opcji broni Centuriona terminatorskiego (Cata/Tartaros) ─── */
+const TERM_CENTURION_OPTS = [
+  { id:'combi_swap', label:'May exchange combi-bolter for one of:',
+    mode:'pick-one', scope:'model',
+    choices:[
+      {id:'magna_combi', name:'Magna combi-weapon', cost:10, costMode:'flat'},
+      {id:'minor_combi', name:'Minor combi-weapon', cost:5,  costMode:'flat'},
+      {id:'volkite_charger', name:'Volkite charger', cost:2,  costMode:'flat'},
+    ]},
+  { id:'power_swap', label:'May exchange power weapon for one of:',
+    mode:'pick-one', scope:'model',
+    choices:[
+      {id:'power_fist',     name:'Power fist',     cost:10, costMode:'flat'},
+      {id:'lightning_claw', name:'Lightning claw', cost:0,  costMode:'flat', free:true},
+      {id:'chainfist',      name:'Chainfist',      cost:15, costMode:'flat'},
+      {id:'thunder_hammer', name:'Thunder hammer', cost:15, costMode:'flat'},
+    ]},
+  { id:'dual_claws', label:'May exchange combi-bolter AND power weapon for:',
+    mode:'toggle', scope:'model',
+    choices:[ {id:'two_lightning_claws', name:'Two lightning claws', cost:15, costMode:'flat'} ]},
+  { id:'grenade_harness', label:'May take:',
+    mode:'toggle', scope:'model',
+    choices:[ {id:'grenade_harness', name:'Grenade harness', cost:5, costMode:'flat'} ]},
+];
+
+const HERESY_UNITS = [
+
+  /* ── HQ · Legion Centurion (power armour) ────────────────────────────────── */
+  {
+    id:'legion_centurion', name:'Legion Centurion', slot:'HQ', baseCost:60,
+    profileType:'model', composition:{start:1, min:1, max:1},
+    profiles:[
+      // Inv 5++ z Refractor field (stały wargear)
+      {name:'Legion Centurion', M:7, WS:5, BS:5, S:4, T:4, W:2, I:5, A:3, Ld:9, Sv:'2+', Inv:'5++', base:'32mm'}
+    ],
+    wargear:['Bolt pistol','Chainsword','Artificer armour','Refractor field','Frag grenades','Krak grenades'],
+    unitType:['Infantry (Character)'],
+    rules:['Legiones Astartes (Space Wolves)','Independent Character','Legiones Consularis','Relentless'],
+    rulesText:[],
+    options:[
+      { id:'ranged', label:'May take one of the following (ranged):', mode:'pick-one', scope:'model',
+        choices:[
+          {id:'bolter',           name:'Bolter',             cost:2,  costMode:'flat'},
+          {id:'magna_combi',      name:'Magna combi-weapon', cost:10, costMode:'flat'},
+          {id:'minor_combi',      name:'Minor combi-weapon', cost:5,  costMode:'flat'},
+          {id:'volkite_charger',  name:'Volkite charger',    cost:2,  costMode:'flat'},
+          {id:'astartes_shotgun', name:'Astartes shotgun',   cost:2,  costMode:'flat'},
+          {id:'nemesis_bolter',   name:'Nemesis bolter',     cost:10, costMode:'flat'},
+        ]},
+      { id:'melee_swap', label:'May exchange bolt pistol and/or chainsword for one of:', mode:'pick-one', scope:'model',
+        note:'Boarding shield: +Heavy Sub-type; niedostępny z jump pack / bike / jetbike.',
+        choices:[
+          {id:'volkite_serpenta', name:'Volkite serpenta', cost:2,  costMode:'flat'},
+          {id:'hand_flamer',      name:'Hand flamer',      cost:2,  costMode:'flat'},
+          {id:'plasma_pistol',    name:'Plasma pistol',    cost:10, costMode:'flat'},
+          {id:'chainaxe',         name:'Chainaxe',         cost:5,  costMode:'flat'},
+          {id:'charnabal',        name:'Charnabal weapon', cost:10, costMode:'flat'},
+          {id:'power_weapon',     name:'Power weapon',     cost:15, costMode:'flat'},
+          {id:'power_fist',       name:'Power fist',       cost:25, costMode:'flat'},
+          {id:'lightning_claw',   name:'Lightning claw',   cost:15, costMode:'flat'},
+          {id:'thunder_hammer',   name:'Thunder hammer',   cost:30, costMode:'flat'},
+          {id:'boarding_shield',  name:'Boarding shield',  cost:0,  costMode:'flat', free:true, note:'+Heavy'},
+        ]},
+      { id:'dual_claws', label:'May exchange bolt pistol AND chainsword for:', mode:'toggle', scope:'model',
+        note:'Niedostępne z Spatha combat bike / Scimitar jetbike.',
+        choices:[ {id:'two_lightning_claws', name:'Two lightning claws', cost:15, costMode:'flat'} ]},
+      { id:'shield_or_bombs', label:'May take one of the following:', mode:'pick-one', scope:'model',
+        choices:[
+          {id:'combat_shield', name:'Combat shield', cost:0,  costMode:'flat', free:true, statMods:{Inv:'6++'}},
+          {id:'melta_bombs',   name:'Melta bombs',   cost:10, costMode:'flat'},
+        ]},
+      { id:'mount', label:'May take one of the following (mount):', mode:'pick-one', scope:'model',
+        choices:[
+          {id:'jump_pack',    name:'Legion Warhawk jump pack',  cost:20, costMode:'flat'},
+          {id:'spatha_bike',  name:'Legion Spatha combat bike', cost:20, costMode:'flat'},
+          {id:'scimitar_jet', name:'Legion Scimitar jetbike',   cost:30, costMode:'flat'},
+        ]},
+      CONSUL_SW,
+    ],
+  },
+
+  /* ── HQ · Legion Cataphractii Centurion ──────────────────────────────────── */
+  {
+    id:'legion_cataphractii_centurion', name:'Legion Cataphractii Centurion', slot:'HQ', baseCost:85,
+    profileType:'model', composition:{start:1, min:1, max:1},
+    profiles:[
+      // Cataphractii Terminator armour: Sv 2+, Inv 4++
+      {name:'Legion Cataphractii Centurion', M:6, WS:5, BS:5, S:4, T:4, W:3, I:5, A:3, Ld:9, Sv:'2+', Inv:'4++', base:'40mm'}
+    ],
+    wargear:['Combi-bolter','Power weapon','Legion Cataphractii Terminator armour'],
+    unitType:['Infantry (Heavy, Character)'],
+    rules:['Legiones Astartes (Space Wolves)','Independent Character','Legiones Consularis','Relentless','Inexorable','Bulky (2)'],
+    rulesText:[],
+    options:[ ...TERM_CENTURION_OPTS, CONSUL_SW ],
+  },
+
+  /* ── HQ · Legion Tartaros Centurion ──────────────────────────────────────── */
+  {
+    id:'legion_tartaros_centurion', name:'Legion Tartaros Centurion', slot:'HQ', baseCost:75,
+    profileType:'model', composition:{start:1, min:1, max:1},
+    profiles:[
+      // Tartaros Terminator armour: Sv 2+, Inv 5++
+      {name:'Legion Tartaros Centurion', M:7, WS:5, BS:5, S:4, T:4, W:3, I:5, A:3, Ld:9, Sv:'2+', Inv:'5++', base:'40mm'}
+    ],
+    wargear:['Combi-bolter','Power weapon','Legion Tartaros Terminator armour'],
+    unitType:['Infantry (Character)'],
+    rules:['Legiones Astartes (Space Wolves)','Independent Character','Legiones Consularis','Relentless','Inexorable','Bulky (2)'],
+    rulesText:[],
+    options:[ ...TERM_CENTURION_OPTS, CONSUL_SW ],
+  },
+
+];
+
+/* ── dyscypliny psychiczne (docelowo heresy-psychic.js) ──────────────────── */
+const HERESY_PSYCHIC = {
+  winds_of_fenris:{
+    name:'Winds of Fenris',
+    note:'Psyker z tą dyscypliną otrzymuje wszystkie poniższe: bronie, moce i reguły.',
+    weapons:[ {name:'Wrath of the Death Wolf', kind:'Psychic Weapon', profile:'Template S5 AP4 — Assault 1, Deflagrate, Force'} ],
+    powers:[ {name:'Stormwrought', kind:'Psychic Power',
+      text:'Zamiast strzału: wybierz przyjazny oddział (Infantry/Cavalry/Dreadnought) z modelem w 6". Zyskuje Shrouded (5+) do początku Twojej następnej fazy strzelania. Możesz zdać Psychic check — sukces: Shrouded (3+); porażka: Shrouded (5+) i Perils of the Warp.'} ],
+    rules:[ {name:'Force',
+      text:'Przed atakiem bronią/zdolnością z tą regułą psyker może zdać Psychic check. Sukces: podwaja Strength ataków. Porażka: Perils of the Warp na jednostkę psykera; jeśli przeżyje — atakuje normalnie.'} ],
+  },
+};
+
+if (typeof window !== 'undefined') { window.HERESY_UNITS = HERESY_UNITS; window.HERESY_PSYCHIC = HERESY_PSYCHIC; }
