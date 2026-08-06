@@ -9,7 +9,7 @@
    • Consul zawężony do kolekcji: Herald, Primus Medicae, Caster of Runes,
      Speaker of the Dead (Caster/Speaker = warianty Space Wolves).
    ----------------------------------------------------------------------------
-   STAN: Etap 1 — HQ, batch 1/… (3 Centuriony). Kolejne dopisujemy poniżej.
+   STAN: Etap 1 — HQ: 3 Centuriony + 3 Praetorzy. Dalej: Command Squady, named characters.
 ============================================================================ */
 
 /* ── wspólny blok Consul (identyczny na wszystkich Centurionach) ──────────── */
@@ -54,6 +54,34 @@ const TERM_CENTURION_OPTS = [
     choices:[ {id:'two_lightning_claws', name:'Two lightning claws', cost:15, costMode:'flat'} ]},
   { id:'grenade_harness', label:'May take:',
     mode:'toggle', scope:'model',
+    choices:[ {id:'grenade_harness', name:'Grenade harness', cost:5, costMode:'flat'} ]},
+];
+
+/* ── wspólna reguła Master of the Legion (Praetorzy) ─────────────────────── */
+const MASTER_OF_LEGION = { name:'Master of the Legion', text:
+  'Rites of War: Detachment z co najmniej jednym modelem z tą regułą może wybrać jeden Rite of War. '+
+  'The Few and the Proud: max 1 model z tą regułą na każde 1000 pkt armii (łącznie we wszystkich Detachmentach). '+
+  'Retinue: taki model może włączyć Legion / Cataphractii / Tartaros Command Squad do tego samego slotu FOC.' };
+
+/* ── wspólne opcje Praetora terminatorskiego (Cataphractii/Tartaros) ─────── */
+const TERM_PRAETOR_OPTS = [
+  { id:'combi_swap', label:'May exchange combi-bolter for one of:', mode:'pick-one', scope:'model',
+    choices:[
+      {id:'magna_combi', name:'Magna combi-weapon', cost:10, costMode:'flat'},
+      {id:'minor_combi', name:'Minor combi-weapon', cost:5,  costMode:'flat'},
+      {id:'volkite_charger', name:'Volkite charger', cost:2,  costMode:'flat'},
+    ]},
+  { id:'power_swap', label:'May exchange power weapon for one of:', mode:'pick-one', scope:'model',
+    choices:[
+      {id:'power_fist',     name:'Power fist',     cost:10, costMode:'flat'},
+      {id:'lightning_claw', name:'Lightning claw', cost:0,  costMode:'flat', free:true},
+      {id:'chainfist',      name:'Chainfist',      cost:15, costMode:'flat'},
+      {id:'thunder_hammer', name:'Thunder hammer', cost:15, costMode:'flat'},
+      {id:'paragon_blade',  name:'Paragon blade',  cost:15, costMode:'flat'},
+    ]},
+  { id:'dual_claws', label:'May exchange combi-bolter AND power weapon for:', mode:'toggle', scope:'model',
+    choices:[ {id:'two_lightning_claws', name:'Two lightning claws', cost:10, costMode:'flat'} ]},
+  { id:'grenade_harness', label:'May take:', mode:'toggle', scope:'model',
     choices:[ {id:'grenade_harness', name:'Grenade harness', cost:5, costMode:'flat'} ]},
 ];
 
@@ -141,6 +169,92 @@ const HERESY_UNITS = [
     rules:['Legiones Astartes (Space Wolves)','Independent Character','Legiones Consularis','Relentless','Inexorable','Bulky (2)'],
     rulesText:[],
     options:[ ...TERM_CENTURION_OPTS, CONSUL_SW ],
+  },
+
+  /* ── HQ · Legion Praetor (power armour) ──────────────────────────────────── */
+  {
+    id:'legion_praetor', name:'Legion Praetor', slot:'HQ', baseCost:120,
+    profileType:'model', composition:{start:1, min:1, max:1},
+    profiles:[
+      // Inv 4++ z Iron halo (stały wargear)
+      {name:'Legion Praetor', M:7, WS:6, BS:5, S:4, T:4, W:3, I:5, A:4, Ld:10, Sv:'2+', Inv:'4++', base:'32mm'}
+    ],
+    wargear:['Bolt pistol','Chainsword','Artificer armour','Iron halo','Frag grenades','Krak grenades'],
+    unitType:['Infantry (Character)'],
+    rules:['Legiones Astartes (Space Wolves)','Master of the Legion','Independent Character','Relentless'],
+    rulesText:[ MASTER_OF_LEGION ],
+    options:[
+      { id:'ranged', label:'May take one of the following (ranged):', mode:'pick-one', scope:'model',
+        choices:[
+          {id:'bolter',           name:'Bolter',             cost:2,  costMode:'flat'},
+          {id:'magna_combi',      name:'Magna combi-weapon', cost:10, costMode:'flat'},
+          {id:'minor_combi',      name:'Minor combi-weapon', cost:5,  costMode:'flat'},
+          {id:'volkite_charger',  name:'Volkite charger',    cost:2,  costMode:'flat'},
+          {id:'astartes_shotgun', name:'Astartes shotgun',   cost:2,  costMode:'flat'},
+          {id:'nemesis_bolter',   name:'Nemesis bolter',     cost:10, costMode:'flat'},
+        ]},
+      { id:'melee_swap', label:'May exchange bolt pistol and/or chainsword for one of:', mode:'pick-one', scope:'model',
+        note:'Boarding shield: +Heavy Sub-type; niedostępny z jump pack / bike / jetbike.',
+        choices:[
+          {id:'volkite_serpenta',    name:'Volkite serpenta',    cost:2,  costMode:'flat'},
+          {id:'hand_flamer',         name:'Hand flamer',         cost:2,  costMode:'flat'},
+          {id:'plasma_pistol',       name:'Plasma pistol',       cost:10, costMode:'flat'},
+          {id:'archaeotech_pistol',  name:'Archaeotech pistol',  cost:15, costMode:'flat'},
+          {id:'disintegrator_pistol',name:'Disintegrator pistol',cost:20, costMode:'flat'},
+          {id:'chainaxe',            name:'Chainaxe',            cost:5,  costMode:'flat'},
+          {id:'charnabal',           name:'Charnabal weapon',    cost:10, costMode:'flat'},
+          {id:'power_weapon',        name:'Power weapon',        cost:15, costMode:'flat'},
+          {id:'power_fist',          name:'Power fist',          cost:25, costMode:'flat'},
+          {id:'lightning_claw',      name:'Lightning claw',      cost:10, costMode:'flat'},
+          {id:'thunder_hammer',      name:'Thunder hammer',      cost:30, costMode:'flat'},
+          {id:'paragon_blade',       name:'Paragon blade',       cost:30, costMode:'flat'},
+          {id:'boarding_shield',     name:'Boarding shield',     cost:0,  costMode:'flat', free:true, note:'+Heavy'},
+        ]},
+      { id:'dual_claws', label:'May exchange bolt pistol AND chainsword for:', mode:'toggle', scope:'model',
+        note:'Niedostępne z Spatha combat bike / Scimitar jetbike.',
+        choices:[ {id:'two_lightning_claws', name:'Two lightning claws', cost:20, costMode:'flat'} ]},
+      { id:'shield_or_bombs', label:'May take one of the following:', mode:'pick-one', scope:'model',
+        choices:[
+          {id:'combat_shield', name:'Combat shield', cost:0,  costMode:'flat', free:true, statMods:{Inv:'6++'}},
+          {id:'melta_bombs',   name:'Melta bombs',   cost:10, costMode:'flat'},
+        ]},
+      { id:'master_crafted', label:'May upgrade any one weapon to Master-crafted:', mode:'toggle', scope:'model',
+        choices:[ {id:'master_crafted', name:'Master-crafted (one weapon)', cost:10, costMode:'flat'} ]},
+      { id:'mount', label:'May take one of the following (mount):', mode:'pick-one', scope:'model',
+        choices:[
+          {id:'jump_pack',    name:'Legion Warhawk jump pack',  cost:20, costMode:'flat'},
+          {id:'spatha_bike',  name:'Legion Spatha combat bike', cost:20, costMode:'flat'},
+          {id:'scimitar_jet', name:'Legion Scimitar jetbike',   cost:30, costMode:'flat'},
+        ]},
+    ],
+  },
+
+  /* ── HQ · Legion Cataphractii Praetor ────────────────────────────────────── */
+  {
+    id:'legion_cataphractii_praetor', name:'Legion Cataphractii Praetor', slot:'HQ', baseCost:135,
+    profileType:'model', composition:{start:1, min:1, max:1},
+    profiles:[
+      {name:'Legion Cataphractii Praetor', M:6, WS:6, BS:5, S:4, T:4, W:4, I:5, A:4, Ld:10, Sv:'2+', Inv:'4++', base:'40mm'}
+    ],
+    wargear:['Combi-bolter','Power weapon','Legion Cataphractii Terminator armour'],
+    unitType:['Infantry (Heavy, Character)'],
+    rules:['Legiones Astartes (Space Wolves)','Master of the Legion','Independent Character','Relentless','Inexorable','Bulky (2)'],
+    rulesText:[ MASTER_OF_LEGION ],
+    options:[ ...TERM_PRAETOR_OPTS ],
+  },
+
+  /* ── HQ · Legion Tartaros Praetor ────────────────────────────────────────── */
+  {
+    id:'legion_tartaros_praetor', name:'Legion Tartaros Praetor', slot:'HQ', baseCost:110,
+    profileType:'model', composition:{start:1, min:1, max:1},
+    profiles:[
+      {name:'Legion Tartaros Praetor', M:7, WS:6, BS:5, S:4, T:4, W:4, I:5, A:4, Ld:10, Sv:'2+', Inv:'5++', base:'40mm'}
+    ],
+    wargear:['Combi-bolter','Power weapon','Legion Tartaros Terminator armour'],
+    unitType:['Infantry (Character)'],
+    rules:['Legiones Astartes (Space Wolves)','Master of the Legion','Independent Character','Relentless','Inexorable','Bulky (2)'],
+    rulesText:[ MASTER_OF_LEGION ],
+    options:[ ...TERM_PRAETOR_OPTS ],
   },
 
 ];
