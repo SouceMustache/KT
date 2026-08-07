@@ -9,7 +9,7 @@
    • Consul zawężony do kolekcji: Herald, Primus Medicae, Caster of Runes,
      Speaker of the Dead (Caster/Speaker = warianty Space Wolves).
    ----------------------------------------------------------------------------
-   STAN: Etap 1 — HQ KOMPLET (12 HQ + Leman Russ jako PR = 13 jednostek). Dalej: Elite.
+   STAN: Etap 1 — HQ komplet (13) + Elite: Contemptor, 2 Terminator squady, Veteran, Deathsworn. Zostaje: Varagyr.
 ============================================================================ */
 
 /* ── wspólny blok Consul (identyczny na wszystkich Centurionach) ──────────── */
@@ -128,6 +128,56 @@ function termCmdSquad(o){
         note:'Dotyczy Chosen.',
         choices:[ {id:'two_lightning_claws', name:'Two lightning claws', cost:10, costMode:'per-each'} ]},
       { id:'grenade_harness', label:'Standard Bearer may take:', mode:'toggle', scope:'standard',
+        choices:[ {id:'grenade_harness', name:'Grenade harness', cost:5, costMode:'flat'} ]},
+    ],
+  };
+}
+
+/* ── fabryka oddziału Terminatorów (Cataphractii/Tartaros) ───────────────── */
+function termSquad(o){
+  return {
+    id:o.id, name:o.name, slot:'EL', baseCost:o.baseCost,
+    profileType:'model', composition:{start:5, min:5, max:10},
+    profiles:[
+      {name:o.trooper,  M:o.M, WS:4, BS:4, S:4, T:4, W:2, I:4, A:2, Ld:7, Sv:'2+', Inv:o.inv, base:'40mm'},
+      {name:o.sergeant, M:o.M, WS:4, BS:4, S:4, T:4, W:2, I:4, A:3, Ld:8, Sv:'2+', Inv:o.inv, base:'40mm'},
+    ],
+    wargear:['Combi-bolter','Power weapon', o.armour],
+    unitType:o.unitType,
+    rules:['Legiones Astartes (Space Wolves)','Relentless','Inexorable','Bulky (2)'],
+    rulesText:[],
+    transportNote:'≤5 modeli: Land Raider Proteus / Dreadclaw Drop Pod; 5+ modeli: Land Raider Spartan. Dedicated Transport nie zużywa slotu FOC; koszt płatny.',
+    options:[
+      { id:'extra', label:'May include up to 5 additional models:', mode:'add-models', scope:'unit', min:0, max:5,
+        choices:[ {id:'trooper', name:o.trooper, cost:o.addCost, costMode:'per-model'} ]},
+      { id:'vexilla', label:'One model may take:', mode:'toggle', scope:'unit',
+        choices:[ {id:'legion_vexilla', name:'Legion vexilla', cost:10, costMode:'flat'} ]},
+      { id:'augury', label:'One model may take:', mode:'toggle', scope:'unit',
+        choices:[ {id:'augury_scanner', name:'Augury scanner', cost:10, costMode:'flat'} ]},
+      { id:'nuncio', label:'One model may take:', mode:'toggle', scope:'unit',
+        choices:[ {id:'nuncio_vox', name:'Nuncio-vox', cost:10, costMode:'flat'} ]},
+      { id:'special', label:'For every five models, one may exchange combi-bolter for one of:', mode:'ratio-swap', scope:'model', ratio:{per:5,count:1},
+        choices:[
+          {id:'heavy_flamer',    name:'Heavy flamer',      cost:5,  costMode:'per-each'},
+          {id:'reaper_autocannon',name:'Reaper autocannon',cost:15, costMode:'per-each'},
+          {id:'plasma_blaster',  name:'Plasma blaster',    cost:10, costMode:'per-each'},
+        ]},
+      { id:'combi_swap', label:'Any model may exchange combi-bolter for one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        choices:[
+          {id:'magna_combi', name:'Magna combi-weapon', cost:10, costMode:'per-each'},
+          {id:'minor_combi', name:'Minor combi-weapon', cost:5,  costMode:'per-each'},
+          {id:'volkite_charger', name:'Volkite charger', cost:2,  costMode:'per-each'},
+        ]},
+      { id:'power_swap', label:'Any model may exchange power weapon for one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        choices:[
+          {id:'power_fist',     name:'Power fist',     cost:10, costMode:'per-each'},
+          {id:'lightning_claw', name:'Lightning claw', cost:5,  costMode:'per-each'},
+          {id:'chainfist',      name:'Chainfist',      cost:15, costMode:'per-each'},
+          {id:'thunder_hammer', name:'Thunder hammer', cost:15, costMode:'per-each'},
+        ]},
+      { id:'dual_claws', label:'Any model may exchange combi-bolter AND power weapon for:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        choices:[ {id:'two_lightning_claws', name:'Two lightning claws', cost:10, costMode:'per-each'} ]},
+      { id:'sgt_grenade', label:'The Sergeant may take:', mode:'toggle', scope:'sergeant',
         choices:[ {id:'grenade_harness', name:'Grenade harness', cost:5, costMode:'flat'} ]},
     ],
   };
@@ -455,6 +505,168 @@ const HERESY_UNITS = [
       {name:'Warlord: Sire of the Space Wolves', text:'Jeśli wybrany na Warlorda, Leman automatycznie ma ten trait (nie może wybrać innego). Sire: wszystkie modele z Legiones Astartes (Space Wolves) w armii Lemana mają +1 S w turze, w której taki oddział skutecznie szarżuje. Dodatkowo armia z Lemanem jako Warlordem może wykonać dodatkową Reaction w fazie szturmu przeciwnika, dopóki Leman żyje.'},
     ],
     options:[],
+  },
+
+  /* ── EL · Legion Contemptor Dreadnought Talon ────────────────────────────── */
+  {
+    id:'legion_contemptor_talon', name:'Legion Contemptor Dreadnought Talon', slot:'EL', baseCost:175,
+    profileType:'model', composition:{start:1, min:1, max:3},
+    profiles:[
+      // Inv 5++ z Atomantic deflector (stały wargear)
+      {name:'Contemptor Dreadnought', M:8, WS:5, BS:5, S:7, T:7, W:6, I:4, A:3, Ld:9, Sv:'2+', Inv:'5++', base:'60mm'}
+    ],
+    wargear:['Gravis bolt cannon','Gravis power fist with in-built combi-bolter','Atomantic deflector'],
+    unitType:['Dreadnought'],
+    rules:['Legiones Astartes (Space Wolves)','Dreadnought Talon'],
+    rulesText:[],
+    transportNote:'Talon ≤1 modelu: Legion Dreadnought Drop Pod jako Dedicated Transport (nie zużywa slotu FOC; koszt płatny).',
+    options:[
+      { id:'extra', label:'May include up to 2 additional Contemptor Dreadnoughts:', mode:'add-models', scope:'unit', min:0, max:2,
+        choices:[ {id:'contemptor', name:'Contemptor Dreadnought', cost:175, costMode:'per-model'} ]},
+      { id:'main_weapon', label:'Any Contemptor may replace Gravis bolt cannon and/or fist w/ combi-bolter with one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        note:'2× fist / 2× chainfist / fist+chainfist → +1 Attack.',
+        choices:[
+          {id:'gravis_bolt_cannon',  name:'Gravis bolt cannon',    cost:0,  costMode:'per-each', free:true},
+          {id:'gravis_melta_cannon', name:'Gravis melta cannon',   cost:5,  costMode:'per-each'},
+          {id:'gravis_autocannon',   name:'Gravis autocannon',     cost:10, costMode:'per-each'},
+          {id:'gravis_plasma_cannon',name:'Gravis plasma cannon',  cost:10, costMode:'per-each'},
+          {id:'conversion_beam',     name:'Conversion beam cannon',cost:20, costMode:'per-each'},
+          {id:'volkite_culverin',    name:'Volkite dual-culverin', cost:15, costMode:'per-each'},
+          {id:'kheres',              name:'Kheres assault cannon', cost:15, costMode:'per-each'},
+          {id:'gravis_lascannon',    name:'Gravis lascannon',      cost:20, costMode:'per-each'},
+          {id:'gravis_fist',         name:'Gravis power fist w/ combi-bolter', cost:0,  costMode:'per-each', free:true, note:'*+1A combo'},
+          {id:'gravis_chainfist',    name:'Gravis chainfist w/ combi-bolter',  cost:10, costMode:'per-each', note:'*+1A combo'},
+        ]},
+      { id:'inbuilt', label:'May replace in-built combi-bolter (on fist/chainfist) with one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        choices:[
+          {id:'heavy_flamer',   name:'In-built heavy flamer',   cost:5,  costMode:'per-each'},
+          {id:'plasma_blaster', name:'In-built plasma blaster', cost:10, costMode:'per-each'},
+          {id:'graviton_gun',   name:'In-built graviton gun',   cost:15, costMode:'per-each'},
+          {id:'meltagun',       name:'In-built meltagun',       cost:15, costMode:'per-each'},
+        ]},
+      { id:'havoc', label:'Any Contemptor may take one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        choices:[
+          {id:'havoc_launcher',  name:'Havoc launcher',         cost:10, costMode:'per-each'},
+          {id:'helical_array',   name:'Helical targeting array', cost:10, costMode:'per-each'},
+        ]},
+    ],
+  },
+
+  termSquad({ id:'legion_terminator_cataphractii_squad', name:'Legion Terminator Cataphractii Squad', baseCost:175,
+    M:6, inv:'4++', addCost:30, armour:'Legion Cataphractii Terminator armour',
+    unitType:['Legion Cataphractii: Infantry (Heavy)','Sergeant: Infantry (Heavy, Character)'],
+    trooper:'Legion Cataphractii', sergeant:'Legion Cataphractii Sergeant' }),
+
+  termSquad({ id:'legion_terminator_tartaros_squad', name:'Legion Terminator Tartaros Squad', baseCost:150,
+    M:7, inv:'5++', addCost:25, armour:'Legion Tartaros Terminator armour',
+    unitType:['Legion Tartaros: Infantry','Sergeant: Infantry (Character)'],
+    trooper:'Legion Tartaros', sergeant:'Legion Tartaros Sergeant' }),
+
+  /* ── EL · Legion Veteran Squad ───────────────────────────────────────────── */
+  {
+    id:'legion_veteran_squad', name:'Legion Veteran Squad', slot:'EL', baseCost:115,
+    profileType:'model', composition:{start:5, min:5, max:10},
+    profiles:[
+      {name:'Legion Veteran',          M:7, WS:5, BS:4, S:4, T:4, W:2, I:4, A:2, Ld:8, Sv:'3+', Inv:'—', base:'32mm'},
+      {name:'Legion Veteran Sergeant', M:7, WS:5, BS:4, S:4, T:4, W:2, I:4, A:3, Ld:8, Sv:'3+', Inv:'—', base:'32mm'},
+    ],
+    wargear:['Bolter','Bolt pistol','Power armour','Frag grenades','Krak grenades'],
+    unitType:['Legion Veteran: Infantry','Sergeant: Infantry (Character)'],
+    rules:['Legiones Astartes (Space Wolves)','Relentless','Chosen Warriors'],
+    rulesText:[],
+    transportNote:'Rhino / Drop Pod / Termite Assault Drill jako Dedicated Transport (nie zużywa slotu FOC; koszt płatny).',
+    options:[
+      { id:'extra', label:'May include up to 5 additional Legion Veterans:', mode:'add-models', scope:'unit', min:0, max:5,
+        choices:[ {id:'veteran', name:'Legion Veteran', cost:18, costMode:'per-model'} ]},
+      { id:'nuncio', label:'One Veteran may take:', mode:'toggle', scope:'unit',
+        choices:[ {id:'nuncio_vox', name:'Nuncio-vox', cost:10, costMode:'flat'} ]},
+      { id:'vexilla', label:'One Veteran may take:', mode:'toggle', scope:'unit',
+        choices:[ {id:'legion_vexilla', name:'Legion vexilla', cost:10, costMode:'flat'} ]},
+      { id:'augury', label:'One Veteran may take:', mode:'toggle', scope:'unit',
+        choices:[ {id:'augury_scanner', name:'Augury scanner', cost:10, costMode:'flat'} ]},
+      { id:'bayonet', label:'Any model with a bolter may take one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        choices:[
+          {id:'bayonet',       name:'Bayonet',       cost:1, costMode:'per-each'},
+          {id:'chain_bayonet', name:'Chain bayonet', cost:2, costMode:'per-each'},
+        ]},
+      { id:'bolter_swap', label:'Any model may exchange bolter for one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        choices:[
+          {id:'magna_combi', name:'Magna combi-weapon', cost:10, costMode:'per-each'},
+          {id:'minor_combi', name:'Minor combi-weapon', cost:5,  costMode:'per-each'},
+          {id:'astartes_shotgun', name:'Astartes shotgun', cost:2, costMode:'per-each'},
+          {id:'nemesis_bolter', name:'Nemesis bolter', cost:10, costMode:'per-each'},
+        ]},
+      { id:'extra_melee', label:'Any model may take one of (extra melee):', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        choices:[
+          {id:'chainsword',      name:'Chainsword',       cost:2, costMode:'per-each'},
+          {id:'heavy_chainsword',name:'Heavy chainsword', cost:5, costMode:'per-each'},
+          {id:'charnabal',       name:'Charnabal weapon',  cost:5, costMode:'per-each'},
+          {id:'lightning_claw',  name:'Lightning claw',    cost:5, costMode:'per-each'},
+          {id:'power_weapon',    name:'Power weapon',      cost:5, costMode:'per-each'},
+        ]},
+      { id:'pistol_swap', label:'Any model may exchange bolt pistol for one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        choices:[
+          {id:'volkite_serpenta', name:'Volkite serpenta', cost:5, costMode:'per-each'},
+          {id:'hand_flamer',      name:'Hand flamer',      cost:2, costMode:'per-each'},
+        ]},
+      { id:'dual_claws', label:'Any model may exchange bolter AND bolt pistol for:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        choices:[ {id:'two_lightning_claws', name:'Two lightning claws', cost:10, costMode:'per-each'} ]},
+      { id:'special', label:'For every five models, one may exchange bolter for one of:', mode:'ratio-swap', scope:'model', ratio:{per:5,count:1},
+        choices:[
+          {id:'flamer',        name:'Flamer',        cost:2,  costMode:'per-each'},
+          {id:'meltagun',      name:'Meltagun',      cost:15, costMode:'per-each'},
+          {id:'plasma_gun',    name:'Plasma gun',    cost:10, costMode:'per-each'},
+          {id:'graviton_gun',  name:'Graviton gun',  cost:15, costMode:'per-each'},
+          {id:'heavy_flamer',  name:'Heavy flamer',  cost:10, costMode:'per-each'},
+          {id:'heavy_bolter',  name:'Heavy bolter',  cost:15, costMode:'per-each'},
+          {id:'missile_launcher', name:'Missile launcher (frag/krak/flak)', cost:15, costMode:'per-each'},
+        ]},
+      { id:'sgt_heavy', label:'The Sergeant may take one of:', mode:'pick-one', scope:'sergeant',
+        choices:[
+          {id:'power_fist',     name:'Power fist',     cost:20, costMode:'flat'},
+          {id:'thunder_hammer', name:'Thunder hammer', cost:25, costMode:'flat'},
+        ]},
+      { id:'sgt_pistol', label:'The Sergeant may exchange bolt pistol for:', mode:'single-swap', scope:'sergeant',
+        choices:[ {id:'plasma_pistol', name:'Plasma pistol', cost:10, costMode:'flat'} ]},
+      { id:'sgt_bombs', label:'The Sergeant may take:', mode:'toggle', scope:'sergeant',
+        choices:[ {id:'melta_bombs', name:'Melta bombs', cost:10, costMode:'flat'} ]},
+      { id:'sgt_armour', label:'The Sergeant may exchange power armour for:', mode:'single-swap', scope:'sergeant',
+        choices:[ {id:'artificer_armour', name:'Artificer armour', cost:10, costMode:'flat', statMods:{Sv:'2+'}} ]},
+    ],
+  },
+
+  /* ── EL · Deathsworn Pack ────────────────────────────────────────────────── */
+  {
+    id:'deathsworn_pack', name:'Deathsworn Pack', slot:'EL', baseCost:175,
+    profileType:'model', composition:{start:5, min:5, max:10},
+    profiles:[
+      {name:'Deathsworn', M:7, WS:4, BS:4, S:4, T:4, W:2, I:4, A:2, Ld:8, Sv:'2+', Inv:'—', base:'32mm'}
+    ],
+    wargear:['Bolt pistol','Power axe','Ymira class stasis bombs','Artificer armour','Frag grenades','Krak grenades'],
+    unitType:['Infantry (Heavy)'],
+    rules:['Legiones Astartes (Space Wolves)','Cult of Morkai','The Dreams of the Death Wolf','Counter-attack (1)','Stubborn'],
+    rulesText:[
+      {name:'Cult of Morkai', text:'Nie może być przyłączony przez modele z Independent Character poza tymi z upgrade Consula Speaker of the Dead lub Caster of Runes. Może być wybrany jako Retinue Squad (zamiast Elites) w Detachmencie z co najmniej jednym takim modelem — wtedy nie zużywa slotu FOC i jest częścią tej samej jednostki co wybrany Leader.'},
+      {name:'The Dreams of the Death Wolf', text:'Jeśli model Deathsworn traci ostatnią Wound w fazie szturmu zanim wykonał ataki, odłóż go obok zamiast usuwać. W Initiative Step 1 wszystkie tak odłożone modele mogą wykonać po jednym ataku, po czym są usuwane (nadal liczą się do rozstrzygnięcia walki).'},
+      {name:'Ymira class stasis bombs', text:'Wróg szarżujący na jednostkę z tym wargearem wykonuje Disordered Charge. Kontroler może aktywować bomby przy deklaracji własnej szarży (przed rzutem na dystans) — do początku następnej tury wszystkie modele z bombami dodają Fleshbane i Gets Hot do ataków w Fight sub-phase; rany od Gets Hot rozliczane są AP używanej broni.'},
+    ],
+    transportNote:'Rhino / Land Raider Proteus jako Dedicated Transport (nie zużywa slotu FOC; koszt płatny).',
+    options:[
+      { id:'extra', label:'May include up to 5 additional Deathsworn:', mode:'add-models', scope:'unit', min:0, max:5,
+        choices:[ {id:'deathsworn', name:'Deathsworn', cost:30, costMode:'per-model'} ]},
+      { id:'fist_swap', label:'Any model may exchange power axe for:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        choices:[ {id:'power_fist', name:'Power fist', cost:15, costMode:'per-each'} ]},
+      { id:'special', label:'For every five models, one may exchange power axe for one of:', mode:'ratio-swap', scope:'model', ratio:{per:5,count:1},
+        choices:[
+          {id:'great_frost_blade', name:'Great frost blade', cost:10, costMode:'per-each'},
+          {id:'thunder_hammer',    name:'Thunder hammer',    cost:20, costMode:'per-each'},
+        ]},
+      { id:'unit_grenades', label:'The entire unit may take one of:', mode:'pick-one', scope:'unit',
+        choices:[
+          {id:'melta_bombs', name:'Melta bombs', cost:20, costMode:'flat', note:'per unit'},
+          {id:'rad_grenades', name:'Rad grenades', cost:20, costMode:'flat', note:'per unit'},
+        ]},
+    ],
   },
 
 ];
