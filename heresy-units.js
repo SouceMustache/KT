@@ -9,7 +9,7 @@
    • Consul zawężony do kolekcji: Herald, Primus Medicae, Caster of Runes,
      Speaker of the Dead (Caster/Speaker = warianty Space Wolves).
    ----------------------------------------------------------------------------
-   STAN: Etap 1 — HQ komplet (13) + Elite: Contemptor, 2 Terminator squady, Veteran, Deathsworn. Zostaje: Varagyr.
+   STAN: Etap 1 — HQ (13) + Elite (6) + FA (1) + HS (1) + Transport (4). BRAKUJE: Troops (7)!
 ============================================================================ */
 
 /* ── wspólny blok Consul (identyczny na wszystkich Centurionach) ──────────── */
@@ -665,6 +665,225 @@ const HERESY_UNITS = [
         choices:[
           {id:'melta_bombs', name:'Melta bombs', cost:20, costMode:'flat', note:'per unit'},
           {id:'rad_grenades', name:'Rad grenades', cost:20, costMode:'flat', note:'per unit'},
+        ]},
+    ],
+  },
+
+  /* ── EL · Varagyr Wolf Guard Terminator Squad ────────────────────────────── */
+  {
+    id:'varagyr_squad', name:'Varagyr Wolf Guard Terminator Squad', slot:'EL', baseCost:250,
+    profileType:'model', composition:{start:5, min:5, max:10},
+    profiles:[
+      {name:'Varagyr', M:6, WS:5, BS:4, S:4, T:4, W:2, I:4, A:2, Ld:8, Sv:'2+', Inv:'4++', base:'40mm'},
+      {name:'Thegn',   M:6, WS:5, BS:4, S:4, T:4, W:2, I:4, A:3, Ld:9, Sv:'2+', Inv:'4++', base:'40mm'},
+    ],
+    wargear:['Frost blade (axe / sword / claw)','Combi-bolter','Legion Cataphractii Terminator armour'],
+    unitType:['Varagyr: Infantry (Heavy)','Thegn: Infantry (Heavy, Character)'],
+    rules:['Legiones Astartes (Space Wolves)','Fear (1)','Relentless','Counter-attack (1)','Stubborn','Hammer of Wrath (2)','Lordsbane','Bulky (2)'],
+    rulesText:[
+      {name:'Lordsbane', text:'Model może rzucać i przyjmować Challenge jak gdyby miał Sub-type Character. Dodatkowo w Challenge, jeśli wrogi challenger zostanie usunięty jako strata, dodaje +1 do liczby zadanych Wounds na potrzeby rozstrzygnięcia, kto wygrał walkę.'},
+    ],
+    transportNote:'≤5 modeli: Land Raider Proteus; dowolny rozmiar: Land Raider Spartan. Dedicated Transport nie zużywa slotu FOC; koszt płatny.',
+    options:[
+      { id:'frost_choice', label:'Each model: choose frost blade (base, free):', mode:'pick-one', scope:'each-model',
+        choices:[
+          {id:'frost_axe',   name:'Frost axe',   cost:0, costMode:'flat', free:true},
+          {id:'frost_sword', name:'Frost sword', cost:0, costMode:'flat', free:true},
+          {id:'frost_claw',  name:'Frost claw',  cost:0, costMode:'flat', free:true},
+        ]},
+      { id:'extra', label:'May include up to 5 additional Varagyr:', mode:'add-models', scope:'unit', min:0, max:5,
+        choices:[ {id:'varagyr', name:'Varagyr', cost:45, costMode:'per-model'} ]},
+      { id:'blade_swap', label:'Any model may exchange frost blade for one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        choices:[
+          {id:'power_fist',     name:'Power fist',     cost:10, costMode:'per-each'},
+          {id:'chainfist',      name:'Chainfist',      cost:15, costMode:'per-each'},
+          {id:'thunder_hammer', name:'Thunder hammer', cost:15, costMode:'per-each'},
+        ]},
+      { id:'vexilla', label:'One Varagyr may take:', mode:'toggle', scope:'unit',
+        choices:[ {id:'legion_vexilla', name:'Legion vexilla', cost:10, costMode:'flat'} ]},
+      { id:'combi_swap', label:'Any model may exchange combi-bolter for one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        choices:[
+          {id:'magna_combi',       name:'Magna combi-weapon', cost:10, costMode:'per-each'},
+          {id:'minor_combi',       name:'Minor combi-weapon', cost:5,  costMode:'per-each'},
+          {id:'second_frost_blade',name:'Second frost blade (axe/claw/sword)', cost:5, costMode:'per-each'},
+          {id:'heavy_flamer',      name:'Heavy flamer',       cost:5,  costMode:'per-each'},
+          {id:'reaper_autocannon', name:'Reaper autocannon',  cost:15, costMode:'per-each'},
+        ]},
+      { id:'thegn_blade', label:'The Thegn may exchange frost blade for:', mode:'single-swap', scope:'sergeant',
+        choices:[ {id:'great_frost_blade', name:'Great frost blade', cost:10, costMode:'flat'} ]},
+      { id:'thegn_grenade', label:'The Thegn may take:', mode:'toggle', scope:'sergeant',
+        choices:[ {id:'grenade_harness', name:'Grenade harness', cost:10, costMode:'flat'} ]},
+    ],
+  },
+
+  /* ── FA · Legion Sky-hunter Squadron ─────────────────────────────────────── */
+  {
+    id:'legion_skyhunter_squadron', name:'Legion Sky-hunter Squadron', slot:'FA', baseCost:105,
+    profileType:'model', composition:{start:3, min:3, max:10},
+    profiles:[
+      {name:'Legion Sky-hunter',          M:16, WS:4, BS:4, S:4, T:4, W:2, I:4, A:1, Ld:7, Sv:'3+', Inv:'—', base:'60mm flying'},
+      {name:'Legion Sky-hunter Sergeant', M:16, WS:4, BS:4, S:4, T:4, W:2, I:4, A:2, Ld:8, Sv:'3+', Inv:'—', base:'60mm flying'},
+    ],
+    wargear:['Bolt pistol','Chainsword','Power armour','Legion Scimitar jetbike (heavy bolter)'],
+    unitType:['Sky-hunter: Cavalry (Antigrav)','Sergeant: Cavalry (Antigrav, Character)'],
+    rules:['Legiones Astartes (Space Wolves)','Relentless','Firing Protocols (2)','Hammer of Wrath (1)','Hit & Run','Deep Strike'],
+    rulesText:[],
+    options:[
+      { id:'extra', label:'May include up to 7 additional Legion Sky-hunters:', mode:'add-models', scope:'unit', min:0, max:7,
+        choices:[ {id:'skyhunter', name:'Legion Sky-hunter', cost:30, costMode:'per-model'} ]},
+      { id:'vexilla', label:'One Sky-hunter may take:', mode:'toggle', scope:'unit',
+        choices:[ {id:'legion_vexilla', name:'Legion vexilla', cost:10, costMode:'flat'} ]},
+      { id:'nuncio', label:'One Sky-hunter may take:', mode:'toggle', scope:'unit',
+        choices:[ {id:'nuncio_vox', name:'Nuncio-vox', cost:10, costMode:'flat'} ]},
+      { id:'bike_weapon', label:'Any model may replace jetbike heavy bolter with one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        choices:[
+          {id:'volkite_culverin', name:'Volkite culverin', cost:5,  costMode:'per-each'},
+          {id:'multi_melta',      name:'Multi-melta',      cost:15, costMode:'per-each'},
+          {id:'plasma_cannon',    name:'Plasma cannon',    cost:10, costMode:'per-each'},
+        ]},
+      { id:'pistol_swap', label:'Any model may exchange bolt pistol for one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        choices:[
+          {id:'hand_flamer',      name:'Hand flamer',      cost:2, costMode:'per-each'},
+          {id:'volkite_serpenta', name:'Volkite serpenta', cost:5, costMode:'per-each'},
+        ]},
+      { id:'sgt_melee', label:'The Sergeant may exchange chainsword for one of:', mode:'pick-one', scope:'sergeant',
+        choices:[
+          {id:'power_weapon',   name:'Power weapon',   cost:10, costMode:'flat'},
+          {id:'power_fist',     name:'Power fist',     cost:20, costMode:'flat'},
+          {id:'lightning_claw', name:'Lightning claw', cost:10, costMode:'flat'},
+        ]},
+      { id:'sgt_armour', label:'The Sergeant may exchange power armour for:', mode:'single-swap', scope:'sergeant',
+        choices:[ {id:'artificer_armour', name:'Artificer armour', cost:10, costMode:'flat', statMods:{Sv:'2+'}} ]},
+    ],
+  },
+
+  /* ── HS · Legion Leviathan Dreadnought Talon ─────────────────────────────── */
+  {
+    id:'legion_leviathan_talon', name:'Legion Leviathan Dreadnought Talon', slot:'HS', baseCost:270,
+    profileType:'model', composition:{start:1, min:1, max:3},
+    profiles:[
+      // Inv 5++ z Atomantic deflector
+      {name:'Leviathan Dreadnought', M:6, WS:5, BS:5, S:8, T:8, W:7, I:4, A:5, Ld:9, Sv:'2+', Inv:'5++', base:'80mm'}
+    ],
+    wargear:['Two Leviathan siege claws with in-built meltagun','Two heavy flamers','Atomantic deflector'],
+    unitType:['Dreadnought (Heavy)'],
+    rules:['Legiones Astartes (Space Wolves)','Dreadnought Talon','Hammer of Wrath (3)','Move Through Cover'],
+    rulesText:[],
+    transportNote:'Talon ≤1 modelu: Legion Dreadnought Drop Pod / Kharybdis Assault Claw jako Dedicated Transport (nie zużywa slotu FOC; koszt płatny).',
+    options:[
+      { id:'extra', label:'May include up to 2 additional Leviathan Dreadnoughts:', mode:'add-models', scope:'unit', min:0, max:2,
+        choices:[ {id:'leviathan', name:'Leviathan Dreadnought', cost:270, costMode:'per-model'} ]},
+      { id:'claw_swap', label:'May replace either siege claw + in-built meltagun with one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        note:'Storm cannon / cyclonic melta lance / grav-flux bombard → Attacks spada do 4 (raz, niezależnie od liczby wymian).',
+        choices:[
+          {id:'siege_drill',       name:'Leviathan siege drill w/ meltagun', cost:5,  costMode:'per-each'},
+          {id:'storm_cannon',      name:'Leviathan storm cannon',  cost:10, costMode:'per-each', note:'*A→4'},
+          {id:'cyclonic_lance',    name:'Cyclonic melta lance',    cost:20, costMode:'per-each', note:'*A→4'},
+          {id:'grav_flux',         name:'Grav-flux bombard',       cost:5,  costMode:'per-each', note:'*A→4'},
+        ]},
+      { id:'phosphex', label:'May take one:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        choices:[ {id:'phosphex_discharger', name:'Phosphex discharger', cost:20, costMode:'per-each'} ]},
+      { id:'flamer_swap', label:'May exchange both heavy flamers for:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        choices:[ {id:'volkite_calivers', name:'Two twin-linked volkite calivers', cost:15, costMode:'per-each'} ]},
+    ],
+  },
+
+  /* ── DT · Legion Rhino Transport ─────────────────────────────────────────── */
+  {
+    id:'legion_rhino', name:'Legion Rhino Transport', slot:'DT', baseCost:35,
+    profileType:'vehicle', composition:{start:1, min:1, max:1},
+    profiles:[
+      {name:'Legion Rhino', M:14, BS:4, front:11, side:11, rear:10, hp:3, capacity:12, base:'Use model'}
+    ],
+    wargear:['Pintle Mounted twin-linked bolter','Smoke launchers'],
+    unitType:['Vehicle (Transport)'],
+    rules:['Legiones Astartes (Space Wolves)','Repair','Infantry Transport'],
+    rulesText:[],
+    transportNote:'Tylko jako Dedicated Transport. Access Point na każdym boku kadłuba i z tyłu.',
+    options:[
+      { id:'extras', label:'May take any of the following:', mode:'toggle', scope:'unit',
+        choices:[
+          {id:'hunter_killer', name:'Hull hunter-killer missile', cost:5, costMode:'flat'},
+          {id:'searchlights',  name:'Searchlights',               cost:5, costMode:'flat'},
+          {id:'dozer_blade',   name:'Dozer blade',                cost:5, costMode:'flat'},
+        ]},
+      { id:'pintle', label:'May take one of the following (pintle):', mode:'pick-one', scope:'unit',
+        choices:[
+          {id:'tl_bolter',   name:'Pintle twin-linked bolter',   cost:5,  costMode:'flat'},
+          {id:'combi',       name:'Pintle combi-weapon (any)',   cost:10, costMode:'flat'},
+          {id:'havoc',       name:'Pintle havoc launcher',       cost:15, costMode:'flat'},
+          {id:'heavy_bolter',name:'Pintle heavy bolter',         cost:10, costMode:'flat'},
+          {id:'heavy_flamer',name:'Pintle heavy flamer',         cost:5,  costMode:'flat'},
+          {id:'multi_melta', name:'Pintle multi-melta',          cost:30, costMode:'flat'},
+        ]},
+    ],
+  },
+
+  /* ── DT · Legion Drop Pod ────────────────────────────────────────────────── */
+  {
+    id:'legion_drop_pod', name:'Legion Drop Pod', slot:'DT', baseCost:35,
+    profileType:'vehicle', composition:{start:1, min:1, max:1},
+    profiles:[
+      {name:'Legion Drop Pod', M:'-', BS:2, front:12, side:12, rear:12, hp:3, capacity:10, base:'Use model'}
+    ],
+    wargear:['Pintle Mounted twin-linked bolter'],
+    unitType:['Vehicle (Transport)'],
+    rules:['Legiones Astartes (Space Wolves)','Inertial Guidance System','Impact-reactive Doors','Orbital Assault Vehicle','Deep Strike','Infantry Transport'],
+    rulesText:[],
+    transportNote:'Tylko jako Dedicated Transport. Access Point na każdym boku.',
+    options:[],
+  },
+
+  /* ── DT · Legion Dreadnought Drop Pod ────────────────────────────────────── */
+  {
+    id:'legion_dreadnought_drop_pod', name:'Legion Dreadnought Drop Pod', slot:'DT', baseCost:100,
+    profileType:'vehicle', composition:{start:1, min:1, max:1},
+    profiles:[
+      {name:'Legion Dreadnought Drop Pod', M:'-', BS:2, front:12, side:12, rear:12, hp:3, capacity:'*', base:'Use model'}
+    ],
+    wargear:['Impact-reactive Doors'],
+    unitType:['Vehicle (Transport*)'],
+    rules:['Legiones Astartes (Space Wolves)','Inertial Guidance System','Orbital Assault Vehicle','Impact-reactive Doors','Deep Strike','Dreadnought Transport'],
+    rulesText:[
+      {name:'Transport Capacity', text:'Brak zwykłej pojemności (*): może przewieźć jednego Dreadnoughta dzięki regule Dreadnought Transport.'},
+    ],
+    transportNote:'Tylko jako Dedicated Transport (dla Dreadnoughta). Access Point na każdym boku.',
+    options:[],
+  },
+
+  /* ── DT · Legion Land Raider Proteus Carrier Squadron ────────────────────── */
+  {
+    id:'legion_land_raider_proteus', name:'Legion Land Raider Proteus Carrier Squadron', slot:'DT', baseCost:220,
+    profileType:'vehicle', composition:{start:1, min:1, max:3},
+    profiles:[
+      {name:'Legion Land Raider Proteus Carrier', M:12, BS:4, front:14, side:14, rear:14, hp:5, capacity:12, base:'Use model'}
+    ],
+    wargear:['Two Sponson Mounted Gravis lascannon','Hull (Front) twin-linked heavy bolter','Smoke launchers'],
+    unitType:['Vehicle (Transport, Reinforced)'],
+    rules:['Legiones Astartes (Space Wolves)','Power of the Machine Spirit','Assault Vehicle'],
+    rulesText:[],
+    transportNote:'Access Point na każdym boku kadłuba i z przodu. Może być brany jako Dedicated Transport lub jako samodzielny squadron.',
+    options:[
+      { id:'extra', label:'May include up to 2 additional Proteus Carriers:', mode:'add-models', scope:'unit', min:0, max:2,
+        choices:[ {id:'proteus', name:'Legion Land Raider Proteus Carrier', cost:205, costMode:'per-model'} ]},
+      { id:'hull_swap', label:'Any Carrier may exchange hull twin-linked heavy bolter for one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        choices:[
+          {id:'tl_heavy_flamer', name:'Hull twin-linked heavy flamer', cost:0,  costMode:'per-each', free:true},
+          {id:'tl_lascannon',    name:'Hull twin-linked lascannon',    cost:15, costMode:'per-each'},
+        ]},
+      { id:'pintle', label:'Any Carrier may take one of the following (pintle):', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+        choices:[
+          {id:'tl_bolter',   name:'Pintle twin-linked bolter', cost:5,  costMode:'per-each'},
+          {id:'combi',       name:'Pintle combi-weapon (any)', cost:10, costMode:'per-each'},
+          {id:'heavy_bolter',name:'Pintle heavy bolter',       cost:10, costMode:'per-each'},
+          {id:'heavy_flamer',name:'Pintle heavy flamer',       cost:5,  costMode:'per-each'},
+          {id:'multi_melta', name:'Pintle multi-melta',        cost:20, costMode:'per-each'},
+          {id:'havoc',       name:'Pintle havoc launcher',     cost:15, costMode:'per-each'},
+        ]},
+      { id:'extras', label:'Any Carrier may take any of the following:', mode:'toggle', scope:'each-model',
+        choices:[
+          {id:'hunter_killer', name:'Hull hunter-killer missile', cost:5, costMode:'per-each'},
+          {id:'searchlights',  name:'Searchlights',               cost:5, costMode:'per-each'},
         ]},
     ],
   },

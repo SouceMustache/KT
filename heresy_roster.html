@@ -109,7 +109,8 @@
 <script src="heresy-units.js"></script>
 <script>
 const ROLES={HQ:{l:'HQ',r:'\u2620'},EL:{l:'Elites',r:'\u2726'},TR:{l:'Troops',r:'\u2B22'},FA:{l:'Fast Attack',r:'\u27A4'},HS:{l:'Heavy Support',r:'\u25A3'},DT:{l:'Transport',r:'\u25A4'},LO:{l:'Lord of War',r:'\u2739'},PR:{l:'Primarch',r:'\u2739'}};
-const MINI=['M','WS','BS','S','T','W','Sv','Inv'];
+const MINI=[['M','M'],['WS','WS'],['BS','BS'],['S','S'],['T','T'],['W','W'],['Sv','Sv'],['Inv','Inv']];
+const MINI_VEH=[['M','M'],['BS','BS'],['Fr','front'],['Sd','side'],['Rr','rear'],['HP','hp'],['Cap','capacity']];
 const UNITS=(typeof HERESY_UNITS!=='undefined')?HERESY_UNITS:[];
 const PSY=(typeof HERESY_PSYCHIC!=='undefined')?HERESY_PSYCHIC:{};
 
@@ -123,19 +124,21 @@ function buildGrid(){
   if(!UNITS.length){g.innerHTML='<div class="err">Nie znaleziono heresy-units.js<br>Umie\u015b\u0107 plik danych obok tego HTML.</div>';return;}
   g.innerHTML=UNITS.map((u,i)=>{
     const p=u.profiles[0]||{};
-    const mini=MINI.map(k=>{let v=p[k];if(v==null)v='\u2014';return '<div><div class="k">'+k+'</div><div class="v">'+esc(v)+'</div></div>';}).join('');
+    const set=(u.profileType==='vehicle')?MINI_VEH:MINI;
+    const mini=set.map(pair=>{let v=p[pair[1]];if(v==null)v='\u2014';return '<div><div class="k">'+pair[0]+'</div><div class="v">'+esc(v)+'</div></div>';}).join('');
+    const cols=set.length;
     const role=ROLES[u.slot]||{l:u.slot,r:'\u2022'};
     return '<div class="card" data-rune="'+role.r+'" onclick="openUnit('+i+')">'+
       '<div class="card-cost">'+u.baseCost+'</div>'+
       '<div class="card-role">'+role.l+'</div>'+
       '<div class="card-name">'+esc(u.name)+'</div>'+
-      '<div class="mini">'+mini+'</div></div>';
+      '<div class="mini" style="grid-template-columns:repeat('+cols+',1fr)">'+mini+'</div></div>';
   }).join('');
 }
 
 function statTable(u){
-  const cols=(u.profileType==='vehicle')?['M','BS','front','side','rear','hp']:['M','WS','BS','S','T','W','I','A','Ld','Sv','Inv'];
-  const lbl={front:'Fr',side:'Sd',rear:'Rr',hp:'HP'};
+  const cols=(u.profileType==='vehicle')?['M','BS','front','side','rear','hp','capacity']:['M','WS','BS','S','T','W','I','A','Ld','Sv','Inv'];
+  const lbl={front:'Fr',side:'Sd',rear:'Rr',hp:'HP',capacity:'Cap'};
   const head='<th></th>'+cols.map(c=>'<th>'+(lbl[c]||c)+'</th>').join('');
   const rows=u.profiles.map(p=>'<tr><td class="pname">'+esc(p.name)+'</td>'+cols.map(c=>'<td>'+esc(p[c]!=null?p[c]:'\u2014')+'</td>').join('')+'</tr>').join('');
   return '<table class="stats"><tr>'+head+'</tr>'+rows+'</table>';
