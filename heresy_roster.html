@@ -78,6 +78,9 @@
   table.ref th{background:#243049;color:var(--accent2);font-weight:700}
   table.ref td.h{background:#1c2333;color:var(--muted);font-weight:700}
 
+  .wpn{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:10px;padding:9px 12px;margin-bottom:7px}
+  .wpn b{font-size:13px;color:var(--gold)}
+  .wprof{display:block;font-family:monospace;font-size:11px;color:var(--accent2);margin-top:3px}
   .rule-card{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:10px;padding:10px 12px;margin-bottom:8px}
   .rule-name{font-size:13px;font-weight:800;color:var(--accent2);margin-bottom:6px}
   .rule-body{font-size:12px;color:var(--muted);line-height:1.4}
@@ -178,6 +181,7 @@ function openUnit(i){
   let h='<div class="oh"><div><div class="role">'+role.l+'</div><h3>'+esc(u.name)+'</h3></div><div class="cost">'+u.baseCost+' pts</div></div>';
   h+='<div class="sec"><div class="sec-t">Profile</div>'+statTable(u)+'</div>';
   if(u.wargear&&u.wargear.length)h+='<div class="sec"><div class="sec-t">Wargear</div><div class="chips">'+u.wargear.map(w=>'<span class="chip">'+esc(w)+'</span>').join('')+'</div></div>';
+  if(u.weaponProfiles&&u.weaponProfiles.length)h+='<div class="sec"><div class="sec-t">Signature Weapons</div>'+u.weaponProfiles.map(w=>'<div class="wpn"><b>'+esc(w.name)+'</b><span class="wprof">'+esc(w.profile)+'</span>'+(w.note?'<span class="note-src">'+esc(w.note)+'</span>':'')+'</div>').join('')+'</div>';
   if(u.unitType&&u.unitType.length)h+='<div class="sec"><div class="sec-t">Unit Type</div><div class="chips">'+u.unitType.map(w=>'<span class="chip">'+esc(w)+'</span>').join('')+'</div></div>';
   if(u.rules&&u.rules.length)h+='<div class="sec"><div class="sec-t">Special Rules</div><div class="chips">'+u.rules.map(w=>'<span class="chip rule">'+esc(w)+'</span>').join('')+'</div></div>';
   if(u.rulesText&&u.rulesText.length)h+='<div class="sec">'+u.rulesText.map(ruleCard).join('')+'</div>';
@@ -191,7 +195,15 @@ function openUnit(i){
 function closeOverlay(){document.getElementById('overlay').classList.remove('show');}
 
 function toHit(a,t){if(a>t)return '3+';if(t>=2*a)return '5+';return '4+';}
+function toHitRanged(bs){return Math.max(2,7-bs)+'+';}
 function toWound(s,t){const d=s-t;if(d>=2)return'2+';if(d===1)return'3+';if(d===0)return'4+';if(d===-1)return'5+';return '6+';}
+function rangedRow(){
+  let h='<div class="sec-t" style="margin-top:14px">To Hit \u2014 ranged (7 \u2212 BS)</div><table class="ref"><tr><td class="h">BS</td>';
+  for(let b=1;b<=10;b++)h+='<th>'+b+'</th>';
+  h+='</tr><tr><td class="h">Hit</td>';
+  for(let b=1;b<=10;b++)h+='<td>'+toHitRanged(b)+'</td>';
+  return h+'</tr></table>';
+}
 function refTable(title,fn,rowLbl,colLbl){
   let h='<div class="sec-t" style="margin-top:14px">'+title+'</div><table class="ref"><tr><th>'+rowLbl+'\\'+colLbl+'</th>';
   for(let c=1;c<=10;c++)h+='<th>'+c+'</th>';
@@ -201,7 +213,8 @@ function refTable(title,fn,rowLbl,colLbl){
 }
 function openRef(){
   let h='<div class="oh"><div><div class="role">Reference</div><h3>To Hit / To Wound</h3></div></div>';
-  h+='<div class="note-src">To Hit (melee): wiersz = WS atakuj\u0105cego, kolumna = WS celu. Ranged = trafiasz na warto\u015b\u0107 BS.</div>';
+  h+='<div class="note-src">To Hit ranged: trafiasz na <b>7 \u2212 BS</b> (min 2+). To Hit melee: wiersz = WS atakuj\u0105cego, kolumna = WS celu.</div>';
+  h+=rangedRow();
   h+=refTable('To Hit \u2014 melee (WS vs WS)',toHit,'A','D');
   h+='<div class="note-src" style="margin-top:12px">To Wound: wiersz = Strength, kolumna = Toughness.</div>';
   h+=refTable('To Wound (S vs T)',toWound,'S','T');

@@ -9,7 +9,7 @@
    • Consul zawężony do kolekcji: Herald, Primus Medicae, Caster of Runes,
      Speaker of the Dead (Caster/Speaker = warianty Space Wolves).
    ----------------------------------------------------------------------------
-   STAN: Etap 1 — HQ: 3 Centuriony + 3 Praetorzy + 3 Command Squady. Dalej: named characters (Leman Russ, Geigor, Hvarl, Wolf-kin).
+   STAN: Etap 1 — HQ KOMPLET (12 HQ + Leman Russ jako PR = 13 jednostek). Dalej: Elite.
 ============================================================================ */
 
 /* ── wspólny blok Consul (identyczny na wszystkich Centurionach) ──────────── */
@@ -367,6 +367,95 @@ const HERESY_UNITS = [
   termCmdSquad({ id:'legion_tartaros_command_squad', name:'Legion Tartaros Command Squad', baseCost:110,
     M:7, inv:'5++', addCost:30, armour:'Legion Tartaros Terminator armour', unitType:['Infantry'],
     chosen:'Legion Tartaros Chosen', bearer:'Legion Tartaros Standard Bearer' }),
+
+  /* ── HQ · Geigor Fell-hand (named, unique) ───────────────────────────────── */
+  {
+    id:'geigor_fell_hand', name:'Geigor Fell-hand', slot:'HQ', baseCost:135,
+    profileType:'model', composition:{start:1, min:1, max:1},
+    profiles:[
+      // Refractor field → Inv 5++
+      {name:'Geigor Fell-Hand', M:7, WS:5, BS:5, S:4, T:4, W:3, I:5, A:3, Ld:9, Sv:'2+', Inv:'5++', base:'32mm'}
+    ],
+    wargear:['Bolt pistol','Bolter','The Fell-Hand','Refractor field','Artificer armour','Frag grenades','Krak grenades'],
+    weaponProfiles:[
+      {name:'The Fell-Hand', profile:'S+1 AP3 — Melee, Master-crafted, Rending (5+), Shred, Reaping Blow (1)'}
+    ],
+    unitType:['Infantry (Character, Skirmish, Unique)'],
+    rules:['Legiones Astartes (Space Wolves)','Independent Character','Relentless','Counter-attack (1)','Master of the Legion','Warlord: Crown Breaker'],
+    rulesText:[
+      MASTER_OF_LEGION,
+      {name:'Warlord: Crown Breaker', text:'Jeśli wybrany na Warlorda, Geigor automatycznie ma Crown Breaker (nie może wybrać innego). Crown Breaker: Geigor i modele w przyłączonym oddziale zyskują Preferred Enemy (Independent Characters) oraz Feel No Pain (5+) w walce z wrogiem z Independent Character. Dodatkowo armia z Geigorem jako Warlordem może wykonać dodatkową Reaction w fazie ruchu przeciwnika, dopóki Geigor żyje.'},
+    ],
+    options:[],
+  },
+
+  /* ── HQ · Hvarl Red-Blade (named, unique) ────────────────────────────────── */
+  {
+    id:'hvarl_red_blade', name:'Hvarl Red-Blade', slot:'HQ', baseCost:210,
+    profileType:'model', composition:{start:1, min:1, max:1},
+    profiles:[
+      // Iron halo → Inv 4++ (lepsze niż 5++ z Tartaros armour)
+      {name:'Hvarl Red-Blade', M:7, WS:6, BS:5, S:4, T:4, W:4, I:5, A:4, Ld:10, Sv:'2+', Inv:'4++', base:'40mm'}
+    ],
+    wargear:['Hearth-splitter','Heavy bolter','Grenade harness','Iron halo','Legion Tartaros Terminator armour'],
+    weaponProfiles:[
+      {name:'Hearth-splitter', profile:'S+2 AP2 — Melee, Armourbane (Melee)', note:'Liczony jako broń „Power" dla reguł zależnych od tego typu.'}
+    ],
+    unitType:['Infantry (Character, Unique)'],
+    rules:['Legiones Astartes (Space Wolves)','Independent Character','Battle Cunning','Master of the Legion','Relentless','Inexorable','Counter-attack (1)','Fear (1)','Bulky (2)','Warlord: Head-taker'],
+    rulesText:[
+      MASTER_OF_LEGION,
+      {name:'Battle Cunning', text:'Do trzech oddziałów złożonych wyłącznie z modeli typu Infantry w tym samym Detachmencie co Hvarl może otrzymać Scout.'},
+      {name:'Warlord: Head-taker', text:'Jeśli wybrany na Warlorda, Hvarl automatycznie ma Head-taker (nie może wybrać innego). Head-taker: Hvarl i modele w przyłączonym oddziale zyskują Preferred Enemy (Infantry). Dodatkowo armia z Hvarlem jako Warlordem może wykonać dodatkową Reaction w fazie szturmu przeciwnika, dopóki Hvarl żyje.'},
+    ],
+    options:[],
+  },
+
+  /* ── HQ · The Wolf-kin of Russ (named, unique, 2 modele) ─────────────────── */
+  {
+    id:'wolf_kin_of_russ', name:'The Wolf-kin of Russ', slot:'HQ', baseCost:100,
+    profileType:'model', composition:{start:2, min:2, max:2},
+    profiles:[
+      {name:'Freki', M:10, WS:5, BS:'-', S:5, T:5, W:4, I:5, A:4, Ld:8, Sv:'5+', Inv:'—', base:'90 x 52mm'},
+      {name:'Geri',  M:10, WS:7, BS:'-', S:5, T:5, W:4, I:5, A:3, Ld:8, Sv:'5+', Inv:'—', base:'90 x 52mm'},
+    ],
+    wargear:['Tooth & Claw'],
+    weaponProfiles:[
+      {name:'Tooth & Claw', profile:'S(User) AP4 — Melee, Breaching (6+)'}
+    ],
+    unitType:['Infantry (Skirmish, Light, Unique)'],
+    rules:['Wolf-kin of Russ','Fearless','Fear (1)','Rampage (2)','Hammer of Wrath (1)','Feel No Pain (5+)','Bulky (4)'],
+    rulesText:[
+      {name:'Wolf-kin of Russ', text:'Można wziąć tylko jeśli w tym samym Detachmencie jest Leman Russ. Traktowani jak wybór HQ dla reguł/misji/celów, ale nie zajmują slotu na Force Organisation chart. Nie mogą być przyłączeni przez żaden model poza Lemanem Russem.'},
+    ],
+    options:[],
+  },
+
+  /* ── PR · Leman Russ (Primarch) ──────────────────────────────────────────── */
+  {
+    id:'leman_russ', name:'Leman Russ', slot:'PR', baseCost:450,
+    profileType:'model', composition:{start:1, min:1, max:1},
+    profiles:[
+      // The Armour Elavagar → Inv 4++ (3++ vs Flame/Melta/Plasma)
+      {name:'Leman Russ', M:8, WS:8, BS:6, S:7, T:6, W:6, I:7, A:7, Ld:10, Sv:'2+', Inv:'4++', base:'40mm'}
+    ],
+    wargear:['The Armour Elavagar','The Axe of Helwinter','The Sword of Balenight','Scornspitter','Frag grenades'],
+    weaponProfiles:[
+      {name:'The Axe of Helwinter',  profile:'S+2 AP2 — Melee, Sunder, Reaping Blow (1), Master-crafted'},
+      {name:'The Sword of Balenight',profile:'S+1 AP2 — Melee, Murderous Strike (4+), Brutal (2), Fearsome Ruin, Master-crafted',
+        note:'Fearsome Ruin: oddział, który poniósł choć jedną stratę od tej broni i zdaje Morale check w fazie szturmu, rzuca dodatkową D6 i bierze dwie najwyższe.'},
+      {name:'Scornspitter', profile:'12" S4 AP3 — Assault 3, Rending (6+)', note:'Liczony jako broń „Bolt" dla reguł zależnych od tego typu.'},
+    ],
+    unitType:['Primarch (Unique, Skirmish)'],
+    rules:['Legiones Astartes (Space Wolves)','Master of the Legion','Howl of the Death Wolf','Counter-attack (2)','Loyalist','Warlord: Sire of the Space Wolves'],
+    rulesText:[
+      MASTER_OF_LEGION,
+      {name:'The Armour Elavagar', text:'2+ Armour Save i 4+ Invulnerable Save (podniesiony do 3+ przeciw broniom typu Flame, Melta i Plasma). Dodatkowo wrogie modele w kontakcie bazowym z Lemanem mają −1 To Hit w walce (max do 6+) w turze, w której Leman wykonał udany Charge.'},
+      {name:'Howl of the Death Wolf', text:'Raz na bitwę, na początku swojej tury: przez całą tę turę wszystkie przyjazne modele z Legiones Astartes (Space Wolves) mają +1 M, a wrogie oddziały zawierające taki model muszą natychmiast zdać Pinning test.'},
+      {name:'Warlord: Sire of the Space Wolves', text:'Jeśli wybrany na Warlorda, Leman automatycznie ma ten trait (nie może wybrać innego). Sire: wszystkie modele z Legiones Astartes (Space Wolves) w armii Lemana mają +1 S w turze, w której taki oddział skutecznie szarżuje. Dodatkowo armia z Lemanem jako Warlordem może wykonać dodatkową Reaction w fazie szturmu przeciwnika, dopóki Leman żyje.'},
+    ],
+    options:[],
+  },
 
 ];
 
