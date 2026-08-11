@@ -354,7 +354,7 @@ function closeCatalog(ev){ if(ev&&ev.target&&ev.target.id!=='catalog')return; do
 /* ── MENU (export/import/clear) ─────────────────────────────────────────── */
 function openMenu(){
   document.getElementById('menuSheet').innerHTML='<h3>Roster \u2014 menu</h3>'+
-    '<button class="mbtn" onclick="doExport()">\u2B07 Eksport JSON<small>Kopiuj lub zapisz kt-roster jako plik</small></button>'+
+    '<button class="mbtn" onclick="doExport()">\u2B07 Eksport JSON<small>Kopiuj JSON lub pobierz jako &lt;nazwa-rostera&gt;.json</small></button>'+
     '<button class="mbtn" onclick="doImportUI()">\u2B06 Import JSON<small>Wklej zawarto\u015b\u0107 rostera</small></button>'+
     '<button class="mbtn danger" onclick="doClear()">\u2715 Wyczy\u015b\u0107 roster<small>Usuwa wszystkie jednostki</small></button>'+
     '<div id="ioZone"></div>';
