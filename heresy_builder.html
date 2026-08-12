@@ -77,6 +77,7 @@
   .pick.sel .p{color:var(--accent2)}
   .pick .cnt{display:flex;align-items:center;gap:4px;margin-left:2px}
   .pick .cnt button{width:22px;height:22px;border-radius:5px;background:var(--card);border:1px solid var(--border);color:var(--accent2);font-size:14px;font-weight:800;line-height:1;cursor:pointer}
+  .pick .cnt button:disabled{opacity:.3;cursor:default}
   .pick .cnt .n{min-width:16px;text-align:center;font-weight:800}
   .opt-note{font-size:10px;color:var(--muted);font-style:italic;margin-top:5px;line-height:1.35}
   .cx-info{font-size:10px;color:var(--accent2);margin-top:4px;line-height:1.4}
@@ -187,6 +188,7 @@ function entryCost(e){
     else if(o.mode==='toggle'){ const s=sel||{}; (o.choices||[]).forEach(ch=>{ if(s[ch.id]) c+=(ch.cost||0); }); }
     else if(o.mode==='unit-per-model'){ const s=sel||{}; (o.choices||[]).forEach(ch=>{ if(s[ch.id]) c+=(ch.cost||0)*models; }); }
     else if(o.mode==='ratio-swap'){ const s=sel||{}; (o.choices||[]).forEach(ch=>{ c+=(s[ch.id]||0)*(ch.cost||0); }); }
+    else if(o.mode==='pick-one'&&o.scope==='each-model'){ const s=(sel&&typeof sel==='object')?sel:{}; (o.choices||[]).forEach(ch=>{ c+=(s[ch.id]||0)*(ch.cost||0); }); }
     else if(o.mode==='pick-one'||o.mode==='single-swap'||o.mode==='consul'){ if(sel){ const ch=(o.choices||[]).find(x=>x.id===sel); if(ch)c+=(ch.cost||0); } }
   });
   return c;
@@ -213,10 +215,22 @@ function freshEntry(unitId){
   const u=unitById(unitId);
   const e={uid:newUid(),unitId:unitId,sel:{}};
   (u.options||[]).forEach(o=>{
-    if(o.mode==='add-models'||o.mode==='toggle'||o.mode==='unit-per-model'||o.mode==='ratio-swap')e.sel[o.id]={};
+    if(o.mode==='pick-one'&&o.scope==='each-model'){ e.sel[o.id]={}; if(o.base&&o.choices&&o.choices[0]){ const st=(u.composition&&u.composition.start)||1; e.sel[o.id][o.choices[0].id]=st; } }
+    else if(o.mode==='add-models'||o.mode==='toggle'||o.mode==='unit-per-model'||o.mode==='ratio-swap')e.sel[o.id]={};
     else e.sel[o.id]=null;
   });
   return e;
+}
+// each-model: utrzymaj Σ przydziałów ≤ modelCount (przy usuwaniu modeli przytnij od największego)
+function reconcileEach(e){
+  const u=unitById(e.unitId); if(!u)return; const models=modelCount(e);
+  (u.options||[]).forEach(o=>{
+    if(o.mode==='pick-one'&&o.scope==='each-model'){
+      let s=e.sel[o.id]; if(!s||typeof s!=='object')s=e.sel[o.id]={};
+      let assigned=Object.values(s).reduce((a,b)=>a+b,0);
+      if(assigned>models){ let over=assigned-models; Object.keys(s).sort((a,b)=>s[b]-s[a]).forEach(id=>{ if(over<=0)return; const t=Math.min(over,s[id]); s[id]-=t; over-=t; if(s[id]===0)delete s[id]; }); }
+    }
+  });
 }
 
 /* ── AKCJE STANU ────────────────────────────────────────────────────────── */
@@ -236,8 +250,15 @@ function stepModel(uid,optId,cid,d){
   const e=findEntry(uid);const u=unitById(e.unitId);const o=u.options.find(x=>x.id===optId);
   const s=e.sel[optId]=e.sel[optId]||{}; let v=(s[cid]||0)+d;
   v=Math.max(o.min||0,Math.min(o.max!=null?o.max:99,v));
-  s[cid]=v; render();save();
+  s[cid]=v; reconcileEach(e); render();save();
 }
+function stepEachModel(uid,optId,cid,d){
+  const e=findEntry(uid); const s=e.sel[optId]=(e.sel[optId]&&typeof e.sel[optId]==='object')?e.sel[optId]:{};
+  const models=modelCount(e); const assigned=Object.values(s).reduce((a,b)=>a+b,0);
+  if(d>0&&assigned>=models)return; // brak wolnych modeli
+  let v=(s[cid]||0)+d; v=Math.max(0,v); s[cid]=v; if(v===0)delete s[cid]; render();save();
+}
+function setEachExclusive(uid,optId,cid){ const e=findEntry(uid); e.sel[optId]={}; e.sel[optId][cid]=1; render();save(); }
 function stepRatio(uid,optId,cid,d){
   const e=findEntry(uid);const u=unitById(e.unitId);const o=u.options.find(x=>x.id===optId);
   const models=modelCount(e); const al=ratioAllowed(o,models);
@@ -297,6 +318,25 @@ function optControl(e,o){
           '<span class="n">'+v+'</span>'+
           '<button onclick="stepRatio(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\',1)">+</button></span></div>';
       }).join('');
+  } else if(o.mode==='pick-one'&&o.scope==='each-model'){
+    const s=(sel&&typeof sel==='object')?sel:{};
+    const assigned=Object.values(s).reduce((a,b)=>a+b,0); const rem=models-assigned;
+    if(o.base&&models<=1){ // bazowa broń, pojedynczy model → radio (ekskluzywny wybór)
+      inner=(o.choices||[]).map(ch=>{
+        const on=s[ch.id]===1;
+        return '<div class="pick'+(on?' sel':'')+'" onclick="setEachExclusive(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\')"><span class="nm">'+esc(ch.name)+'</span>'+ptsHtml(ch)+'</div>';
+      }).join('');
+    } else { // wiele modeli → licznik na wariant (Σ ≤ liczba modeli)
+      const info=o.base?('Przydzielono '+assigned+' / '+models+(rem>0?' \u00b7 nieprzydzielone: '+rem:'')):('Wybrano '+assigned+' / '+models+' modeli');
+      inner='<div class="cx-info">'+info+'</div>'+
+        (o.choices||[]).map(ch=>{
+          const v=s[ch.id]||0;
+          return '<div class="pick'+(v>0?' sel':'')+'"><span class="nm">'+esc(ch.name)+'</span>'+ptsHtml(ch)+
+            '<span class="cnt"><button onclick="stepEachModel(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\',-1)">\u2212</button>'+
+            '<span class="n">'+v+'</span>'+
+            '<button onclick="stepEachModel(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\',1)"'+(rem<=0?' disabled':'')+'>+</button></span></div>';
+        }).join('');
+    }
   } else if(o.mode==='toggle'||o.mode==='unit-per-model'){
     inner=(o.choices||[]).map(ch=>{
       const on=!!(sel&&sel[ch.id]);
@@ -319,6 +359,7 @@ function optControl(e,o){
 
 function renderEntry(e){
   const u=unitById(e.unitId); if(!u)return '';
+  reconcileEach(e);
   const cost=entryTotalCost(e); const models=modelCount(e); const warns=entryWarnings(e);
   const compMax=maxAddModels(u);
   let body='';

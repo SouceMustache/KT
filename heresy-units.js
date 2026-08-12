@@ -32,8 +32,19 @@ const CONSUL_SW = {
   ]
 };
 
+/* ── wybór archetypu bazowego Power weapon (per-model, free) ─────────────── */
+const PW_ARCHETYPE = { id:'pw_choice', label:'Każdy model: typ Power weapon (bazowo, free):', mode:'pick-one', scope:'each-model', base:true,
+  note:'Kategoria „Power weapon" — wybierz archetyp per model (np. 5× sword, 5× lance). Modele, które wymienią power weapon niżej, ignorują ten wybór.',
+  choices:[
+    {id:'pw_sword', name:'Power sword', cost:0, costMode:'flat', free:true},
+    {id:'pw_axe',   name:'Power axe',   cost:0, costMode:'flat', free:true},
+    {id:'pw_maul',  name:'Power maul',  cost:0, costMode:'flat', free:true},
+    {id:'pw_lance', name:'Power lance', cost:0, costMode:'flat', free:true},
+  ] };
+
 /* ── wspólny blok opcji broni Centuriona terminatorskiego (Cata/Tartaros) ─── */
 const TERM_CENTURION_OPTS = [
+  PW_ARCHETYPE,
   { id:'combi_swap', label:'May exchange combi-bolter for one of:',
     mode:'pick-one', scope:'model',
     choices:[
@@ -66,6 +77,7 @@ const MASTER_OF_LEGION = { name:'Master of the Legion', parts:[
 
 /* ── wspólne opcje Praetora terminatorskiego (Cataphractii/Tartaros) ─────── */
 const TERM_PRAETOR_OPTS = [
+  PW_ARCHETYPE,
   { id:'combi_swap', label:'May exchange combi-bolter for one of:', mode:'pick-one', scope:'model',
     choices:[
       {id:'magna_combi', name:'Magna combi-weapon', cost:10, costMode:'flat'},
@@ -101,6 +113,7 @@ function termCmdSquad(o){
     rulesText:[],
     transportNote:'Legion Land Raider Proteus Carrier jako Dedicated Transport (nie zużywa slotu FOC; koszt płatny).',
     options:[
+      PW_ARCHETYPE,
       { id:'extra', label:'May include up to 2 additional Chosen:', mode:'add-models', scope:'unit', min:0, max:2,
         choices:[ {id:'chosen', name:o.chosen, cost:o.addCost, costMode:'per-model'} ]},
       { id:'chosen_combi', label:'Any Chosen may exchange combi-bolter for one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
@@ -148,6 +161,7 @@ function termSquad(o){
     rulesText:[],
     transportNote:'≤5 modeli: Land Raider Proteus / Dreadclaw Drop Pod; 5+ modeli: Land Raider Spartan. Dedicated Transport nie zużywa slotu FOC; koszt płatny.',
     options:[
+      PW_ARCHETYPE,
       { id:'extra', label:'May include up to 5 additional models:', mode:'add-models', scope:'unit', min:0, max:5,
         choices:[ {id:'trooper', name:o.trooper, cost:o.addCost, costMode:'per-model'} ]},
       { id:'vexilla', label:'One model may take:', mode:'toggle', scope:'unit',
@@ -685,7 +699,7 @@ const HERESY_UNITS = [
     ],
     transportNote:'≤5 modeli: Land Raider Proteus; dowolny rozmiar: Land Raider Spartan. Dedicated Transport nie zużywa slotu FOC; koszt płatny.',
     options:[
-      { id:'frost_choice', label:'Each model: choose frost blade (base, free):', mode:'pick-one', scope:'each-model',
+      { id:'frost_choice', label:'Each model: choose frost blade (base, free):', mode:'pick-one', scope:'each-model', base:true,
         choices:[
           {id:'frost_axe',   name:'Frost axe',   cost:0, costMode:'flat', free:true},
           {id:'frost_sword', name:'Frost sword', cost:0, costMode:'flat', free:true},
