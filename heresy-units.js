@@ -523,7 +523,7 @@ const HERESY_UNITS = [
     options:[
       { id:'extra', label:'May include up to 2 additional Contemptor Dreadnoughts:', mode:'add-models', scope:'unit', min:0, max:2,
         choices:[ {id:'contemptor', name:'Contemptor Dreadnought', cost:175, costMode:'per-model'} ]},
-      { id:'main_weapon', label:'Any Contemptor may replace Gravis bolt cannon and/or fist w/ combi-bolter with one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+      { id:'main_weapon', label:'Any Contemptor may replace Gravis bolt cannon and/or fist w/ combi-bolter with one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:2},
         note:'2× fist / 2× chainfist / fist+chainfist → +1 Attack.',
         choices:[
           {id:'gravis_bolt_cannon',  name:'Gravis bolt cannon',    cost:0,  costMode:'per-each', free:true},
@@ -773,7 +773,7 @@ const HERESY_UNITS = [
     options:[
       { id:'extra', label:'May include up to 2 additional Leviathan Dreadnoughts:', mode:'add-models', scope:'unit', min:0, max:2,
         choices:[ {id:'leviathan', name:'Leviathan Dreadnought', cost:270, costMode:'per-model'} ]},
-      { id:'claw_swap', label:'May replace either siege claw + in-built meltagun with one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+      { id:'claw_swap', label:'May replace either siege claw + in-built meltagun with one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:2},
         note:'Storm cannon / cyclonic melta lance / grav-flux bombard → Attacks spada do 4 (raz, niezależnie od liczby wymian).',
         choices:[
           {id:'siege_drill',       name:'Leviathan siege drill w/ meltagun', cost:5,  costMode:'per-each'},

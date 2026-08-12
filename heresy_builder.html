@@ -109,6 +109,15 @@
   .mbtn small{display:block;color:var(--muted);font-weight:400;font-size:11px;margin-top:2px}
   textarea.io{width:100%;height:150px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:monospace;font-size:11px;padding:10px;margin-top:8px;outline:none}
 
+  .attach{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 10px;margin:11px 0 0}
+  .attach-h{font-size:11px;font-weight:800;letter-spacing:.03em;color:var(--accent2);display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .attach-h .ec2{flex:none;background:var(--gold);color:#0d1117;font-size:11px;font-weight:800;padding:2px 7px;border-radius:5px}
+  .attach-nm{font-size:13px;font-weight:700;margin:4px 0 8px}
+  .attach-add{width:100%;background:var(--card);border:1px dashed var(--accent);color:var(--accent2);font-size:12px;font-weight:800;padding:10px;border-radius:8px;cursor:pointer}
+  .attach-add:active{background:#243049}
+  .mini-del{margin-top:9px;width:100%;background:var(--card);border:1px solid var(--border);color:var(--muted);font-size:11px;font-weight:700;padding:7px;border-radius:7px;cursor:pointer}
+  .mini-del:active{color:#fff;background:var(--red);border-color:var(--red)}
+  .rsel{width:100%;margin-top:2px;background:var(--card);border:1px solid var(--border);color:var(--text);font-size:13px;font-weight:600;padding:9px;border-radius:8px;outline:none}
   .err{padding:30px 16px;color:var(--red);font-size:14px;text-align:center}
 </style>
 </head>
@@ -150,6 +159,13 @@ let UID=1;
 
 function esc(s){return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function unitById(id){return UNITS.find(u=>u.id===id);}
+function findEntry(uid){ for(const e of STATE.entries){ if(e.uid===uid)return e; if(e.transport&&e.transport.uid===uid)return e.transport; } return null; }
+function eligibleForTransport(u){ return !!(u&&u.transportNote)&&u.slot!=='DT'; }
+function isRetinueUnit(u){ return !!u&&(u.rules||[]).includes('Retinue'); }
+function isMasterUnit(u){ return !!u&&(u.rules||[]).includes('Master of the Legion'); }
+function transportUnits(){ return UNITS.filter(u=>u.slot==='DT'); }
+function masterEntries(){ return STATE.entries.filter(e=>isMasterUnit(unitById(e.unitId))); }
+function retinueValid(e){ return !!(e.retinueOf&&STATE.entries.some(m=>m.uid===e.retinueOf&&isMasterUnit(unitById(m.unitId)))); }
 function newUid(){return 'e'+(UID++);}
 
 /* ── SILNIK: modele + koszt ─────────────────────────────────────────────── */
@@ -175,12 +191,14 @@ function entryCost(e){
   });
   return c;
 }
-function rosterTotal(){ return STATE.entries.reduce((s,e)=>s+entryCost(e),0); }
+function entryTotalCost(e){ return entryCost(e)+(e.transport?entryCost(e.transport):0); }
+function rosterTotal(){ return STATE.entries.reduce((s,e)=>s+entryTotalCost(e),0); }
 
 /* walidacja miękka pojedynczej jednostki */
 function entryWarnings(e){
   const u=unitById(e.unitId); if(!u)return [];
   const w=[]; const models=modelCount(e); const comp=u.composition||{};
+  if(isRetinueUnit(u)&&!retinueValid(e))w.push('Command Squad musi by\u0107 przypi\u0119ty jako Retinue do modelu z Master of the Legion.');
   if(comp.min!=null&&models<comp.min)w.push('Za mało modeli ('+models+' < min '+comp.min+').');
   if(comp.max!=null&&models>comp.max)w.push('Za dużo modeli ('+models+' > max '+comp.max+').');
   (u.options||[]).forEach(o=>{
@@ -205,18 +223,23 @@ function freshEntry(unitId){
 function setName(v){STATE.name=v;save();}
 function setCap(v){STATE.cap=Math.max(0,parseInt(v,10)||0);document.getElementById('ptsCap').textContent=STATE.cap;renderTotals();save();}
 function addUnit(unitId){STATE.entries.push(freshEntry(unitId));closeCatalog();render();save();}
-function removeEntry(uid){STATE.entries=STATE.entries.filter(e=>e.uid!==uid);render();save();}
-function dupEntry(uid){const e=STATE.entries.find(x=>x.uid===uid);if(!e)return;const c=JSON.parse(JSON.stringify(e));c.uid=newUid();const i=STATE.entries.indexOf(e);STATE.entries.splice(i+1,0,c);render();save();}
+let PICK_FOR=null;
+function catalogPick(unitId){ if(PICK_FOR&&PICK_FOR.kind==='transport'){addTransport(PICK_FOR.uid,unitId);} else {addUnit(unitId);} PICK_FOR=null; }
+function addTransport(carrierUid,unitId){ const e=findEntry(carrierUid); if(!e)return; e.transport=freshEntry(unitId); closeCatalog(); render(); save(); }
+function removeTransport(carrierUid){ const e=findEntry(carrierUid); if(e){delete e.transport;render();save();} }
+function attachRetinue(uid,hostUid){ const e=findEntry(uid); if(!e)return; e.retinueOf=hostUid||null; render(); save(); }
+function removeEntry(uid){STATE.entries.forEach(e=>{if(e.retinueOf===uid)e.retinueOf=null;});STATE.entries=STATE.entries.filter(e=>e.uid!==uid);render();save();}
+function dupEntry(uid){const e=STATE.entries.find(x=>x.uid===uid);if(!e)return;const c=JSON.parse(JSON.stringify(e));c.uid=newUid();if(c.transport)c.transport.uid=newUid();c.retinueOf=null;const i=STATE.entries.indexOf(e);STATE.entries.splice(i+1,0,c);render();save();}
 function toggleOpen(uid){const e=STATE.entries.find(x=>x.uid===uid);if(e){e._open=!e._open;render();}}
 
 function stepModel(uid,optId,cid,d){
-  const e=STATE.entries.find(x=>x.uid===uid);const u=unitById(e.unitId);const o=u.options.find(x=>x.id===optId);
+  const e=findEntry(uid);const u=unitById(e.unitId);const o=u.options.find(x=>x.id===optId);
   const s=e.sel[optId]=e.sel[optId]||{}; let v=(s[cid]||0)+d;
   v=Math.max(o.min||0,Math.min(o.max!=null?o.max:99,v));
   s[cid]=v; render();save();
 }
 function stepRatio(uid,optId,cid,d){
-  const e=STATE.entries.find(x=>x.uid===uid);const u=unitById(e.unitId);const o=u.options.find(x=>x.id===optId);
+  const e=findEntry(uid);const u=unitById(e.unitId);const o=u.options.find(x=>x.id===optId);
   const models=modelCount(e); const al=ratioAllowed(o,models);
   const s=e.sel[optId]=e.sel[optId]||{}; const used=Object.values(s).reduce((a,b)=>a+b,0);
   let v=(s[cid]||0)+d;
@@ -224,11 +247,11 @@ function stepRatio(uid,optId,cid,d){
   v=Math.max(0,v); s[cid]=v; if(v===0)delete s[cid]; render();save();
 }
 function toggleChoice(uid,optId,cid){
-  const e=STATE.entries.find(x=>x.uid===uid); const s=e.sel[optId]=e.sel[optId]||{};
+  const e=findEntry(uid); const s=e.sel[optId]=e.sel[optId]||{};
   if(s[cid])delete s[cid]; else s[cid]=true; render();save();
 }
 function pickOne(uid,optId,cid){
-  const e=STATE.entries.find(x=>x.uid===uid);
+  const e=findEntry(uid);
   e.sel[optId]=(e.sel[optId]===cid)?null:cid; render();save();
 }
 
@@ -243,7 +266,7 @@ function renderTotals(){
   const box=document.getElementById('ptsBox');
   box.className='pts'+(t>STATE.cap?' over':(t>0?' ok':''));
   // FOC
-  const counts={}; STATE.entries.forEach(e=>{const u=unitById(e.unitId);if(!u)return;counts[u.slot]=(counts[u.slot]||0)+1;});
+  const counts={}; STATE.entries.forEach(e=>{const u=unitById(e.unitId);if(!u)return;if(retinueValid(e))return;counts[u.slot]=(counts[u.slot]||0)+1;});
   const strip=document.getElementById('focStrip');
   strip.innerHTML=SLOT_ORDER.filter(s=>counts[s]||FOC_LIM[s]).map(s=>{
     const n=counts[s]||0; const lim=FOC_LIM[s]; let cls='slot';
@@ -296,7 +319,7 @@ function optControl(e,o){
 
 function renderEntry(e){
   const u=unitById(e.unitId); if(!u)return '';
-  const cost=entryCost(e); const models=modelCount(e); const warns=entryWarnings(e);
+  const cost=entryTotalCost(e); const models=modelCount(e); const warns=entryWarnings(e);
   const compMax=maxAddModels(u);
   let body='';
   // model stepper (tylko gdy skład zmienny)
@@ -314,8 +337,35 @@ function renderEntry(e){
   (u.options||[]).forEach(o=>{ if(o.mode==='add-models')return; body+=optControl(e,o); });
   if(u.transportNote)body+='<div class="opt-note">\uD83D\uDE9A '+esc(u.transportNote)+'</div>';
 
+  // ── Retinue (Command Squad → Master of the Legion) ──
+  if(isRetinueUnit(u)){
+    const masters=masterEntries();
+    let opts='<option value="">\u2014 nie przypi\u0119to \u2014</option>';
+    masters.forEach(m=>{ opts+='<option value="'+m.uid+'"'+(e.retinueOf===m.uid?' selected':'')+'>'+esc(unitById(m.unitId).name)+'</option>'; });
+    body+='<div class="attach"><div class="attach-h">\uD83D\uDEE1 Retinue \u2192 Master of the Legion</div>'+
+      '<select class="rsel" onchange="attachRetinue(\''+e.uid+'\',this.value)">'+opts+'</select>'+
+      (retinueValid(e)?'<div class="cx-info">Przypi\u0119to \u2014 nie zu\u017cywa slotu FOC.</div>'
+        :(masters.length?'':'<div class="opt-note">Dodaj najpierw HQ z Master of the Legion (Praetor / Geigor / Hvarl / Leman Russ).</div>'))+
+      '</div>';
+  }
+
+  // ── Dedicated Transport ──
+  if(eligibleForTransport(u)){
+    if(e.transport){
+      const tu=unitById(e.transport.unitId); const tcap=(tu.profiles&&tu.profiles[0]&&tu.profiles[0].capacity);
+      body+='<div class="attach"><div class="attach-h">\uD83D\uDE9A Dedicated Transport<span class="ec2">'+entryCost(e.transport)+'</span></div>'+
+        '<div class="attach-nm">'+esc(tu.name)+(tcap?' <span class="cx-info" style="display:inline">(cap. '+esc(String(tcap))+')</span>':'')+'</div>';
+      (tu.options||[]).forEach(o=>{ if(o.mode==='add-models')return; body+=optControl(e.transport,o); });
+      body+='<button class="mini-del" onclick="removeTransport(\''+e.uid+'\')">\u2715 Usu\u0144 transport</button></div>';
+    } else {
+      body+='<div class="attach"><button class="attach-add" onclick="openTransportPicker(\''+e.uid+'\')">+ Dodaj Dedicated Transport</button></div>';
+    }
+  }
+
   const warnHtml=warns.length?'<div class="ewarn">\u26A0 '+warns.map(esc).join('<br>\u26A0 ')+'</div>':'';
-  const sub=models+' '+(u.profileType==='vehicle'?'poj.':'mdl');
+  let sub=models+' '+(u.profileType==='vehicle'?'poj.':'mdl');
+  if(retinueValid(e))sub+=' \u00b7 \uD83D\uDEE1 Retinue';
+  if(e.transport)sub+=' \u00b7 \uD83D\uDE9A '+esc(unitById(e.transport.unitId).name);
 
   return '<div class="entry'+(e._open?' open':'')+(warns.length?' warn':'')+'">'+
     '<div class="ehead" onclick="toggleOpen(\''+e.uid+'\')">'+
@@ -341,12 +391,16 @@ function render(){
 
 /* ── KATALOG (dodawanie) ────────────────────────────────────────────────── */
 function openCatalog(){
+  PICK_FOR=null; renderCatalog(UNITS,'Dodaj jednostk\u0119');
+}
+function openTransportPicker(uid){ PICK_FOR={kind:'transport',uid:uid}; renderCatalog(transportUnits(),'Wybierz Dedicated Transport'); }
+function renderCatalog(list,title){
   const groups=SLOT_ORDER.map(s=>{
-    const list=UNITS.filter(u=>u.slot===s); if(!list.length)return '';
+    const l=list.filter(u=>u.slot===s); if(!l.length)return '';
     return '<div class="grp"><div class="grp-t">'+esc(ROLES[s]||s)+'</div>'+
-      list.map(u=>'<div class="pcard" onclick="addUnit(\''+u.id+'\')"><span class="pn">'+esc(u.name)+'</span><span class="pc">'+u.baseCost+'</span></div>').join('')+'</div>';
+      l.map(u=>'<div class="pcard" onclick="catalogPick(\''+u.id+'\')"><span class="pn">'+esc(u.name)+'</span><span class="pc">'+u.baseCost+'</span></div>').join('')+'</div>';
   }).join('');
-  document.getElementById('catalogSheet').innerHTML='<h3>Dodaj jednostk\u0119</h3>'+groups;
+  document.getElementById('catalogSheet').innerHTML='<h3>'+esc(title)+'</h3>'+groups;
   const ov=document.getElementById('catalog');ov.classList.add('show');ov.scrollTop=0;
 }
 function closeCatalog(ev){ if(ev&&ev.target&&ev.target.id!=='catalog')return; document.getElementById('catalog').classList.remove('show'); }
@@ -361,8 +415,14 @@ function openMenu(){
   const ov=document.getElementById('menu');ov.classList.add('show');ov.scrollTop=0;
 }
 function closeMenu(ev){ if(ev&&ev.target&&ev.target.id!=='menu')return; document.getElementById('menu').classList.remove('show'); }
-function exportObj(){ return {app:'heresy-roster',v:1,name:STATE.name,cap:STATE.cap,
-  entries:STATE.entries.map(e=>({unitId:e.unitId,sel:e.sel}))}; }
+function exportObj(){
+  const ridOf=new Map(); STATE.entries.forEach((e,i)=>ridOf.set(e.uid,'r'+i));
+  return {app:'heresy-roster',v:2,name:STATE.name,cap:STATE.cap,
+    entries:STATE.entries.map((e,i)=>({
+      rid:'r'+i, unitId:e.unitId, sel:e.sel,
+      retinueOf:(e.retinueOf&&ridOf.has(e.retinueOf))?ridOf.get(e.retinueOf):null,
+      transport:e.transport?{unitId:e.transport.unitId,sel:e.transport.sel}:null
+    }))}; }
 function doExport(){
   const json=JSON.stringify(exportObj(),null,2);
   document.getElementById('ioZone').innerHTML='<textarea class="io" readonly onclick="this.select()">'+esc(json)+'</textarea>'+
@@ -384,7 +444,13 @@ function doImport(){
 function loadObj(o){
   if(!o||!Array.isArray(o.entries))throw new Error('brak entries');
   STATE.name=o.name||''; STATE.cap=o.cap||3000;
-  STATE.entries=o.entries.filter(en=>unitById(en.unitId)).map(en=>({uid:newUid(),unitId:en.unitId,sel:en.sel||{}}));
+  const ridMap={};
+  STATE.entries=o.entries.filter(en=>unitById(en.unitId)).map(en=>{
+    const uid=newUid(); if(en.rid)ridMap[en.rid]=uid;
+    const t=(en.transport&&unitById(en.transport.unitId))?{uid:newUid(),unitId:en.transport.unitId,sel:en.transport.sel||{}}:undefined;
+    return {uid,unitId:en.unitId,sel:en.sel||{},_ret:en.retinueOf||null,transport:t};
+  });
+  STATE.entries.forEach(e=>{ if(e._ret&&ridMap[e._ret])e.retinueOf=ridMap[e._ret]; delete e._ret; });
 }
 function doClear(){ if(confirm('Usun\u0105\u0107 wszystkie jednostki z rostera?')){STATE.entries=[];closeMenu();render();save();} }
 
