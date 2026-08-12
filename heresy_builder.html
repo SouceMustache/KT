@@ -333,6 +333,22 @@ function variantBlock(e,o,ch){ const vars=metaVariants(ch.name); if(!vars)return
   }).join('');
   return '<div class="subvar"><div class="cx-info">Typ: przydzielono '+assigned+' / '+ac+(rem>0?' \u00b7 pozosta\u0142o '+rem:'')+'</div><div class="picks">'+rows+'</div></div>';
 }
+/* ── B6: Retinue mount = napęd przyłączonego bohatera (auto) ────────────── */
+const MOUNT_NAMES=['Legion Warhawk jump pack','Legion Spatha combat bike','Legion Scimitar jetbike'];
+function selectedMountName(host){
+  if(!host)return null; const hu=unitById(host.unitId); if(!hu)return null;
+  for(const o of (hu.options||[])){ const sel=host.sel[o.id]; if(!sel||typeof sel!=='string')continue;
+    const c=(o.choices||[]).find(x=>x.id===sel); if(c&&MOUNT_NAMES.includes(c.name))return c.name; }
+  return null;
+}
+function reconcileRetinueMount(e){
+  const u=unitById(e.unitId); if(!u)return;
+  const rmOpt=(u.options||[]).find(o=>o.id==='retinue_mount'); if(!rmOpt)return;
+  let target=null;
+  if(retinueValid(e)){ const host=STATE.entries.find(m=>m.uid===e.retinueOf); const name=selectedMountName(host);
+    if(name){ const ch=rmOpt.choices.find(c=>c.name===name); target=ch?ch.id:null; } }
+  e.sel['retinue_mount']=target;
+}
 
 /* ── AKCJE STANU ────────────────────────────────────────────────────────── */
 function setName(v){STATE.name=v;save();}
@@ -401,6 +417,13 @@ function renderTotals(){
 function optControl(e,o){
   const models=modelCount(e); const sel=e.sel[o.id];
   let inner='';
+  if(o.id==='retinue_mount'){ // auto: dopasowane do napędu przyłączonego bohatera
+    let msg;
+    if(!retinueValid(e)) msg='Przypnij oddzia\u0142 jako Retinue \u2014 mount dopasuje si\u0119 do nap\u0119du bohatera.';
+    else { const host=STATE.entries.find(m=>m.uid===e.retinueOf); const name=selectedMountName(host);
+      msg = name ? ('Auto: '+name+' \u2014 dopasowane do bohatera (koszt \u00d7modele)') : 'Bohater pieszy \u2014 oddzia\u0142 bez mounta.'; }
+    return '<div class="opt"><div class="opt-l">'+esc(o.label)+'<span class="mode">auto</span></div><div class="cx-info">'+esc(msg)+'</div></div>';
+  }
   if(o.mode==='add-models'){
     inner=(o.choices||[]).map(ch=>{
       const v=(sel&&sel[ch.id])||0;
@@ -523,6 +546,7 @@ function renderEntry(e){
 }
 
 function render(){
+  STATE.entries.forEach(reconcileRetinueMount);
   renderTotals();
   const r=document.getElementById('roster');
   if(!UNITS.length){r.innerHTML='<div class="err">Nie znaleziono heresy-units.js<br>Umie\u015b\u0107 plik danych obok tego HTML.</div>';return;}
