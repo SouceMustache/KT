@@ -227,11 +227,32 @@ function closeGloss(){document.getElementById('gwrap').classList.remove('show');
 function unitById(id){return UNITS.find(u=>u.id===id);}
 function findEntry(uid){ for(const e of STATE.entries){ if(e.uid===uid)return e; if(e.transport&&e.transport.uid===uid)return e.transport; } return null; }
 function eligibleForTransport(u){ return !!(u&&u.transportNote)&&u.slot!=='DT'; }
-function isRetinueUnit(u){ return !!u&&(u.rules||[]).includes('Retinue'); }
-function isMasterUnit(u){ return !!u&&(u.rules||[]).includes('Master of the Legion'); }
 function transportUnits(){ return UNITS.filter(u=>u.slot==='DT'); }
-function masterEntries(){ return STATE.entries.filter(e=>isMasterUnit(unitById(e.unitId))); }
-function retinueValid(e){ return !!(e.retinueOf&&STATE.entries.some(m=>m.uid===e.retinueOf&&isMasterUnit(unitById(m.unitId)))); }
+function isMasterUnit(u){ return !!u&&(u.rules||[]).includes('Master of the Legion'); }
+// klasa pancerza (do parowania Command Squad ↔ host)
+function armourClass(u){ const w=((u&&u.wargear)||[]).join('|');
+  if(/Cataphractii/i.test(w))return 'cataphractii';
+  if(/Tartaros/i.test(w))return 'tartaros';
+  if(/Power armour|Artificer/i.test(w))return 'power';
+  return null; }
+const ARMOUR_PL={cataphractii:'Cataphractii',tartaros:'Tartaros',power:'power/artificer'};
+// rodzaj retinue: 'command' (rule Retinue) lub 'deathsworn' (Cult of Morkai)
+function retinueKind(u){ if(!u)return null;
+  if((u.rules||[]).includes('Retinue'))return 'command';
+  if((u.rules||[]).includes('Cult of Morkai'))return 'deathsworn';
+  return null; }
+function isRetinueUnit(u){ return !!retinueKind(u); }
+// id-y wybranych konsulów danej jednostki
+function hostConsul(host){ const hu=unitById(host.unitId); if(!hu)return [];
+  const ids=[]; (hu.options||[]).forEach(o=>{ if(o.mode==='consul'){ const sel=host.sel[o.id]; if(sel)ids.push(sel); } }); return ids; }
+// dozwoleni hostowie dla danej jednostki-retinue
+function validHostEntries(e){ const u=unitById(e.unitId); const kind=retinueKind(u); if(!kind)return [];
+  if(kind==='command'){ const ac=armourClass(u);
+    return STATE.entries.filter(m=>m.uid!==e.uid && isMasterUnit(unitById(m.unitId)) && armourClass(unitById(m.unitId))===ac); }
+  if(kind==='deathsworn'){
+    return STATE.entries.filter(m=>m.uid!==e.uid && hostConsul(m).some(id=>id==='speaker_of_the_dead'||id==='caster_of_runes')); }
+  return []; }
+function retinueValid(e){ return !!(e.retinueOf&&validHostEntries(e).some(m=>m.uid===e.retinueOf)); }
 function newUid(){return 'e'+(UID++);}
 
 /* ── SILNIK: modele + koszt ─────────────────────────────────────────────── */
@@ -265,7 +286,10 @@ function rosterTotal(){ return STATE.entries.reduce((s,e)=>s+entryTotalCost(e),0
 function entryWarnings(e){
   const u=unitById(e.unitId); if(!u)return [];
   const w=[]; const models=modelCount(e); const comp=u.composition||{};
-  if(isRetinueUnit(u)&&!retinueValid(e))w.push('Command Squad musi by\u0107 przypi\u0119ty jako Retinue do modelu z Master of the Legion.');
+  if(isRetinueUnit(u)&&!retinueValid(e)){ const k=retinueKind(u);
+    w.push(k==='deathsworn'
+      ? 'Deathsworn jako Retinue tylko przy Speaker of the Dead / Caster of Runes.'
+      : 'Command Squad musi by\u0107 Retinue przy Master of the Legion w tym samym pancerzu ('+(ARMOUR_PL[armourClass(u)]||'?')+').'); }
   if(comp.min!=null&&models<comp.min)w.push('Za mało modeli ('+models+' < min '+comp.min+').');
   if(comp.max!=null&&models>comp.max)w.push('Za dużo modeli ('+models+' > max '+comp.max+').');
   (u.options||[]).forEach(o=>{
@@ -504,15 +528,19 @@ function renderEntry(e){
   (u.options||[]).forEach(o=>{ if(o.mode==='add-models')return; body+=optControl(e,o); });
   if(u.transportNote)body+='<div class="opt-note">\uD83D\uDE9A '+esc(u.transportNote)+'</div>';
 
-  // ── Retinue (Command Squad → Master of the Legion) ──
+  // ── Retinue (Command Squad → pasujący pancerzem Master; Deathsworn → Speaker/Caster) ──
   if(isRetinueUnit(u)){
-    const masters=masterEntries();
+    const kind=retinueKind(u); const hosts=validHostEntries(e);
+    const title=kind==='deathsworn'?'\uD83D\uDEE1 Retinue \u2192 Speaker of the Dead / Caster of Runes':'\uD83D\uDEE1 Retinue \u2192 Master of the Legion ('+esc(ARMOUR_PL[armourClass(u)]||'?')+')';
     let opts='<option value="">\u2014 nie przypi\u0119to \u2014</option>';
-    masters.forEach(m=>{ opts+='<option value="'+m.uid+'"'+(e.retinueOf===m.uid?' selected':'')+'>'+esc(unitById(m.unitId).name)+'</option>'; });
-    body+='<div class="attach"><div class="attach-h">\uD83D\uDEE1 Retinue \u2192 Master of the Legion</div>'+
+    hosts.forEach(m=>{ opts+='<option value="'+m.uid+'"'+(e.retinueOf===m.uid?' selected':'')+'>'+esc(unitById(m.unitId).name)+'</option>'; });
+    const hint=kind==='deathsworn'
+      ? 'Dodaj Centuriona z konsulem Speaker of the Dead lub Caster of Runes.'
+      : 'Dodaj HQ z Master of the Legion w pancerzu '+(ARMOUR_PL[armourClass(u)]||'?')+' (Praetor / Geigor / Hvarl).';
+    body+='<div class="attach"><div class="attach-h">'+title+'</div>'+
       '<select class="rsel" onchange="attachRetinue(\''+e.uid+'\',this.value)">'+opts+'</select>'+
       (retinueValid(e)?'<div class="cx-info">Przypi\u0119to \u2014 nie zu\u017cywa slotu FOC.</div>'
-        :(masters.length?'':'<div class="opt-note">Dodaj najpierw HQ z Master of the Legion (Praetor / Geigor / Hvarl / Leman Russ).</div>'))+
+        :(hosts.length?'':'<div class="opt-note">'+esc(hint)+'</div>'))+
       '</div>';
   }
 
