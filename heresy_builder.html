@@ -119,6 +119,9 @@
   .mini-del{margin-top:9px;width:100%;background:var(--card);border:1px solid var(--border);color:var(--muted);font-size:11px;font-weight:700;padding:7px;border-radius:7px;cursor:pointer}
   .mini-del:active{color:#fff;background:var(--red);border-color:var(--red)}
   .rsel{width:100%;margin-top:2px;background:var(--card);border:1px solid var(--border);color:var(--text);font-size:13px;font-weight:600;padding:9px;border-radius:8px;outline:none}
+  .subvar{margin:5px 0 3px 12px;padding:5px 0 2px 9px;border-left:2px solid var(--accent)}
+  .pick.sm{font-size:11px;padding:4px 8px;background:var(--card)}
+  .pick.sm.sel{background:#1a2740;border-color:var(--accent)}
   .err{padding:30px 16px;color:var(--red);font-size:14px;text-align:center}
 </style>
 </head>
@@ -213,7 +216,7 @@ function entryWarnings(e){
 /* ── FABRYKA ŚWIEŻEGO WPISU ─────────────────────────────────────────────── */
 function freshEntry(unitId){
   const u=unitById(unitId);
-  const e={uid:newUid(),unitId:unitId,sel:{}};
+  const e={uid:newUid(),unitId:unitId,sel:{},var:{}};
   (u.options||[]).forEach(o=>{
     if(o.mode==='pick-one'&&o.scope==='each-model'){ e.sel[o.id]={}; if(o.base&&o.choices&&o.choices[0]){ const st=(u.composition&&u.composition.start)||1; e.sel[o.id][o.choices[0].id]=st; } }
     else if(o.mode==='add-models'||o.mode==='toggle'||o.mode==='unit-per-model'||o.mode==='ratio-swap')e.sel[o.id]={};
@@ -231,6 +234,42 @@ function reconcileEach(e){
       if(assigned>models){ let over=assigned-models; Object.keys(s).sort((a,b)=>s[b]-s[a]).forEach(id=>{ if(over<=0)return; const t=Math.min(over,s[id]); s[id]-=t; over-=t; if(s[id]===0)delete s[id]; }); }
     }
   });
+}
+/* ── B4: pod-archetyp dla swapowych meta-broni (cost-neutral) ──────────── */
+const META_POWER=[{id:'sword',name:'Power sword'},{id:'axe',name:'Power axe'},{id:'maul',name:'Power maul'},{id:'lance',name:'Power lance'}];
+const META_CHARN=[{id:'sabre',name:'Charnabal sabre'},{id:'tabar',name:'Charnabal tabar'},{id:'glaive',name:'Charnabal glaive'}];
+const META_FROST=[{id:'fsword',name:'Frost sword'},{id:'faxe',name:'Frost axe'},{id:'fclaw',name:'Frost claw'}];
+function metaVariants(name){ if(name==='Power weapon')return META_POWER; if(name==='Charnabal weapon')return META_CHARN; if(/frost blade\s*\(/i.test(name||''))return META_FROST; return null; }
+function activeCount(e,o,ch){ const sel=e.sel[o.id];
+  if(o.mode==='ratio-swap'||o.mode==='add-models')return (sel&&sel[ch.id])||0;
+  if(o.mode==='toggle'||o.mode==='unit-per-model')return (sel&&sel[ch.id])?1:0;
+  return sel===ch.id?1:0; }
+function reconcileVars(e){ const u=unitById(e.unitId); if(!u)return; e.var=e.var||{};
+  (u.options||[]).forEach(o=>(o.choices||[]).forEach(ch=>{ if(!metaVariants(ch.name))return;
+    const key=o.id+'|'+ch.id; const ac=activeCount(e,o,ch);
+    if(ac<=0){ if(e.var[key])delete e.var[key]; return; }
+    let s=e.var[key]; if(!s||typeof s!=='object')s=e.var[key]={};
+    let assigned=Object.values(s).reduce((a,b)=>a+b,0);
+    if(assigned>ac){ let over=assigned-ac; Object.keys(s).sort((a,b)=>s[b]-s[a]).forEach(id=>{ if(over<=0)return; const t=Math.min(over,s[id]); s[id]-=t; over-=t; if(s[id]===0)delete s[id]; }); }
+  })); }
+function stepVar(uid,key,vid,d){ const e=findEntry(uid); e.var=e.var||{}; const s=e.var[key]=(e.var[key]&&typeof e.var[key]==='object')?e.var[key]:{};
+  const p=key.split('|'); const u=unitById(e.unitId); const o=(u.options||[]).find(x=>x.id===p[0]); const ch=o&&(o.choices||[]).find(x=>x.id===p[1]); if(!ch)return;
+  const ac=activeCount(e,o,ch); const assigned=Object.values(s).reduce((a,b)=>a+b,0);
+  if(d>0&&assigned>=ac)return; let v=(s[vid]||0)+d; v=Math.max(0,v); s[vid]=v; if(v===0)delete s[vid]; render();save(); }
+function setVarExclusive(uid,key,vid){ const e=findEntry(uid); e.var=e.var||{}; e.var[key]={}; e.var[key][vid]=1; render();save(); }
+function variantBlock(e,o,ch){ const vars=metaVariants(ch.name); if(!vars)return '';
+  const ac=activeCount(e,o,ch); if(ac<=0)return '';
+  const key=o.id+'|'+ch.id; const s=(e.var&&e.var[key]&&typeof e.var[key]==='object')?e.var[key]:{};
+  const assigned=Object.values(s).reduce((a,b)=>a+b,0); const rem=ac-assigned;
+  if(ac===1){ const rows=vars.map(v=>'<div class="pick sm'+(s[v.id]===1?' sel':'')+'" onclick="setVarExclusive(\''+e.uid+'\',\''+key+'\',\''+v.id+'\')"><span class="nm">'+esc(v.name)+'</span></div>').join('');
+    return '<div class="subvar"><div class="cx-info">Wybierz typ:</div><div class="picks">'+rows+'</div></div>'; }
+  const rows=vars.map(v=>{ const cv=s[v.id]||0;
+    return '<div class="pick sm'+(cv>0?' sel':'')+'"><span class="nm">'+esc(v.name)+'</span>'+
+      '<span class="cnt"><button onclick="stepVar(\''+e.uid+'\',\''+key+'\',\''+v.id+'\',-1)">\u2212</button>'+
+      '<span class="n">'+cv+'</span>'+
+      '<button onclick="stepVar(\''+e.uid+'\',\''+key+'\',\''+v.id+'\',1)"'+(rem<=0?' disabled':'')+'>+</button></span></div>';
+  }).join('');
+  return '<div class="subvar"><div class="cx-info">Typ: przydzielono '+assigned+' / '+ac+(rem>0?' \u00b7 pozosta\u0142o '+rem:'')+'</div><div class="picks">'+rows+'</div></div>';
 }
 
 /* ── AKCJE STANU ────────────────────────────────────────────────────────── */
@@ -316,7 +355,7 @@ function optControl(e,o){
         return '<div class="pick'+(v>0?' sel':'')+'"><span class="nm">'+esc(ch.name)+'</span>'+ptsHtml(ch)+
           '<span class="cnt"><button onclick="stepRatio(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\',-1)">\u2212</button>'+
           '<span class="n">'+v+'</span>'+
-          '<button onclick="stepRatio(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\',1)">+</button></span></div>';
+          '<button onclick="stepRatio(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\',1)">+</button></span></div>'+variantBlock(e,o,ch);
       }).join('');
   } else if(o.mode==='pick-one'&&o.scope==='each-model'){
     const s=(sel&&typeof sel==='object')?sel:{};
@@ -348,7 +387,7 @@ function optControl(e,o){
       let extra='';
       if(ch.addsRules)extra+='<div class="cx-info">+ '+ch.addsRules.map(esc).join(', ')+'</div>';
       if(ch.grantsWargear)extra+='<div class="cx-info">\u2694 '+ch.grantsWargear.map(esc).join(', ')+'</div>';
-      return '<div class="pick'+(on?' sel':'')+'" onclick="pickOne(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\')"><span class="nm">'+esc(ch.name)+extra+'</span>'+ptsHtml(ch)+'</div>';
+      return '<div class="pick'+(on?' sel':'')+'" onclick="pickOne(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\')"><span class="nm">'+esc(ch.name)+extra+'</span>'+ptsHtml(ch)+'</div>'+variantBlock(e,o,ch);
     }).join('');
   }
   const isC=o.mode==='consul';
@@ -359,7 +398,7 @@ function optControl(e,o){
 
 function renderEntry(e){
   const u=unitById(e.unitId); if(!u)return '';
-  reconcileEach(e);
+  reconcileEach(e); reconcileVars(e);
   const cost=entryTotalCost(e); const models=modelCount(e); const warns=entryWarnings(e);
   const compMax=maxAddModels(u);
   let body='';
@@ -460,7 +499,7 @@ function exportObj(){
   const ridOf=new Map(); STATE.entries.forEach((e,i)=>ridOf.set(e.uid,'r'+i));
   return {app:'heresy-roster',v:2,name:STATE.name,cap:STATE.cap,
     entries:STATE.entries.map((e,i)=>({
-      rid:'r'+i, unitId:e.unitId, sel:e.sel,
+      rid:'r'+i, unitId:e.unitId, sel:e.sel, var:e.var||{},
       retinueOf:(e.retinueOf&&ridOf.has(e.retinueOf))?ridOf.get(e.retinueOf):null,
       transport:e.transport?{unitId:e.transport.unitId,sel:e.transport.sel}:null
     }))}; }
@@ -489,7 +528,7 @@ function loadObj(o){
   STATE.entries=o.entries.filter(en=>unitById(en.unitId)).map(en=>{
     const uid=newUid(); if(en.rid)ridMap[en.rid]=uid;
     const t=(en.transport&&unitById(en.transport.unitId))?{uid:newUid(),unitId:en.transport.unitId,sel:en.transport.sel||{}}:undefined;
-    return {uid,unitId:en.unitId,sel:en.sel||{},_ret:en.retinueOf||null,transport:t};
+    return {uid,unitId:en.unitId,sel:en.sel||{},var:en.var||{},_ret:en.retinueOf||null,transport:t};
   });
   STATE.entries.forEach(e=>{ if(e._ret&&ridMap[e._ret])e.retinueOf=ridMap[e._ret]; delete e._ret; });
 }
