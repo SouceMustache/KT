@@ -189,7 +189,7 @@ function entryCost(e){
     else if(o.mode==='unit-per-model'){ const s=sel||{}; (o.choices||[]).forEach(ch=>{ if(s[ch.id]) c+=(ch.cost||0)*models; }); }
     else if(o.mode==='ratio-swap'){ const s=sel||{}; (o.choices||[]).forEach(ch=>{ c+=(s[ch.id]||0)*(ch.cost||0); }); }
     else if(o.mode==='pick-one'&&o.scope==='each-model'){ const s=(sel&&typeof sel==='object')?sel:{}; (o.choices||[]).forEach(ch=>{ c+=(s[ch.id]||0)*(ch.cost||0); }); }
-    else if(o.mode==='pick-one'||o.mode==='single-swap'||o.mode==='consul'){ if(sel){ const ch=(o.choices||[]).find(x=>x.id===sel); if(ch)c+=(ch.cost||0); } }
+    else if(o.mode==='pick-one'||o.mode==='single-swap'||o.mode==='consul'){ if(sel){ const ch=(o.choices||[]).find(x=>x.id===sel); if(ch)c+=(ch.costMode==='per-model')?(ch.cost||0)*models:(ch.cost||0); } }
   });
   return c;
 }

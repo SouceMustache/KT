@@ -414,12 +414,12 @@ const HERESY_UNITS = [
         choices:[ {id:'nuncio_vox', name:'Nuncio-vox', cost:5, costMode:'per-each'} ]},
       { id:'combat_shield', label:'Any model may select:', mode:'toggle', scope:'each-model',
         choices:[ {id:'combat_shield', name:'Combat shield', cost:2, costMode:'per-each', statMods:{Inv:'6++'}} ]},
-      { id:'retinue_mount', label:'Musi dopasować mount do przyłączonego bohatera (Retinue):', mode:'pick-one', scope:'each-model',
-        note:'Tylko jeśli przyłączony model ma jump pack / bike / jetbike — squad bierze to samo.',
+      { id:'retinue_mount', label:'Cały oddział bierze mount pasujący do bohatera (Retinue):', mode:'pick-one', scope:'unit',
+        note:'All-or-nothing dla całego oddziału. Tylko jeśli przyłączony model ma jump pack / bike / jetbike — squad bierze to samo (koszt ×liczba modeli).',
         choices:[
-          {id:'jump_pack',    name:'Legion Warhawk jump pack',  cost:10, costMode:'per-each'},
-          {id:'spatha_bike',  name:'Legion Spatha combat bike', cost:10, costMode:'per-each'},
-          {id:'scimitar_jet', name:'Legion Scimitar jetbike',   cost:30, costMode:'per-each'},
+          {id:'jump_pack',    name:'Legion Warhawk jump pack',  cost:10, costMode:'per-model'},
+          {id:'spatha_bike',  name:'Legion Spatha combat bike', cost:10, costMode:'per-model'},
+          {id:'scimitar_jet', name:'Legion Scimitar jetbike',   cost:30, costMode:'per-model'},
         ]},
     ],
   },
@@ -1246,7 +1246,7 @@ const HERESY_UNITS = [
     options:[
       { id:'extra', label:'May include up to 10 additional Grey Stalkers:', mode:'add-models', scope:'unit', min:0, max:10,
         choices:[ {id:'grey_stalker', name:'Grey Stalker', cost:12, costMode:'per-model'} ]},
-      { id:'unit_gear', label:'The entire unit may take one of:', mode:'pick-one', scope:'each-model',
+      { id:'unit_gear', label:'The entire unit may take one of:', mode:'pick-one', scope:'unit',
         choices:[
           {id:'bolter',        name:'Bolter',        cost:1, costMode:'per-model'},
           {id:'combat_shield', name:'Combat shield', cost:1, costMode:'per-model', statMods:{Inv:'6++'}},
