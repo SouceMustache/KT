@@ -264,6 +264,17 @@ function modelCount(e){
 }
 function maxAddModels(u){ let m=0; (u.options||[]).forEach(o=>{ if(o.mode==='add-models')m+=(o.max||0); }); return m; }
 function ratioAllowed(o,models){ const per=(o.ratio&&o.ratio.per)||1; const cnt=(o.ratio&&o.ratio.count)||1; return Math.floor(models/per)*cnt; }
+// wspólna pula slotów broni: konkurujące ratio-swapy współdzielą limit = liczba modeli
+function optCount(e,o){ const s=e.sel[o.id]; if(!s||typeof s!=='object')return 0; return Object.values(s).reduce((a,b)=>a+b,0); }
+function poolUsage(e,u,poolId){ let n=0; (u.options||[]).forEach(o=>{ if(o.mode==='ratio-swap'&&o.pools&&o.pools.indexOf(poolId)>=0)n+=optCount(e,o); }); return n; }
+function effAllowed(e,o){ const u=unitById(e.unitId); const models=modelCount(e); let cap=ratioAllowed(o,models);
+  if(o.pools&&o.pools.length){ o.pools.forEach(p=>{ const others=poolUsage(e,u,p)-optCount(e,o); cap=Math.min(cap, models-others); }); }
+  return Math.max(0,cap); }
+function reconcileRatios(e){ const u=unitById(e.unitId); if(!u)return;
+  (u.options||[]).forEach(o=>{ if(o.mode!=='ratio-swap')return; const s=e.sel[o.id]; if(!s||typeof s!=='object')return;
+    const al=effAllowed(e,o); let used=Object.values(s).reduce((a,b)=>a+b,0);
+    if(used>al){ let over=used-al; Object.keys(s).sort((a,b)=>s[b]-s[a]).forEach(id=>{ if(over<=0)return; const t=Math.min(over,s[id]); s[id]-=t; over-=t; if(s[id]===0)delete s[id]; }); }
+  }); }
 
 function entryCost(e){
   const u=unitById(e.unitId); if(!u)return 0;
@@ -293,7 +304,7 @@ function entryWarnings(e){
   if(comp.min!=null&&models<comp.min)w.push('Za mało modeli ('+models+' < min '+comp.min+').');
   if(comp.max!=null&&models>comp.max)w.push('Za dużo modeli ('+models+' > max '+comp.max+').');
   (u.options||[]).forEach(o=>{
-    if(o.mode==='ratio-swap'){ const s=e.sel[o.id]||{}; const used=Object.values(s).reduce((a,b)=>a+b,0); const al=ratioAllowed(o,models);
+    if(o.mode==='ratio-swap'){ const s=e.sel[o.id]||{}; const used=Object.values(s).reduce((a,b)=>a+b,0); const al=effAllowed(e,o);
       if(used>al)w.push('„'+o.label+'" — wybrano '+used+' / dozwolone '+al+'.'); }
   });
   return w;
@@ -402,7 +413,7 @@ function stepEachModel(uid,optId,cid,d){
 function setEachExclusive(uid,optId,cid){ const e=findEntry(uid); e.sel[optId]={}; e.sel[optId][cid]=1; render();save(); }
 function stepRatio(uid,optId,cid,d){
   const e=findEntry(uid);const u=unitById(e.unitId);const o=u.options.find(x=>x.id===optId);
-  const models=modelCount(e); const al=ratioAllowed(o,models);
+  const models=modelCount(e); const al=effAllowed(e,o);
   const s=e.sel[optId]=e.sel[optId]||{}; const used=Object.values(s).reduce((a,b)=>a+b,0);
   let v=(s[cid]||0)+d;
   if(d>0&&used>=al)return; // limit
@@ -457,14 +468,15 @@ function optControl(e,o){
         '<button onclick="stepModel(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\',1)">+</button></span></div>';
     }).join('');
   } else if(o.mode==='ratio-swap'){
-    const al=ratioAllowed(o,models); const used=sel?Object.values(sel).reduce((a,b)=>a+b,0):0;
-    inner='<div class="cx-info">Dozwolone: '+used+' / '+al+' (1 na '+((o.ratio&&o.ratio.per)||1)+' modeli)</div>'+
+    const al=effAllowed(e,o); const used=sel?Object.values(sel).reduce((a,b)=>a+b,0):0;
+    const poolNote=(o.pools&&o.pools.length)?' \u00b7 wsp\u00f3lna pula: '+o.pools.join('+'):'';
+    inner='<div class="cx-info">Dozwolone: '+used+' / '+al+' (1 na '+((o.ratio&&o.ratio.per)||1)+' modeli)'+poolNote+'</div>'+
       (o.choices||[]).map(ch=>{
         const v=(sel&&sel[ch.id])||0;
         return '<div class="pick'+(v>0?' sel':'')+'"><span class="nm">'+esc(ch.name)+infoIcon(ch.name)+'</span>'+ptsHtml(ch)+
           '<span class="cnt"><button onclick="stepRatio(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\',-1)">\u2212</button>'+
           '<span class="n">'+v+'</span>'+
-          '<button onclick="stepRatio(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\',1)">+</button></span></div>'+variantBlock(e,o,ch);
+          '<button onclick="stepRatio(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\',1)"'+(used>=al?' disabled':'')+'>+</button></span></div>'+variantBlock(e,o,ch);
       }).join('');
   } else if(o.mode==='pick-one'&&o.scope==='each-model'){
     const s=(sel&&typeof sel==='object')?sel:{};
@@ -574,6 +586,7 @@ function renderEntry(e){
 }
 
 function render(){
+  STATE.entries.forEach(reconcileRatios);
   STATE.entries.forEach(reconcileRetinueMount);
   renderTotals();
   const r=document.getElementById('roster');
