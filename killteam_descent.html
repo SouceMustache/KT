@@ -328,6 +328,11 @@
   .rmodel img{width:26px;height:26px;border-radius:5px;object-fit:cover;flex:0 0 auto;background:var(--panel2);}
   .rmodel .rmname{flex:1 1 auto;min-width:0;font-size:12px;}
   .rmodel .rmstat{font-family:var(--mono);font-size:10px;color:var(--dim);}
+  .rmodel.placed{opacity:.5;}
+  .rmodel.placed img{filter:grayscale(.6);}
+  .rmodel .rmplaced{font-family:var(--mono);font-size:9px;letter-spacing:.5px;color:var(--orange);
+    border:1px solid rgba(242,160,61,.45);border-radius:4px;padding:1px 5px;flex:0 0 auto;}
+  .tteam-tab .tteam-cnt{font-family:var(--mono);font-weight:400;opacity:.8;}
   .roomrow.active{}
   .rswatch{width:12px;height:12px;border-radius:3px;flex:0 0 auto;}
   .roomrow .rname{flex:1 1 auto;min-width:0;background:var(--panel2);border:1px solid var(--line);
@@ -498,7 +503,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v240</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v241</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -2447,7 +2452,8 @@ function minimizeOpSheet(){ if(!sheetOp) return; sheetMin=true;
 function restoreOpSheet(){ if(!sheetOp){ $("#opRailTab").classList.remove("show"); return; }
   sheetMin=false; $("#opSheet").classList.remove("min","hidden"); $("#opRailTab").classList.remove("show"); bindOpSheet(); }
 function updateRailTab(){ const op=sheetOp;
-  $("#opRailName").textContent = op ? (op.npoKey&&NPO_LIB[op.npoKey] ? NPO_LIB[op.npoKey].name : (op.label||"Operative")) : "Operative"; }
+  const dc=op?opDatacard(op):null;   // NPO_LIB entry (NPO) or synthesized model card (roster op) — both carry .name
+  $("#opRailName").textContent = op ? ((dc&&dc.name) ? dc.name : (op.label||"Operative")) : "Operative"; }
 $("#opPhoto").addEventListener("click",minimizeOpSheet);
 $("#opRailTab").addEventListener("click",restoreOpSheet);
 /* ---- K2a: operative status (order / activation / injury / APL / dead) ---- */
@@ -3316,7 +3322,7 @@ function modelToCard(m){
   return {
     name:m.name||"Operative", apl:m.apl, move:m.move, save:m.sv, wounds:m.wounds,
     keywords:m.keywords||[],
-    weapons:(m.weapons||[]).map(w=>({n:w.name, t:w.type||(/(range|rng)\b/i.test(w.wr||"")?"ranged":"melee"),
+    weapons:(m.weapons||[]).map(w=>({n:w.name, t:w.type||(wpnIsRanged(w.name,w.wr)?"ranged":"melee"),
       atk:w.atk, hit:w.hit, dmg:w.dmg, wr:w.wr||""})),
     rules:(m.abilities||[]).map(a=>({n:a.name, text:(a.ap?`[${a.ap}] `:"")+(a.desc||"")+(a.restrict?` — ${a.restrict}`:"")})),
     photo:m.photo?{card:m.photo, marker:m.photo}:null
@@ -3351,11 +3357,20 @@ function objExtract(src,from){ let i=src.indexOf("{",from); const open=i; let de
     if(c==='{')depth++; else if(c==='}'){ depth--; if(depth===0) return src.slice(open,i+1); } }
   return null; }
 function wpnIsRanged(name,wr){ const nl=(name||"").toLowerCase(); wr=wr||"";
+  // Ported 1:1 from the Planner. Many ranged weapons (plasma gun, bolter, meltagun…) have
+  // unlimited range and so carry no "Range X\"" rule — inferring melee from the absence of a
+  // Range keyword is wrong. Default to RANGED unless the name matches a melee hint.
   if(/\(point-blank\)|\(stab\)|\(strike\)|\(sweep\)/.test(nl)) return false;
-  if(/\(ranged\)|throwing/.test(nl)) return true;
+  if(/\(ranged\)|\(part matter\)|\(quake\)|throwing/.test(nl)) return true;
   if(/\bRange\s/i.test(wr)) return true;
   if(/\b(Blast|Torrent|Saturate|Devastating|Hot|Bipod|Beam|Silent|Seek|Heavy)\b/i.test(wr)) return true;
-  return false; }
+  const meleeHints=['knife','knives','blade','claw','fist','sword','axe','hammer','maul','gauntlet',
+    'talon','fang','tail','pick','hatchet','chain','knux','skewer','ripper','spear','staff','stave',
+    'bayonet','shield','xenophase','concussion','stab','scythe','ram','power weapon','power fist',
+    'power maul','plasma weapon','entrencher','runic','tongue','tools','crushing','maw','bludgeon',
+    'flail','whip','lash','tentacle','pincer','mandible','horn','tusk','hoof','rend'];
+  for(let i=0;i<meleeHints.length;i++){ if(nl.indexOf(meleeHints[i])!==-1) return false; }
+  return true; }
 function codexFacKey(fac){ if(!S.codex) return fac;
   const mapped=FAC_LEGACY[fac]||fac;
   if(S.codex[mapped]) return mapped;
@@ -3408,25 +3423,36 @@ async function syncCodex(btn){ const t0=btn?btn.textContent:""; if(btn){ btn.tex
   catch(err){ note("Codex sync failed: "+(err.message||err)+" — open the app from GitHub Pages (same origin as the viewer)."); }
   finally{ if(btn){ btn.textContent=t0; btn.disabled=false; } } }
 function curRosterTeam(){ return (S.roster.teams||[]).find(t=>t.id===S.rosterEdit) || S.roster.teams[0] || null; }
+// A roster model is "placed" if a board op links back to it via rosterRef.modelId. Mirrors the
+// Planner's it.modelId==m.id check so we can dim already-deployed models (avoid double placement)
+// and show a placed/limit count per team. Limit = team.cap if set, else the model count.
+function placedOpForModel(mid){ return (S.items||[]).find(it=>it.kind==="op"&&it.rosterRef&&it.rosterRef.modelId===mid) || null; }
+function teamPlacedCount(t){ return (t.models||[]).filter(m=>placedOpForModel(m.id)).length; }
+function teamCap(t){ return (t.cap!=null?t.cap:(t.models||[]).length); }
 function buildRoster(){
   const tabs=$("#rosterTeams"), list=$("#rosterModels"); if(!tabs||!list) return;
   const teams=S.roster.teams||[];
   if(!teams.length){ tabs.replaceChildren(); list.innerHTML=`<div class="dwhint">No roster loaded.</div>`; return; }
   if(!curRosterTeam()) S.rosterEdit=teams[0].id;
-  tabs.innerHTML=teams.map(t=>`<button class="tteam-tab${t.id===S.rosterEdit?" on":""}" data-team="${t.id}">${esc(t.name)} · ${t.side==="mine"?"Mine":"Enemy"}</button>`).join("");
+  tabs.innerHTML=teams.map(t=>`<button class="tteam-tab${t.id===S.rosterEdit?" on":""}" data-team="${t.id}">${esc(t.name)} · ${t.side==="mine"?"Mine":"Enemy"} <b class="tteam-cnt">${teamPlacedCount(t)}/${teamCap(t)}</b></button>`).join("");
   const team=curRosterTeam();
   list.innerHTML=(team.models||[]).map(m=>{
-    const on=S.armedModel&&S.armedModel.id===m.id;
-    return `<div class="rmodel${on?" on":""}" data-model="${m.id}">
+    const on=S.armedModel&&S.armedModel.id===m.id, placed=!!placedOpForModel(m.id);
+    return `<div class="rmodel${on?" on":""}${placed?" placed":""}" data-model="${m.id}">
       ${m.photo?`<img src="${m.photo}" alt="">`:`<span class="rmodel img"></span>`}
       <span class="rmname">${esc(m.name||"Model")}</span>
-      <span class="rmstat">APL${m.apl} · M${m.move}" · ${m.wounds}W</span></div>`;
+      ${placed?`<span class="rmplaced" title="Already on the board — tap to open its card">PLACED</span>`
+              :`<span class="rmstat">APL${m.apl} · M${m.move}" · ${m.wounds}W</span>`}</div>`;
   }).join("") || `<div class="dwhint">This team has no operatives.</div>`;
 }
 $("#rosterTeams").addEventListener("click",e=>{ const b=e.target.closest("[data-team]"); if(!b) return;
   S.rosterEdit=b.dataset.team; S.armedModel=null; buildRoster(); });
 $("#rosterModels").addEventListener("click",e=>{ const r=e.target.closest("[data-model]"); if(!r) return;
   const team=curRosterTeam(); const m=team&&(team.models||[]).find(x=>x.id===r.dataset.model); if(!m) return;
+  const already=placedOpForModel(m.id);
+  if(already){ // already on the board — open its card rather than arming a duplicate (Planner: select(placed.id))
+    S.armedModel=null; buildRoster(); openOpSheet(already,true);
+    note(`${m.name} is already on the board — opened its card. Move that one instead of placing a duplicate.`,true); return; }
   S.armedModel = (S.armedModel&&S.armedModel.id===m.id) ? null : m;
   if(S.armedModel) S.armedModel._side=team.side;
   buildRoster(); note(S.armedModel?`Armed ${m.name}. Tap a board to place it.`:"Disarmed.",true); });
