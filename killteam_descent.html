@@ -350,6 +350,7 @@
   .nporow .nw{font-family:var(--mono);font-size:10px;color:var(--dim);flex:0 0 auto;}
   .nporow .mini,.npopool .mini{padding:4px 9px;font-size:12px;flex:0 0 auto;}
   .npopool{border-top:1px solid rgba(42,51,61,.5);}
+  .npopool.spent .nname{opacity:.5;}
   .npopool.armed{background:rgba(242,160,61,.1);border-radius:6px;}
   .npopool.armed .nname{color:var(--orange);font-weight:600;}
   .npopool .nrem{border-color:rgba(229,72,77,.3);color:var(--red);}
@@ -497,7 +498,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v238</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v240</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -671,6 +672,14 @@
         <div class="dwsec-h">NPOs
           <span class="dwhint" id="npoBudgetTag"></span>
         </div>
+        <div class="dwrow" style="margin-top:2px">
+          <span class="dwhint">Wounds budget:</span>
+          <button class="mini" id="npoBudgetDown">－5</button>
+          <span id="npoBudgetVal" class="dwhint" style="min-width:46px;text-align:center"></span>
+          <button class="mini" id="npoBudgetUp">＋5</button>
+          <button class="mini" id="npoBudgetReset">Reset</button>
+        </div>
+        <div class="dwhint">Raise/lower to make the game easier or harder (mission default marked with *).</div>
         <div class="dwrow">
           <button class="mini" id="npoRoll">🎲 Roll 2D6</button>
           <button class="mini" id="npoClearPool">Clear pool</button>
@@ -1008,6 +1017,7 @@ const S = {
   placeBoard:null,    // which board id new objects/rooms attach to (defaults to lower)
   selInst:null,       // id of selected placed object
   npoPool:[],         // chosen NPO datacard keys forming the pool (respecting budget)
+  npoBudgetOverride:null, // user-set Wounds budget; null = use the mission/pack default
   npoTheme:"tomb",    // pool theme — Tomb World OR Core, not mixed (Shadowhunt rule)
   armedNPO:null,      // datacard key armed for placement (tap board to drop)
   roster:{teams:[]},  // player roster (kt-roster.json shape) — reused from the Planner
@@ -2212,6 +2222,10 @@ svg.addEventListener("pointerdown",e=>{
   // If an NPO datacard is armed, tap the board to place it with its stats + photo.
   if(S.armedNPO){
     const b=boardAt(w.x,w.y);
+    // Nemesis is placed separately (not drawn from the finite pool), so it isn't gated.
+    if(b && S.armedNPO!==(S.pack&&S.pack.nemesis_key) && npoAvail(S.armedNPO)<=0){
+      note(`No ${NPO_LIB[S.armedNPO].name} left in the pool.`,true); S.armedNPO=null; buildNPOSection();
+      drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
     if(b){ const op=makeNPO(S.armedNPO,(S.placeBoard||b.id),w.x,w.y);
       if(op){ S.items.push(op); S.selected=op.id; S.armedNPO=null; save(); renderItems(); renderOverlay();
         if($("#drawer")&&!$("#drawer").classList.contains("hidden")) buildNPOSection();
@@ -2392,7 +2406,9 @@ function makeOp(side,boardId,x,y){
 // Build an operative from an NPO datacard: stats, photo, wounds tracker, behaviour.
 function makeNPO(key,boardId,x,y){
   const dc=NPO_LIB[key]; if(!dc) return null;
-  const baseMm = key==="nightbringer" ? 80 : (dc.cat==="tomb"?40:32);
+  // Per-NPO base diameters (mm). Falls back to category default (tomb 40 / core 32).
+  const NPO_BASE_MM={ scarab:40, crawler:50, macrocyte:28, warrior:32 };
+  const baseMm = key==="nightbringer" ? 80 : (NPO_BASE_MM[key] ?? (dc.cat==="tomb"?40:32));
   // Per-Nemesis eye height (inches): Nightbringer is ~7.8" tall to the scythe tip; head/eyes
   // sit ~2.5" below that. Tune here if it reads wrong on the board.
   const eyeIn = key==="nightbringer" ? 5.3 : null;
@@ -2763,7 +2779,7 @@ function openPicker(){ renderPackList(); $("#picker").classList.remove("hidden")
 /* ------------------------------------------------------------------ load / persist */
 function loadPack(id){
   S.packId=id; S.pack=PACKS[id]; S.items=[]; S.markers=[]; S.nextPair=1;
-  S.insts=[]; S.rulers=[]; S.rooms=[]; S.selInst=null; S.armedPrefab=null; S.activeRoom=null; S.npoPool=[]; S.armedNPO=null; S.armedModel=null; S.moveTrail=null; S.undo=[]; S.los={a:null,b:null,r:null};
+  S.insts=[]; S.rulers=[]; S.rooms=[]; S.selInst=null; S.armedPrefab=null; S.activeRoom=null; S.npoPool=[]; S.npoBudgetOverride=null; S.armedNPO=null; S.armedModel=null; S.moveTrail=null; S.undo=[]; S.los={a:null,b:null,r:null};
   S.selected=null; S.traverse=null; S.opTab="stats"; S._themeConfirm=null;
   initMission(); S.reanim=null; S.advisorPick=null;
   if($("#missionPanel")){ $("#missionPanel").classList.add("hidden"); }
@@ -2786,7 +2802,7 @@ function save(){
     const boardMaps={}; (S.boards||[]).forEach(b=>{ if(b.map) boardMaps[b.id]={map:b.map,mapOX:b.mapOX,mapOY:b.mapOY,mapSX:b.mapSX,mapSY:b.mapSY}; });
     localStorage.setItem(AKEY,JSON.stringify({packId:S.packId,items:S.items,markers:S.markers,
       nextPair:S.nextPair,locked:S.locked,lockObj:S.lockObj,insts:S.insts,prefabs:S.prefabs,
-      rulers:S.rulers,rooms:S.rooms,npoPool:S.npoPool,npoTheme:S.npoTheme,boardMaps,mission:S.mission,reanim:S.reanim,
+      rulers:S.rulers,rooms:S.rooms,npoPool:S.npoPool,npoBudgetOverride:S.npoBudgetOverride,npoTheme:S.npoTheme,boardMaps,mission:S.mission,reanim:S.reanim,
       ployFac:S.ployFac,ployUse:S.ployUse})); }catch(_){}
 }
 function restore(){
@@ -2796,7 +2812,7 @@ function restore(){
   S.packId=d.packId; S.pack=PACKS[d.packId]; S.items=d.items||[];
   S.markers=d.markers||[]; S.nextPair=d.nextPair||1; S.locked=(d.locked!==false);
   S.lockObj=(d.lockObj!==false); S.locked=S.lockObj; S.insts=d.insts||[]; S.prefabs=d.prefabs||{};
-  S.rulers=d.rulers||[]; S.rooms=d.rooms||[]; S.npoPool=d.npoPool||[]; S.npoTheme=d.npoTheme||"tomb"; S.selected=null; S.traverse=null; S.selInst=null;
+  S.rulers=d.rulers||[]; S.rooms=d.rooms||[]; S.npoPool=d.npoPool||[]; S.npoBudgetOverride=(d.npoBudgetOverride!==undefined?d.npoBudgetOverride:null); S.npoTheme=d.npoTheme||"tomb"; S.selected=null; S.traverse=null; S.selInst=null;
   S.mission=(d.mission&&d.mission.missionIdx!=null)?d.mission:null; if(!S.mission) initMission();
   S.ployFac=d.ployFac||{mine:"",enemy:""}; S.ployUse=d.ployUse||{};
   S.reanim=d.reanim||null;
@@ -3221,7 +3237,7 @@ function layoutPayload(withMaps){
     mapOX:b.mapOX||0, mapOY:b.mapOY||0, mapSX:b.mapSX||1, mapSY:b.mapSY||1}));
   return { v:1, kind:withMaps?"kt-descent-layouts":"kt-descent-layout", packId:S.packId,
     boards, insts:S.insts, markers:S.markers, items:S.items, rooms:S.rooms, rulers:S.rulers,
-    npoPool:S.npoPool, npoTheme:S.npoTheme, nextPair:S.nextPair, mission:S.mission, reanim:S.reanim,
+    npoPool:S.npoPool, npoBudgetOverride:S.npoBudgetOverride, npoTheme:S.npoTheme, nextPair:S.nextPair, mission:S.mission, reanim:S.reanim,
     ployFac:S.ployFac, ployUse:S.ployUse, objects:usedPrefabDefs() };
 }
 function downloadJSON(obj, name, msg){
@@ -3444,6 +3460,7 @@ function importLayout(d){
   if(d.objects) loadPrefabLibrary(d.objects);
   S.insts=d.insts||[]; S.markers=d.markers||[]; S.items=d.items||[];
   S.rooms=d.rooms||[]; S.rulers=d.rulers||[]; S.npoPool=d.npoPool||[]; S.nextPair=d.nextPair||1;
+  S.npoBudgetOverride=(d.npoBudgetOverride!==undefined?d.npoBudgetOverride:null);
   if(d.npoTheme) S.npoTheme=d.npoTheme;
   S.mission=(d.mission&&d.mission.missionIdx!=null)?d.mission:S.mission; S.reanim=d.reanim||null;
   if(d.ployFac) S.ployFac=d.ployFac; if(d.ployUse) S.ployUse=d.ployUse;
@@ -3497,15 +3514,22 @@ $("#instDone").addEventListener("click",()=>{ S.selInst=null; hideInstBar(); ren
 /* ================================================================== PHASE 3: NPO pool
    Build a pool from the pack roster up to the Wounds budget, roll 2D6 to draw a category,
    arm a random pooled unit from it, and place datacard-driven NPOs on the board. */
-function npoBudget(){ return (S.pack&&S.pack.npoBudget)||110; }
+function packBudget(){ return (S.pack&&S.pack.npoBudget)||110; }
+function npoBudget(){ return S.npoBudgetOverride!=null ? S.npoBudgetOverride : packBudget(); }
 function poolWounds(){ return S.npoPool.reduce((s,k)=>s+(NPO_LIB[k]?NPO_LIB[k].wounds:0),0); }
 function npoInKillzone(){ return S.items.filter(i=>i.side==="npo" && !i.off).length; }
+// The pool is a FINITE collection: a unit already on the board is spent and no longer
+// available to arm/roll/place. Availability = pooled copies of a key minus copies in play.
+function npoPlaced(key){ return S.items.filter(i=>i.side==="npo" && i.npoKey===key).length; }
+function npoAvail(key){ const inPool=S.npoPool.filter(k=>k===key).length; return inPool-npoPlaced(key); }
 
 function buildNPOSection(){
   const sec=$("#npoSec"); if(!sec) return;
   if(!S.pack||!S.pack.npoRoster){ sec.style.display="none"; return; } sec.style.display="";
   const used=poolWounds(), budget=npoBudget();
-  $("#npoBudgetTag").textContent=`${used} / ${budget}W · ${npoInKillzone()}/${S.pack.npoLimit||10} on board`;
+  const overTag = S.npoBudgetOverride!=null && S.npoBudgetOverride!==packBudget() ? " *" : "";
+  $("#npoBudgetTag").textContent=`${used} / ${budget}W${overTag} · ${npoInKillzone()}/${S.pack.npoLimit||10} on board`;
+  const bv=$("#npoBudgetVal"); if(bv) bv.textContent=`${budget}W${overTag}`;
   $$("#npoThemePick .mini").forEach(b=>b.classList.toggle("on",b.dataset.theme===S.npoTheme));
   // roster filtered to the chosen theme (Tomb World or Core) — a pool is single-theme
   const rhost=$("#npoRoster"); rhost.replaceChildren();
@@ -3525,11 +3549,15 @@ function buildNPOSection(){
   $("#npoPoolCount").textContent = S.npoPool.length?`(${S.npoPool.length})`:"(empty)";
   const counts={}; S.npoPool.forEach(k=>counts[k]=(counts[k]||0)+1);
   Object.keys(counts).forEach(key=>{ const dc=NPO_LIB[key];
-    const el=document.createElement("div"); el.className="npopool"+(S.armedNPO===key?" armed":"");
-    el.innerHTML=`<span class="nname">${esc(dc.name)} ×${counts[key]}</span>
-      <button class="mini narm" data-k="${key}">${S.armedNPO===key?"Armed":"Place"}</button>
+    const avail=npoAvail(key), placed=npoPlaced(key);
+    const el=document.createElement("div"); el.className="npopool"+(S.armedNPO===key?" armed":"")+(avail<=0?" spent":"");
+    const availTag = placed>0 ? ` <span class="dwhint">(${avail} left)</span>` : "";
+    el.innerHTML=`<span class="nname">${esc(dc.name)} ×${counts[key]}${availTag}</span>
+      <button class="mini narm" data-k="${key}"${avail<=0?" disabled":""}>${S.armedNPO===key?"Armed":"Place"}</button>
       <button class="mini nrem" data-k="${key}">－</button>`;
-    el.querySelector(".narm").addEventListener("click",()=>{ S.armedNPO=S.armedNPO===key?null:key; buildNPOSection();
+    el.querySelector(".narm").addEventListener("click",()=>{
+      if(avail<=0){ note(`All ${dc.name} from the pool are already on the board.`); return; }
+      S.armedNPO=S.armedNPO===key?null:key; buildNPOSection();
       note(S.armedNPO?`${dc.name} armed — tap the ${S.placeBoard} board to place it.`:"Disarmed.",true); });
     el.querySelector(".nrem").addEventListener("click",()=>{ const i=S.npoPool.indexOf(key);
       if(i>=0){ S.npoPool.splice(i,1); if(S.armedNPO===key&&!S.npoPool.includes(key)) S.armedNPO=null; save(); buildNPOSection(); } });
@@ -3546,6 +3574,12 @@ $("#npoThemePick").addEventListener("click",e=>{ const b=e.target.closest("[data
   S._themeConfirm=null; S.npoTheme=b.dataset.theme; save(); buildNPOSection();
 });
 $("#npoClearPool").addEventListener("click",()=>{ S.npoPool=[]; S.armedNPO=null; save(); buildNPOSection(); note("Pool cleared."); });
+function setNpoBudget(v){ v=Math.max(0,Math.min(400,v)); S.npoBudgetOverride = (v===packBudget()? null : v);
+  save(); buildNPOSection();
+  if(poolWounds()>npoBudget()) note(`Budget now ${npoBudget()}W — the current pool (${poolWounds()}W) exceeds it; trim it to match.`); }
+$("#npoBudgetDown").addEventListener("click",()=>setNpoBudget(npoBudget()-5));
+$("#npoBudgetUp").addEventListener("click",()=>setNpoBudget(npoBudget()+5));
+$("#npoBudgetReset").addEventListener("click",()=>{ S.npoBudgetOverride=null; save(); buildNPOSection(); note(`Budget reset to mission default (${packBudget()}W).`,true); });
 $("#npoRoll").addEventListener("click",()=>{
   if(!S.pack||!S.pack.activation){ note("This pack has no activation table."); return; }
   if(!S.npoPool.length){ note("Build a pool first, then roll to draw from it."); return; }
@@ -3553,8 +3587,8 @@ $("#npoRoll").addEventListener("click",()=>{
   const row=S.pack.activation.find(r=>{ const [a,b]=r.roll.split("-").map(Number); return roll>=a&&roll<=b; });
   // candidates from the active theme's column, that are actually in the pool
   const col = S.npoTheme==="core" ? (row.core||[]) : (row.tomb||[]);
-  const cands=col.filter(k=>S.npoPool.includes(k));
-  if(!cands.length){ note(`Rolled ${roll} (category ${row.roll}) — no pooled ${S.npoTheme==="core"?"Core":"Tomb World"} unit in that category. Roll again or add units.`); return; }
+  const cands=col.filter(k=>S.npoPool.includes(k) && npoAvail(k)>0);
+  if(!cands.length){ note(`Rolled ${roll} (category ${row.roll}) — no available ${S.npoTheme==="core"?"Core":"Tomb World"} unit in that category (per the rules, roll again / use the next category).`); return; }
   const pick=cands[Math.floor(Math.random()*cands.length)];
   S.armedNPO=pick; buildNPOSection();
   note(`Rolled ${roll} → category ${row.roll} → ${NPO_LIB[pick].name} armed. Tap the board to place it.`,true);
