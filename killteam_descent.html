@@ -433,6 +433,16 @@
   .tps{display:flex;gap:4px;flex:0 0 auto;}
   .tp{width:24px;height:24px;border-radius:50%;padding:0;-webkit-appearance:none;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:11px;}
   .tp.on{background:var(--orange);border-color:var(--orange);color:#0d1013;}
+  /* Per-battle limited-use dots (ported 1:1 from the Viewer's equipment tracker). Simple = N
+     independent dots; pairs = grouped labelled dots (e.g. 2 smoke / 2 stun, 2 frag / 2 krak). */
+  .eq-track{display:flex;align-items:center;gap:6px;flex:0 0 auto;}
+  .eq-track-pairs{gap:10px;}
+  .eq-pair{display:flex;gap:4px;}
+  .eq-dot{width:24px;height:24px;border-radius:50%;border:1px solid var(--line);background:transparent;
+    color:var(--muted);font:inherit;font-size:11px;font-weight:800;cursor:pointer;padding:0;
+    display:flex;align-items:center;justify-content:center;-webkit-user-select:none;flex-shrink:0;}
+  .eq-dot-lbl{font-size:9px;letter-spacing:.02em;}
+  .eq-dot.used{background:var(--orange);border-color:var(--orange);color:#0d1013;}
   .pitem.rule{background:rgba(255,255,255,.03);}
   .pitem.rule .pitem-n{color:var(--orange);}
   .pitem-b{padding:0 12px 12px;font-size:13px;color:var(--muted);line-height:1.5;white-space:pre-wrap;}
@@ -511,7 +521,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v242</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v243</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -536,6 +546,7 @@
       <span class="subseg hidden" id="markerSub">
         <button class="mini" id="addEntry">＋ Entryway</button>
         <button class="mini" id="addTele">＋ Teleport</button>
+        <button class="mini" id="addSmoke" title="Arm smoke: tap board to drop (20mm + 1&quot; halo), tap a smoke to remove">＋ Smoke</button>
         <button class="mini" id="lockToggle" title="Lock markers in place">🔒 Locked</button>
       </span>
       <!-- op side picker, shown only while the Add-operative tool is active. Tap the board
@@ -1044,6 +1055,8 @@ const S = {
   ployUse:{},         // per-TP ploy usage dots {"side:fac:type:i":[1,2,..]}
   eq:null,            // synced equipment {factionKey:[{id,name,desc}]} for the OPS Equipment tab (ported from the Planner)
   eqPick:{},          // selected equipment per side {"side:fac":[ids]}
+  eqTrack:{},         // per-battle limited-use dots {uid:{key:true}} — ported from the Viewer's tracker
+  armedSmoke:null,    // truthy while the ＋Smoke tool is armed (tap board to drop / tap a smoke to remove)
   cp:{m:0,e:0},       // command points per side — scoreboard-equivalent, shown in the mission panel
   moveTrail:null,     // {x0,y0,x1,y1,t} while dragging a model — shows trail + distance
   los:{a:null,b:null,r:null},  // Line-of-sight tool: shooter id, target id, last result
@@ -1811,6 +1824,16 @@ function renderMarkers(){
       g.appendChild(attr(Object.assign(mk("text"),{textContent:m.pair}),
         {x:m.x,y:m.y+3.5,"text-anchor":"middle","font-size":11,"font-family":"var(--mono)",
          fill:"var(--orange)","font-weight":700,"pointer-events":"none"}));
+    }else if(m.mtype==="smoke"){
+      // Smoke: 20mm marker (r=10mm) + a 1" halo ring showing the obscuring area (1" horizontal).
+      const rH=1*PPI, rB=(10/25.4)*PPI;
+      g.appendChild(attr(mk("circle"),{cx:m.x,cy:m.y,r:rH,fill:"rgba(150,158,168,.10)",
+        stroke:"var(--dim)","stroke-width":1,opacity:.7,"stroke-dasharray":"4 4","vector-effect":"non-scaling-stroke"}));
+      g.appendChild(attr(mk("circle"),{cx:m.x,cy:m.y,r:rB,fill:"rgba(150,158,168,.35)",
+        stroke:"var(--muted)","stroke-width":1.6,"vector-effect":"non-scaling-stroke"}));
+      g.appendChild(attr(Object.assign(mk("text"),{textContent:"S"}),
+        {x:m.x,y:m.y+4,"text-anchor":"middle","font-size":11,"font-family":"var(--mono)",
+         fill:"var(--muted)","font-weight":700,"pointer-events":"none"}));
     }else{
       // 60mm teleport pad drawn at its true footprint — the disc IS the "on the pad" area
       const pr=padRadIn(m)*PPI;
@@ -2237,6 +2260,18 @@ svg.addEventListener("pointerdown",e=>{
     drag={type:"pan",sx:e.clientX,sy:e.clientY,vb:{...S.vb}}; return;
   }
 
+  // Smoke tool armed: tap a smoke marker to remove it, or tap a board to drop a new one
+  // (20mm marker + 1" halo). Stays armed so several can be placed/cleared in a row.
+  if(S.armedSmoke){
+    const hit=markerAt(w);
+    if(hit&&hit.mtype==="smoke"){ S.markers=S.markers.filter(m=>m.id!==hit.id); save(); renderMarkers();
+      note("Smoke removed.",true); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
+    const b=boardAt(w.x,w.y);
+    if(b){ S.markers.push({kind:"marker",mtype:"smoke",id:crypto.randomUUID(),board:b.id,x:w.x,y:w.y});
+      save(); renderMarkers(); note("Smoke placed (1\" halo). Tap a smoke to remove; ＋Smoke again to disarm.",true); }
+    else note("Tap inside a killzone to place smoke.",true);
+    drag={type:"pan",sx:e.clientX,sy:e.clientY}; return;
+  }
   // If an NPO datacard is armed, tap the board to place it with its stats + photo.
   if(S.armedNPO){
     const b=boardAt(w.x,w.y);
@@ -2284,7 +2319,7 @@ svg.addEventListener("pointerdown",e=>{
   if(S.mode==="marker"){
     const m=markerAt(w);
     if(m){
-      if(S.lockObj){ note("Pads are locked. Unlock (🔓) to move them."); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
+      if(S.lockObj && m.mtype!=="smoke"){ note("Pads are locked. Unlock (🔓) to move them."); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
       drag={type:"marker",m,ox:w.x-m.x,oy:w.y-m.y,moved:false,x0:m.x,y0:m.y,board0:m.board}; return;
     }
     drag={type:"pan",sx:e.clientX,sy:e.clientY}; return;
@@ -2320,7 +2355,7 @@ svg.addEventListener("pointerdown",e=>{
     renderOverlay(); updateTraverseChip(); openOpSheet(t); hud("Selected"); return; }
   const m=markerAt(w);
   if(m && S.mode==="move"){
-    if(S.lockObj){ note(`Pads are locked. Unlock (🔓) to move them.`); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
+    if(S.lockObj && m.mtype!=="smoke"){ note(`Pads are locked. Unlock (🔓) to move them.`); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
     drag={type:"marker",m,ox:w.x-m.x,oy:w.y-m.y,moved:false,x0:m.x,y0:m.y,board0:m.board}; return;
   }
 
@@ -2713,6 +2748,12 @@ $("#opDelete").addEventListener("click",()=>{ if(!sheetOp) return;
 
 $("#addEntry").addEventListener("click",()=>{ const w=S._lastWorld||[centreX(),0]; placeEntrywayPair(w[0]); });
 $("#addTele").addEventListener("click",()=>{ const w=S._lastWorld||[centreX(),0]; placeTeleportPair(w[0]); });
+$("#addSmoke").addEventListener("click",()=>{
+  S.armedSmoke=!S.armedSmoke;
+  if(S.armedSmoke){ S.armedNPO=null; S.armedModel=null; S.armedPrefab=null; }
+  $("#addSmoke").classList.toggle("on",!!S.armedSmoke);
+  note(S.armedSmoke?"Smoke armed — tap the board to drop (20mm + 1\" halo); tap a smoke to remove.":"Smoke tool off.",true);
+});
 $("#lockToggle").addEventListener("click",()=>{ setLock(!S.locked);
   note(S.locked?"Locked — objects & pads won't move by accident.":"Unlocked — drag to reposition.",true); });
 function centreX(){ const b=S.boards[0]; return b?b.ox+b.wpx/2:0; }
@@ -2822,7 +2863,7 @@ function save(){
     localStorage.setItem(AKEY,JSON.stringify({packId:S.packId,items:S.items,markers:S.markers,
       nextPair:S.nextPair,locked:S.locked,lockObj:S.lockObj,insts:S.insts,prefabs:S.prefabs,
       rulers:S.rulers,rooms:S.rooms,npoPool:S.npoPool,npoBudgetOverride:S.npoBudgetOverride,npoTheme:S.npoTheme,boardMaps,mission:S.mission,reanim:S.reanim,
-      ployFac:S.ployFac,ployUse:S.ployUse,eqPick:S.eqPick,cp:S.cp})); }catch(_){}
+      ployFac:S.ployFac,ployUse:S.ployUse,eqPick:S.eqPick,eqTrack:S.eqTrack,cp:S.cp})); }catch(_){}
 }
 function restore(){
   let d=null;
@@ -2834,7 +2875,7 @@ function restore(){
   S.rulers=d.rulers||[]; S.rooms=d.rooms||[]; S.npoPool=d.npoPool||[]; S.npoBudgetOverride=(d.npoBudgetOverride!==undefined?d.npoBudgetOverride:null); S.npoTheme=d.npoTheme||"tomb"; S.selected=null; S.traverse=null; S.selInst=null;
   S.mission=(d.mission&&d.mission.missionIdx!=null)?d.mission:null; if(!S.mission) initMission();
   S.ployFac=d.ployFac||{mine:"",enemy:""}; S.ployUse=d.ployUse||{};
-  S.eqPick=d.eqPick||{};
+  S.eqPick=d.eqPick||{}; S.eqTrack=d.eqTrack||{};
   S.cp=(d.cp&&typeof d.cp==="object")?{m:+d.cp.m||0,e:+d.cp.e||0}:{m:0,e:0};
   S.reanim=d.reanim||null;
   resolveBoards();
@@ -3272,7 +3313,7 @@ function layoutPayload(withMaps){
   return { v:1, kind:withMaps?"kt-descent-layouts":"kt-descent-layout", packId:S.packId,
     boards, insts:S.insts, markers:S.markers, items:S.items, rooms:S.rooms, rulers:S.rulers,
     npoPool:S.npoPool, npoBudgetOverride:S.npoBudgetOverride, npoTheme:S.npoTheme, nextPair:S.nextPair, mission:S.mission, reanim:S.reanim,
-    ployFac:S.ployFac, ployUse:S.ployUse, eqPick:S.eqPick, cp:S.cp, objects:usedPrefabDefs() };
+    ployFac:S.ployFac, ployUse:S.ployUse, eqPick:S.eqPick, eqTrack:S.eqTrack, cp:S.cp, objects:usedPrefabDefs() };
 }
 function downloadJSON(obj, name, msg){
   const blob=new Blob([JSON.stringify(obj)],{type:"application/json"});
@@ -3528,7 +3569,7 @@ function importLayout(d){
   if(d.npoTheme) S.npoTheme=d.npoTheme;
   S.mission=(d.mission&&d.mission.missionIdx!=null)?d.mission:S.mission; S.reanim=d.reanim||null;
   if(d.ployFac) S.ployFac=d.ployFac; if(d.ployUse) S.ployUse=d.ployUse;
-  if(d.eqPick) S.eqPick=d.eqPick;
+  if(d.eqPick) S.eqPick=d.eqPick; if(d.eqTrack) S.eqTrack=d.eqTrack;
   if(d.cp&&typeof d.cp==="object") S.cp={m:+d.cp.m||0,e:+d.cp.e||0};
   S.selected=null; S.selInst=null; S.traverse=null; S.advisorPick=null; S.activeRoom=S.rooms[0]?S.rooms[0].id:null;
   // reapply per-board transform; only overwrite the map image when the file actually carries one
@@ -3860,13 +3901,65 @@ function renderPloys(){
         <span class="miss-item-chevron ${ex?"open":""}">&#9658;</span></div>
       <div class="pitem-b" style="${ex?"":"display:none"}">${esc(htmlToText(p.desc||""))}</div></div>`; }).join(""):"";
   $("#ployList").innerHTML=rules+sec("Strategy ploys","s",F.strat||[])+sec("Firefight ploys","f",F.fight||[]); }
+// ---- Universal equipment (faction-agnostic) ----
+// COMPILED from universal_eq.txt — FLAG FOR MANUAL VERIFICATION against the physical source.
+// Only the grenades Daniel uses are carried here; each has a per-battle limited-use `track`
+// (reusing the Viewer's tracker widget). Utility = pick two of smoke/stun; Explosive = pick two
+// of frag/krak — so both are modelled as `pairs`: tick the two you actually took as they're used.
+const UNIV_EQ=[
+  { id:"u-utility", name:"Utility grenades (smoke / stun)",
+    track:{type:"pairs", pairs:[["S","S"],["T","T"]]},
+    desc:"Select two utility grenades (2 smoke, 2 stun, or 1 smoke + 1 stun). Each is a unique action; your kill team can perform it only as many times total as you selected.\n\nSMOKE GRENADE 1AP — place a Smoke Grenade marker within 6\" (visible, or on Vantage of a visible feature). Creates smoke 1\" horizontally (unlimited vertical). While wholly within smoke, an operative is obscured to/from operatives >2\" away; vs a target wholly within smoke, Piercing 2 / Piercing Crits 2 count as Piercing 1 / Piercing Crits 1 unless within 2\". In the next Strategy phase Ready step roll a D3; remove after that many activations or at end of turning point. Not while within control range of an enemy.\n\nSTUN GRENADE 1AP — select an enemy operative visible & within 6\". It and each operative within 1\" takes a stun test (D6, 3+ → −1 APL until end of its next activation). Not while within control range of an enemy.\n\nTick S / T dots as you spend uses. (Tip: place smoke on the board with the ＋Smoke marker tool.)" },
+  { id:"u-explosive", name:"Explosive grenades (frag / krak)",
+    track:{type:"pairs", pairs:[["F","F"],["K","K"]]},
+    desc:"Select two explosive grenades (2 frag, 2 krak, or 1 frag + 1 krak). Each is a ranged weapon usable only as many times total as you selected.\n\nFrag grenade — ATK 4, Hit 4+, Dmg 2/4, Range 6\", Blast 2\", Saturate.\nKrak grenade — ATK 4, Hit 4+, Dmg 4/5, Range 6\", Piercing 1, Saturate.\n\nTick F / K dots as you spend uses." },
+];
+// Render the Viewer-style limited-use dots for an item that carries a `track`. State lives in
+// S.eqTrack[uid]; each dot toggles its `used` class. uid must be stable across renders.
+function eqTrackHtml(uid, track){
+  if(!track) return "";
+  const st=S.eqTrack[uid]||{};
+  if(track.type==="simple"){
+    let h='<div class="eq-track">';
+    for(let i=1;i<=track.dots;i++){ const lbl=track.dots>1?i:"";
+      h+=`<button class="eq-dot${st[i]?" used":""}" data-euid="${uid}" data-ek="${i}">${lbl}</button>`; }
+    return h+'</div>';
+  }
+  if(track.type==="pairs"){
+    let h='<div class="eq-track eq-track-pairs">';
+    (track.pairs||[]).forEach((pair,pi)=>{ h+='<div class="eq-pair">';
+      pair.forEach((lbl,ci)=>{ const k=pi+"-"+ci;
+        h+=`<button class="eq-dot eq-dot-lbl${st[k]?" used":""}" data-euid="${uid}" data-ek="${k}">${lbl}</button>`; });
+      h+='</div>'; });
+    return h+'</div>';
+  }
+  return "";
+}
 // ---- Equipment (ported 1:1 from the Planner) ----
+// Universal equipment group — always shown (faction-agnostic). Selected pieces carry a
+// per-BATTLE limited-use tracker (not per-TP), reused from the Viewer.
+function univEqHtml(){
+  const slug="universal", pk=(id)=>(S.eqPick[opsSide+":"+slug]||[]).includes(id);
+  const items=UNIV_EQ.map(x=>{
+    const key=`${opsSide}:${slug}:e:${x.id}`, taken=pk(x.id), ex=pExpand[key];
+    const uid=`${opsSide}:${x.id}`;   // tracker id is per-side so mine/enemy count separately
+    return `<div class="pitem ${taken?"sel":""}">
+      <div class="pitem-h" data-pex="${key}">
+        <span class="pitem-n">${esc(x.name)}</span>
+        <button class="miss-pick-btn" data-eqpick="${opsSide}|${slug}|${x.id}">${taken?"Selected":"Select"}</button>
+        ${taken?eqTrackHtml(uid,x.track):""}
+      </div>
+      <div class="pitem-b" style="${ex?"":"display:none"}">${esc(x.desc||"")}</div></div>`; }).join("");
+  return `<div class="khint" style="margin-top:6px;font-weight:700;color:var(--orange)">Universal equipment</div>`
+    + items
+    + `<div class="khint">Select each grenade type you took. The letter dots track per-BATTLE uses (tick as spent). Place smoke on the board with the ＋Smoke marker tool.</div>`;
+}
 function renderEq(){
-  if(!S.eq){ $("#eqList").innerHTML=`<div class="skill-empty">No equipment data yet. Open the roster and run “Sync codex” once, then reopen this panel.</div>`;
-    $("#pFac").innerHTML=""; return; }
-  const fac=opsFac(), eqSlug=EQ_ALIAS[fac]||fac, EQL=(S.eq&&S.eq[eqSlug])||[];
-  if(!EQL.length){ $("#eqList").innerHTML=`<div class="skill-empty">No faction equipment for this team.</div>`; return; }
-  $("#eqList").innerHTML=EQL.map((x,i)=>{
+  const fac=S.eq?opsFac():null, eqSlug=fac?(EQ_ALIAS[fac]||fac):null, EQL=(fac&&S.eq&&S.eq[eqSlug])||[];
+  let facHtml;
+  if(!S.eq){ facHtml=`<div class="skill-empty">No faction equipment data yet. Open the roster and run “Sync codex” once, then reopen this panel.</div>`; $("#pFac").innerHTML=""; }
+  else if(!EQL.length){ facHtml=`<div class="skill-empty">No faction equipment for this team.</div>`; }
+  else facHtml=EQL.map((x,i)=>{
     const key=`${opsSide}:${eqSlug}:e:${i}`, sel=(S.eqPick[opsSide+":"+eqSlug]||[]), pk=sel.includes(x.id), ex=pExpand[key];
     return `<div class="pitem ${pk?"sel":""}">
       <div class="pitem-h" data-pex="${key}">
@@ -3875,7 +3968,8 @@ function renderEq(){
         ${tpDots(key)}
       </div>
       <div class="pitem-b" style="${ex?"":"display:none"}">${esc(htmlToText(x.desc||""))}</div></div>`; }).join("")
-    +`<div class="khint">Tap Select on each piece of equipment your team has taken — more than one can be active. The 1–4 dots track per-turning-point use.</div>`; }
+    +`<div class="khint">Tap Select on each piece of equipment your team has taken — more than one can be active. The 1–4 dots track per-turning-point use.</div>`;
+  $("#eqList").innerHTML=facHtml+univEqHtml(); }
 // ---- NPO Strategic Gambit (per mission) ----
 function omissHead(){ return `<div class="omiss"><b>${esc(missionName())}</b></div>`; }
 function renderGambit(){
@@ -3902,6 +3996,12 @@ function opsListClick(e){
     const cur=S.eqPick[k]||[];
     S.eqPick[k]= cur.includes(id) ? cur.filter(x=>x!==id) : [...cur,id];
     if(!S.eqPick[k].length) delete S.eqPick[k];
+    save(); renderEq(); return; }
+  const ed=e.target.closest("[data-euid]");
+  if(ed){ e.stopPropagation(); const uid=ed.dataset.euid, ek=ed.dataset.ek;
+    const st=S.eqTrack[uid]||(S.eqTrack[uid]={});
+    if(st[ek]) delete st[ek]; else st[ek]=true;
+    if(!Object.keys(st).length) delete S.eqTrack[uid];
     save(); renderEq(); return; }
   const t=e.target.closest("[data-ptp]");
   if(t){ e.stopPropagation(); const [key,n]=t.dataset.ptp.split("|"), tp=+n;
