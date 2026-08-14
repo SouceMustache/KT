@@ -418,8 +418,16 @@
   .opane{overflow:auto;padding:10px 14px 20px;-webkit-overflow-scrolling:touch;}
   .skill-empty{padding:16px 4px;font-size:13px;color:var(--muted);line-height:1.5;}
   .psec{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--orange);margin:12px 2px 6px;}
+  .cpbox{border:1px solid var(--line);border-radius:9px;padding:0 10px;margin:2px 0 8px;background:var(--panel2);}
+  .cpbox .mprow .mpval{color:var(--orange);}
   .pitem{border:1px solid var(--line);border-radius:9px;margin-bottom:8px;background:var(--panel2);overflow:hidden;}
   .pitem.used{border-color:var(--orange);}
+  .pitem.sel{border-color:var(--orange);background:rgba(242,160,61,.08);}
+  .miss-pick-btn{flex:0 0 auto;border:1px solid var(--line);background:var(--panel2);color:var(--muted);
+    border-radius:7px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;line-height:1;}
+  .pitem.sel .miss-pick-btn{border-color:var(--orange);color:var(--orange);background:rgba(242,160,61,.12);}
+  .miss-pick-btn:active{transform:translateY(1px);}
+  .khint{padding:4px 4px 2px;font-size:11.5px;color:var(--dim);line-height:1.4;}
   .pitem-h{display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;}
   .pitem-n{flex:1;font-weight:600;color:var(--ink);font-size:13px;}
   .tps{display:flex;gap:4px;flex:0 0 auto;}
@@ -503,7 +511,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v241</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v242</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -805,6 +813,7 @@
     <header><span id="opsTitle">Ops</span><button class="mini" id="opsClose">Close</button></header>
     <div class="otabs" id="opsTabs">
       <button class="otab" data-otab="ploys">Ploys</button>
+      <button class="otab" data-otab="equip">Equipment</button>
       <button class="otab" data-otab="gambit">NPO Gambit</button>
       <button class="otab" data-otab="mrules">Mission Rules</button>
     </div>
@@ -814,6 +823,7 @@
       <select id="pFac" style="flex:1;min-width:0"></select>
     </div>
     <div id="ployList" class="opane"></div>
+    <div id="eqList" class="opane"></div>
     <div id="gambitList" class="opane"></div>
     <div id="mrulesList" class="opane"></div>
   </div></div>
@@ -1032,6 +1042,9 @@ const S = {
   ploys:null,         // synced ploys {factionKey:{name,strat:[],fight:[],rules:[]}} for the OPS panel
   ployFac:{mine:"",enemy:""}, // picked faction per side in the Ploys tab (manual, Planner-style)
   ployUse:{},         // per-TP ploy usage dots {"side:fac:type:i":[1,2,..]}
+  eq:null,            // synced equipment {factionKey:[{id,name,desc}]} for the OPS Equipment tab (ported from the Planner)
+  eqPick:{},          // selected equipment per side {"side:fac":[ids]}
+  cp:{m:0,e:0},       // command points per side — scoreboard-equivalent, shown in the mission panel
   moveTrail:null,     // {x0,y0,x1,y1,t} while dragging a model — shows trail + distance
   los:{a:null,b:null,r:null},  // Line-of-sight tool: shooter id, target id, last result
   mission:{},         // mission trackers: {missionIdx, tp, scans, escaped, ...} per pack
@@ -2809,7 +2822,7 @@ function save(){
     localStorage.setItem(AKEY,JSON.stringify({packId:S.packId,items:S.items,markers:S.markers,
       nextPair:S.nextPair,locked:S.locked,lockObj:S.lockObj,insts:S.insts,prefabs:S.prefabs,
       rulers:S.rulers,rooms:S.rooms,npoPool:S.npoPool,npoBudgetOverride:S.npoBudgetOverride,npoTheme:S.npoTheme,boardMaps,mission:S.mission,reanim:S.reanim,
-      ployFac:S.ployFac,ployUse:S.ployUse})); }catch(_){}
+      ployFac:S.ployFac,ployUse:S.ployUse,eqPick:S.eqPick,cp:S.cp})); }catch(_){}
 }
 function restore(){
   let d=null;
@@ -2821,6 +2834,8 @@ function restore(){
   S.rulers=d.rulers||[]; S.rooms=d.rooms||[]; S.npoPool=d.npoPool||[]; S.npoBudgetOverride=(d.npoBudgetOverride!==undefined?d.npoBudgetOverride:null); S.npoTheme=d.npoTheme||"tomb"; S.selected=null; S.traverse=null; S.selInst=null;
   S.mission=(d.mission&&d.mission.missionIdx!=null)?d.mission:null; if(!S.mission) initMission();
   S.ployFac=d.ployFac||{mine:"",enemy:""}; S.ployUse=d.ployUse||{};
+  S.eqPick=d.eqPick||{};
+  S.cp=(d.cp&&typeof d.cp==="object")?{m:+d.cp.m||0,e:+d.cp.e||0}:{m:0,e:0};
   S.reanim=d.reanim||null;
   resolveBoards();
   // reapply per-board maps saved separately (boards are rebuilt from the pack on load)
@@ -2923,12 +2938,22 @@ function scenarioBlock(){
   if(!rows) return "";
   return `<details class="scenblock"><summary>Scenario rules</summary><div class="scenbody">${rows}</div></details>`;
 }
+// ---- Command points — scoreboard-equivalent (ported from the Planner's per-side CP) ----
+function cpBlock(){
+  if(!S.cp) S.cp={m:0,e:0};
+  const row=(k,label)=>`<div class="mprow"><span class="mplabel">${label}</span>`
+    +`<button class="mini" data-cp="${k}|-1">−</button>`
+    +`<span class="mpval">${S.cp[k]||0}</span>`
+    +`<button class="mini" data-cp="${k}|1">+</button></div>`;
+  return `<div class="psec">Command points</div><div class="cpbox">`+row("m","Mine")+row("e","Enemy")+`</div>`;
+}
 function buildMission(){
   const body=$("#missionBody"); if(!body) return;
   if(!S.mission||S.mission.missionIdx==null) initMission();
   let html=`<div class="mpmission"><button class="mini" data-mission="-1">‹</button>`
     +`<span class="mpmname">${missionName()}</span>`
     +`<button class="mini" data-mission="1">›</button></div>`;
+  html+=cpBlock();
   html+=scenarioBlock();
   html+=reanimBlock();
   trackersAll().forEach(t=>{ html+=mpRow(t); });
@@ -2936,6 +2961,9 @@ function buildMission(){
   body.innerHTML=html;
 }
 $("#missionBody").addEventListener("click",e=>{
+  const cpb=e.target.closest("[data-cp]");
+  if(cpb){ const [k,d]=cpb.dataset.cp.split("|"); if(!S.cp) S.cp={m:0,e:0};
+    S.cp[k]=Math.max(0,(S.cp[k]||0)+(+d)); save(); buildMission(); return; }
   const mm=e.target.closest("[data-mission]");
   if(mm){ const ms=(S.pack&&S.pack.missions)||[]; const n=ms.length||1;
     S.mission.missionIdx=(((S.mission.missionIdx||0)+(+mm.dataset.mission))%n+n)%n;
@@ -2960,7 +2988,7 @@ $("#missionBody").addEventListener("click",e=>{
     }
     save(); renderAll(); buildMission(); return;
   }
-  if(e.target.closest("#missionReset")){ initMission(); syncPackTag(); save(); buildMission(); }
+  if(e.target.closest("#missionReset")){ initMission(); S.cp={m:0,e:0}; syncPackTag(); save(); buildMission(); }
 });
 $("#missionBtn").addEventListener("click",()=>{ const p=$("#missionPanel");
   const show=p.classList.contains("hidden");
@@ -3244,7 +3272,7 @@ function layoutPayload(withMaps){
   return { v:1, kind:withMaps?"kt-descent-layouts":"kt-descent-layout", packId:S.packId,
     boards, insts:S.insts, markers:S.markers, items:S.items, rooms:S.rooms, rulers:S.rulers,
     npoPool:S.npoPool, npoBudgetOverride:S.npoBudgetOverride, npoTheme:S.npoTheme, nextPair:S.nextPair, mission:S.mission, reanim:S.reanim,
-    ployFac:S.ployFac, ployUse:S.ployUse, objects:usedPrefabDefs() };
+    ployFac:S.ployFac, ployUse:S.ployUse, eqPick:S.eqPick, cp:S.cp, objects:usedPrefabDefs() };
 }
 function downloadJSON(obj, name, msg){
   const blob=new Blob([JSON.stringify(obj)],{type:"application/json"});
@@ -3341,9 +3369,12 @@ function makeOpFromModel(m, side, boardId, x, y){
 /* ---- K2b: codex sync (skills for player ops), ported 1:1 from the Planner ---- */
 const CXKEY="kt-descent-codex-v1";
 const PLKEY="kt-descent-ploys-v1";
+const EQKEY="kt-descent-eq-v1";
+const EQ_ALIAS={mine:"murderwing"};   // viewer aliases FACTION_EQ['mine'] → 'murderwing' (Planner-style)
 const FAC_LEGACY={MINE:"murderwing", mine:"murderwing"};
 function loadCodexLS(){ try{ const c=JSON.parse(localStorage.getItem(CXKEY)); if(c) S.codex=c; }catch(_){} }
 function loadPloysLS(){ try{ const p=JSON.parse(localStorage.getItem(PLKEY)); if(p) S.ploys=p; }catch(_){} }
+function loadEqLS(){ try{ const e=JSON.parse(localStorage.getItem(EQKEY)); if(e) S.eq=e; }catch(_){} }
 function cxExtract(src,start){ let i=src.indexOf('[',start); const open=i; let depth=0,s=null,esc=false;
   for(;i<src.length;i++){ const c=src[i];
     if(s){ if(esc)esc=false; else if(c==='\\')esc=true; else if(c===s)s=null; continue; }
@@ -3415,11 +3446,18 @@ async function syncCodex(btn){ const t0=btn?btn.textContent:""; if(btn){ btn.tex
     try{ const fm=/(?:var|const|let)\s+FACTION_RULES\s*=\s*\{/.exec(src);
       if(fm){ const t=objExtract(src,fm.index); if(t){ const FR=Function("return ("+t+")")(); ploys={};
         for(const k in FR){ const f=FR[k]; ploys[k]={name:f.name||k,strat:f.strat||[],fight:f.fight||[],rules:f.rules||[]}; } } } }catch(_){}
+    // Equipment: the viewer exposes FACTION_EQ = {fac:[{id,name,desc,...}]} — same shape the Planner
+    // reads. Extract it with objExtract into S.eq for the OPS Equipment tab.
+    let eq=null;
+    try{ const em=/(?:var|const|let)\s+FACTION_EQ\s*=\s*\{/.exec(src);
+      if(em){ const t=objExtract(src,em.index); if(t){ const E=Function("return ("+t+")")(); eq={};
+        for(const k in E){ const a=E[k]; if(Array.isArray(a)) eq[k]=a.map(x=>({id:x.id,name:x.name,desc:x.desc||""})); } } } }catch(_){}
     let ops=0; Object.values(cx).forEach(a=>ops+=a.length);
     S.codex=cx; try{ localStorage.setItem(CXKEY,JSON.stringify(cx)); }catch(_){}
     if(ploys){ S.ploys=ploys; try{ localStorage.setItem(PLKEY,JSON.stringify(ploys)); }catch(_){} }
+    if(eq){ S.eq=eq; try{ localStorage.setItem(EQKEY,JSON.stringify(eq)); }catch(_){} }
     if(sheetOp) renderNPOCard(sheetOp);
-    note(`Codex synced: ${Object.keys(cx).length} factions, ${ops} operatives${ploys?`, ${Object.keys(ploys).length} ploy sets`:""}.`,true); }
+    note(`Codex synced: ${Object.keys(cx).length} factions, ${ops} operatives${ploys?`, ${Object.keys(ploys).length} ploy sets`:""}${eq?`, ${Object.keys(eq).length} equipment sets`:""}.`,true); }
   catch(err){ note("Codex sync failed: "+(err.message||err)+" — open the app from GitHub Pages (same origin as the viewer)."); }
   finally{ if(btn){ btn.textContent=t0; btn.disabled=false; } } }
 function curRosterTeam(){ return (S.roster.teams||[]).find(t=>t.id===S.rosterEdit) || S.roster.teams[0] || null; }
@@ -3490,6 +3528,8 @@ function importLayout(d){
   if(d.npoTheme) S.npoTheme=d.npoTheme;
   S.mission=(d.mission&&d.mission.missionIdx!=null)?d.mission:S.mission; S.reanim=d.reanim||null;
   if(d.ployFac) S.ployFac=d.ployFac; if(d.ployUse) S.ployUse=d.ployUse;
+  if(d.eqPick) S.eqPick=d.eqPick;
+  if(d.cp&&typeof d.cp==="object") S.cp={m:+d.cp.m||0,e:+d.cp.e||0};
   S.selected=null; S.selInst=null; S.traverse=null; S.advisorPick=null; S.activeRoom=S.rooms[0]?S.rooms[0].id:null;
   // reapply per-board transform; only overwrite the map image when the file actually carries one
   // (a lean state export has no base64 maps — keep whatever the loaded library already provided).
@@ -3774,16 +3814,19 @@ let opsSide="mine", opsTab="ploys", pExpand={};
 function openOps(tab){ opsTab=tab||opsTab; renderOps(); $("#ops").classList.add("open"); }
 function renderOps(){
   $$("#opsTabs .otab").forEach(b=>b.classList.toggle("active",b.dataset.otab===opsTab));
-  // Side row (Mine/Enemy + faction) only applies to the Ploys tab.
-  $("#opsSideRow").style.display = opsTab==="ploys" ? "flex" : "none";
+  // Side row (Mine/Enemy + faction) applies to the Ploys and Equipment tabs.
+  const sided = (opsTab==="ploys"||opsTab==="equip");
+  $("#opsSideRow").style.display = sided ? "flex" : "none";
   $("#oSideM").classList.toggle("on",opsSide==="mine");
   $("#oSideE").classList.toggle("on",opsSide==="enemy");
   $("#ployList").style.display  = opsTab==="ploys"?"":"none";
+  $("#eqList").style.display    = opsTab==="equip"?"":"none";
   $("#gambitList").style.display= opsTab==="gambit"?"":"none";
   $("#mrulesList").style.display= opsTab==="mrules"?"":"none";
-  const titles={ploys:"Ploys",gambit:"NPO Strategic Gambit",mrules:"Mission Rules"};
+  const titles={ploys:"Ploys",equip:"Equipment",gambit:"NPO Strategic Gambit",mrules:"Mission Rules"};
   $("#opsTitle").textContent=titles[opsTab]||"Ops";
   if(opsTab==="ploys") renderPloys();
+  else if(opsTab==="equip") renderEq();
   else if(opsTab==="gambit") renderGambit();
   else renderMissionRules();
 }
@@ -3817,6 +3860,22 @@ function renderPloys(){
         <span class="miss-item-chevron ${ex?"open":""}">&#9658;</span></div>
       <div class="pitem-b" style="${ex?"":"display:none"}">${esc(htmlToText(p.desc||""))}</div></div>`; }).join(""):"";
   $("#ployList").innerHTML=rules+sec("Strategy ploys","s",F.strat||[])+sec("Firefight ploys","f",F.fight||[]); }
+// ---- Equipment (ported 1:1 from the Planner) ----
+function renderEq(){
+  if(!S.eq){ $("#eqList").innerHTML=`<div class="skill-empty">No equipment data yet. Open the roster and run “Sync codex” once, then reopen this panel.</div>`;
+    $("#pFac").innerHTML=""; return; }
+  const fac=opsFac(), eqSlug=EQ_ALIAS[fac]||fac, EQL=(S.eq&&S.eq[eqSlug])||[];
+  if(!EQL.length){ $("#eqList").innerHTML=`<div class="skill-empty">No faction equipment for this team.</div>`; return; }
+  $("#eqList").innerHTML=EQL.map((x,i)=>{
+    const key=`${opsSide}:${eqSlug}:e:${i}`, sel=(S.eqPick[opsSide+":"+eqSlug]||[]), pk=sel.includes(x.id), ex=pExpand[key];
+    return `<div class="pitem ${pk?"sel":""}">
+      <div class="pitem-h" data-pex="${key}">
+        <span class="pitem-n">${esc(x.name)}</span>
+        <button class="miss-pick-btn" data-eqpick="${opsSide}|${eqSlug}|${x.id}">${pk?"Selected":"Select"}</button>
+        ${tpDots(key)}
+      </div>
+      <div class="pitem-b" style="${ex?"":"display:none"}">${esc(htmlToText(x.desc||""))}</div></div>`; }).join("")
+    +`<div class="khint">Tap Select on each piece of equipment your team has taken — more than one can be active. The 1–4 dots track per-turning-point use.</div>`; }
 // ---- NPO Strategic Gambit (per mission) ----
 function omissHead(){ return `<div class="omiss"><b>${esc(missionName())}</b></div>`; }
 function renderGambit(){
@@ -3835,22 +3894,31 @@ function renderMissionRules(){
   const vic=md.victory?`<div class="mrblock mr-victory"><div class="mrhead">Victory</div><div class="mrbody">${esc(md.victory)}</div></div>`:"";
   $("#mrulesList").innerHTML=omissHead()+rules+vic; }
 function opsPane(){ renderOps(); }
+// Re-render just the active list pane (Ploys or Equipment) after a toggle.
+function opsRepane(){ if(opsTab==="equip") renderEq(); else renderPloys(); }
 function opsListClick(e){
+  const ep=e.target.closest("[data-eqpick]");
+  if(ep){ e.stopPropagation(); const [side,slug,id]=ep.dataset.eqpick.split("|"), k=side+":"+slug;
+    const cur=S.eqPick[k]||[];
+    S.eqPick[k]= cur.includes(id) ? cur.filter(x=>x!==id) : [...cur,id];
+    if(!S.eqPick[k].length) delete S.eqPick[k];
+    save(); renderEq(); return; }
   const t=e.target.closest("[data-ptp]");
   if(t){ e.stopPropagation(); const [key,n]=t.dataset.ptp.split("|"), tp=+n;
     const set=S.ployUse[key]||[];
     S.ployUse[key]= set.includes(tp) ? set.filter(x=>x!==tp) : [...set,tp].sort();
     if(!S.ployUse[key].length) delete S.ployUse[key];
-    save(); renderPloys(); return; }
-  const h=e.target.closest("[data-pex]"); if(h){ const k=h.dataset.pex; pExpand[k]=!pExpand[k]; renderPloys(); } }
+    save(); opsRepane(); return; }
+  const h=e.target.closest("[data-pex]"); if(h){ const k=h.dataset.pex; pExpand[k]=!pExpand[k]; opsRepane(); } }
 $("#opsBtn").addEventListener("click",()=>openOps(opsTab));
 $("#opsClose").addEventListener("click",()=>$("#ops").classList.remove("open"));
 $("#ops").addEventListener("click",e=>{ if(e.target===$("#ops")) $("#ops").classList.remove("open"); });
 $("#opsTabs").addEventListener("click",e=>{ const b=e.target.closest("[data-otab]"); if(!b) return; opsTab=b.dataset.otab; renderOps(); });
 $("#oSideM").addEventListener("click",()=>{ opsSide="mine"; renderOps(); });
 $("#oSideE").addEventListener("click",()=>{ opsSide="enemy"; renderOps(); });
-$("#pFac").addEventListener("change",e=>{ S.ployFac[opsSide]=e.target.value; save(); renderPloys(); });
+$("#pFac").addEventListener("change",e=>{ S.ployFac[opsSide]=e.target.value; save(); opsRepane(); });
 $("#ployList").addEventListener("click",opsListClick);
+$("#eqList").addEventListener("click",opsListClick);
 
 /* ------------------------------------------------------------------ service worker */
 if("serviceWorker" in navigator){
@@ -3862,7 +3930,7 @@ if("serviceWorker" in navigator){
   renderPackList();
   const saved=localStorage.getItem(PACKKEY);
   $("#resumeBtn").style.display = saved ? "" : "none";
-  loadRosterLS(); loadCodexLS(); loadPloysLS();
+  loadRosterLS(); loadCodexLS(); loadPloysLS(); loadEqLS();
   // Auto-resume a prior session so a returning player lands straight on their board;
   // if there's nothing to resume, the picker stays up as the first screen.
   if(!restore()){

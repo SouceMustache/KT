@@ -156,17 +156,25 @@
   .dtitle{font-size:15px;font-weight:800;margin:2px 2px 12px;display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
   .dtitle .dpts{font-size:13px;font-weight:800;color:var(--green)}
   .dtitle .dpts.over{color:var(--red)}
-  .dcard{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden}
-  .dhead{display:flex;align-items:center;gap:10px;padding:11px 12px;cursor:pointer;user-select:none}
-  .dhead .role{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
-  .dhead .nm{font-size:15px;font-weight:700;line-height:1.15}
-  .dhead .sub{font-size:10px;color:var(--muted);margin-top:1px}
-  .dhead .grow{flex:1;min-width:0}
-  .dhead .ec{flex:none;background:var(--gold);color:#0d1117;font-size:12px;font-weight:800;padding:3px 8px;border-radius:6px}
-  .dhead .chev{flex:none;color:var(--muted);font-size:12px;transition:transform .15s}
-  .dcard.open .chev{transform:rotate(90deg)}
-  .dbody{display:none;border-top:1px solid var(--border);padding:10px 12px 12px}
-  .dcard.open .dbody{display:block}
+  .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .dtile{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 12px 10px;cursor:pointer;position:relative;overflow:hidden;user-select:none}
+  .dtile:active{transform:scale(.97);border-color:var(--accent)}
+  .dt-cost{position:absolute;top:9px;right:9px;background:var(--gold);color:#0d1117;font-size:10px;font-weight:800;padding:2px 6px;border-radius:5px}
+  .dt-role{font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+  .dt-name{font-size:13px;font-weight:700;line-height:1.15;margin:3px 26px 2px 0}
+  .dt-sub{font-size:10px;color:var(--muted);margin-bottom:7px}
+  .mini{display:grid;gap:2px;margin-top:4px}
+  .mini div{text-align:center}
+  .mini .k{font-size:8px;color:var(--muted);letter-spacing:.02em}
+  .mini .v{font-size:12px;font-weight:800}
+  .oh{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px}
+  .oh h3{font-size:18px;font-weight:800;line-height:1.1}
+  .oh .role{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:700}
+  .oh .oh-sub{font-size:11px;color:var(--muted);margin-top:3px}
+  .oh .cost{flex:none;background:var(--gold);color:#0d1117;font-size:13px;font-weight:800;padding:4px 10px;border-radius:7px}
+  #printArea{display:none}
+  .psheet{margin-bottom:16px}
+  .chips{display:flex;flex-wrap:wrap;gap:3px}
   .dsec{margin-bottom:12px}
   .dsec-t{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:6px}
   .cfg{display:flex;gap:8px;font-size:12px;padding:3px 0;border-bottom:1px solid rgba(42,51,71,.5);flex-wrap:wrap}
@@ -186,15 +194,14 @@
   table.stats td.pname{text-align:left;color:var(--accent2);font-weight:600;font-size:11px}
 
   @media print{
-    header .htop, .capbox, .foc, .viewbar, #addRow, .menu-btn, .dhead .chev, #gwrap{display:none !important}
+    header, .viewbar, #addRow, #roster, #catalog, #menu, #gwrap, #dispWrap{display:none !important}
+    #printArea{display:block !important}
     body{background:#fff;color:#000;padding:0}
-    header{position:static;border:none}
-    .dtitle{color:#000}.dtitle .dpts{color:#000}
-    .dcard{break-inside:avoid;border-color:#bbb;margin-bottom:8px}
-    .dbody{display:block !important;border-color:#ccc}
-    .dhead .nm{color:#000}.dhead .ec{background:#000;color:#fff}
+    .psheet{break-inside:avoid}
+    .dtitle,.dtitle .dpts{color:#000}
     .chip,.chip-link{border-color:#999;color:#000;background:#fff}.chip-link::after{content:""}
-    .dsec-t,.rule-name,.cfg-sub,.wpn b,.wpn .wprof,table.stats td.pname{color:#000}
+    .dsec-t,.rule-name,.cfg-sub,.wpn b,.wpn .wprof,table.stats td.pname,.oh h3,.oh .role{color:#000}
+    .oh .cost{background:#000;color:#fff}
     table.stats td,table.stats th{border-color:#ccc;color:#000}
     .rule-card,.wpn{background:#fff;border-color:#ccc}
   }
@@ -216,18 +223,20 @@
   </div>
   <div class="foc" id="focStrip"></div>
   <div class="viewbar">
-    <div class="seg"><button id="vBuild" class="on" onclick="setView('build')">Builder</button><button id="vDisp" onclick="setView('display')">Podgl\u0105d</button></div>
-    <button class="printb" id="printBtn" onclick="window.print()" style="display:none">\uD83D\uDDA8 Drukuj</button>
+    <div class="seg"><button id="vBuild" class="on" onclick="setView('build')">Builder</button><button id="vDisp" onclick="setView('display')">Podgląd</button></div>
+    <button class="printb" id="printBtn" onclick="window.print()" style="display:none">🖨 Drukuj</button>
   </div>
 </header>
 
 <div class="wrap">
-  <div class="add-row" id="addRow"><button class="add-btn" onclick="openCatalog()">+ Dodaj jednostk\u0119</button></div>
+  <div class="add-row" id="addRow"><button class="add-btn" onclick="openCatalog()">+ Dodaj jednostkę</button></div>
   <div id="roster"></div>
+  <div id="printArea"></div>
 </div>
 
 <div class="overlay" id="catalog" onclick="closeCatalog(event)"><button class="close-x" onclick="closeCatalog()">&#10005;</button><div class="osheet" id="catalogSheet"></div></div>
 <div class="overlay" id="menu" onclick="closeMenu(event)"><button class="close-x" onclick="closeMenu()">&#10005;</button><div class="menu" id="menuSheet"></div></div>
+<div class="overlay" id="dispWrap" onclick="closeDisp(event)"><button class="close-x" onclick="closeDisp()">&#10005;</button><div class="osheet" id="dispSheet"></div></div>
 <div class="gwrap" id="gwrap" onclick="closeGloss()"><div id="gcard" onclick="event.stopPropagation()"></div></div>
 
 <script src="heresy-units.js"></script>
@@ -498,7 +507,6 @@ function setView(v){ VIEW=v;
   document.getElementById('printBtn').style.display=(v==='display')?'':'none';
   render();
 }
-function toggleDisp(uid){ const e=STATE.entries.find(x=>x.uid===uid); if(e){e._dopen=!e._dopen;render();} }
 function statTable(u){
   const cols=(u.profileType==='vehicle')?['M','BS','front','side','rear','hp','capacity']:['M','WS','BS','S','T','W','I','A','Ld','Sv','Inv'];
   const lbl={front:'Fr',side:'Sd',rear:'Rr',hp:'HP',capacity:'Cap'};
@@ -528,10 +536,8 @@ function configSummary(e){ const u=unitById(e.unitId); const rows=[];
   });
   return rows.join('');
 }
-function displayCard(e){
-  const u=unitById(e.unitId); if(!u)return '';
-  const cost=entryTotalCost(e); const models=modelCount(e); const cfg=configSummary(e);
-  let ret=''; if(retinueValid(e)){ const h=STATE.entries.find(m=>m.uid===e.retinueOf); if(h)ret=' \u00b7 \uD83D\uDEE1 Retinue \u2192 '+esc(unitById(h.unitId).name); }
+function dsheetBody(e){
+  const u=unitById(e.unitId); const cfg=configSummary(e);
   let body='<div class="dsec"><div class="dsec-t">Profil</div>'+statTable(u)+'</div>';
   if(u.wargear&&u.wargear.length)body+='<div class="dsec"><div class="dsec-t">Uzbrojenie bazowe</div><div class="chips">'+u.wargear.map(w=>chipHtml(w)).join('')+'</div></div>';
   if(cfg)body+='<div class="dsec"><div class="dsec-t">Konfiguracja</div>'+cfg+'</div>';
@@ -541,19 +547,36 @@ function displayCard(e){
   if(e.transport){ const tu=unitById(e.transport.unitId); const tcfg=configSummary(e.transport);
     body+='<div class="dsec"><div class="dsec-t">\uD83D\uDE9A Transport: '+esc(tu.name)+' ('+entryCost(e.transport)+' pts)</div>'+statTable(tu)+
       (tu.wargear&&tu.wargear.length?'<div class="chips">'+tu.wargear.map(w=>chipHtml(w)).join('')+'</div>':'')+tcfg+'</div>'; }
-  return '<div class="dcard'+(e._dopen?' open':'')+'">'+
-    '<div class="dhead" onclick="toggleDisp(\''+e.uid+'\')">'+
-      '<div class="grow"><div class="role">'+esc(ROLES[u.slot]||u.slot)+'</div><div class="nm">'+esc(u.name)+'</div>'+
-      '<div class="sub">'+models+'\u00d7 '+(u.profileType==='vehicle'?'poj.':'mdl')+ret+'</div></div>'+
-      '<div class="ec">'+cost+'</div><div class="chev">\u203A</div></div>'+
-    '<div class="dbody">'+body+'</div></div>';
+  return body;
 }
+const MINI=[['M','M'],['WS','WS'],['BS','BS'],['S','S'],['T','T'],['W','W'],['Sv','Sv'],['Inv','Inv']];
+const MINI_VEH=[['M','M'],['BS','BS'],['Fr','front'],['Sd','side'],['Rr','rear'],['HP','hp'],['Cap','capacity']];
+function dispTile(e){
+  const u=unitById(e.unitId); const p=(u.profiles&&u.profiles[0])||{};
+  const set=(u.profileType==='vehicle')?MINI_VEH:MINI;
+  const mini=set.map(pair=>{let v=p[pair[1]];if(v==null)v='\u2014';return '<div><div class="k">'+pair[0]+'</div><div class="v">'+esc(v)+'</div></div>';}).join('');
+  const badge=(retinueValid(e)?' \uD83D\uDEE1':'')+(e.transport?' \uD83D\uDE9A':'');
+  return '<div class="dtile" onclick="openDisp(\''+e.uid+'\')">'+
+    '<div class="dt-cost">'+entryTotalCost(e)+'</div>'+
+    '<div class="dt-role">'+esc(ROLES[u.slot]||u.slot)+'</div>'+
+    '<div class="dt-name">'+esc(u.name)+'</div>'+
+    '<div class="dt-sub">'+modelCount(e)+'\u00d7 '+(u.profileType==='vehicle'?'poj.':'mdl')+badge+'</div>'+
+    '<div class="mini" style="grid-template-columns:repeat('+set.length+',1fr)">'+mini+'</div></div>';
+}
+function openDisp(uid){ const e=STATE.entries.find(x=>x.uid===uid); if(!e)return; const u=unitById(e.unitId);
+  document.getElementById('dispSheet').innerHTML='<div class="oh"><div><div class="role">'+esc(ROLES[u.slot]||u.slot)+'</div><h3>'+esc(u.name)+'</h3><div class="oh-sub">'+modelCount(e)+'\u00d7 '+(u.profileType==='vehicle'?'poj.':'mdl')+'</div></div><div class="cost">'+entryTotalCost(e)+' pts</div></div>'+dsheetBody(e);
+  const ov=document.getElementById('dispWrap');ov.classList.add('show');ov.scrollTop=0;
+}
+function closeDisp(ev){ if(ev&&ev.target&&ev.target.id!=='dispWrap')return; document.getElementById('dispWrap').classList.remove('show'); }
 function renderDisplay(){
   const r=document.getElementById('roster');
-  if(!STATE.entries.length){r.innerHTML='<div class="empty">Roster jest pusty.<br>Prze\u0142\u0105cz na Builder i dodaj jednostki.</div>';return;}
+  if(!STATE.entries.length){r.innerHTML='<div class="empty">Roster jest pusty.<br>Prze\u0142\u0105cz na Builder i dodaj jednostki.</div>';document.getElementById('printArea').innerHTML='';return;}
   const ordered=[...STATE.entries].sort((a,b)=>SLOT_ORDER.indexOf(unitById(a.unitId).slot)-SLOT_ORDER.indexOf(unitById(b.unitId).slot));
   const t=rosterTotal(); const over=t>STATE.cap;
-  r.innerHTML='<div class="dtitle">'+esc(STATE.name||'Roster')+'<span class="dpts'+(over?' over':'')+'">'+t+' / '+STATE.cap+' pts</span></div>'+ordered.map(displayCard).join('');
+  const title='<div class="dtitle">'+esc(STATE.name||'Roster')+'<span class="dpts'+(over?' over':'')+'">'+t+' / '+STATE.cap+' pts</span></div>';
+  r.innerHTML=title+'<div class="dgrid">'+ordered.map(dispTile).join('')+'</div>';
+  document.getElementById('printArea').innerHTML=title.replace('dpts'+(over?' over':''),'dpts')+
+    ordered.map(e=>{const u=unitById(e.unitId);return '<div class="psheet"><div class="oh"><div><div class="role">'+esc(ROLES[u.slot]||u.slot)+'</div><h3>'+esc(u.name)+'</h3></div><div class="cost">'+entryTotalCost(e)+' pts \u00b7 '+modelCount(e)+'\u00d7</div></div>'+dsheetBody(e)+'</div>';}).join('');
 }
 
 function renderTotals(){
