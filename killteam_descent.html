@@ -521,12 +521,12 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v243</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v244</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
         <button class="tool" data-mode="measure" title="Line" aria-label="Line"><svg viewBox="0 0 20 20"><path d="M3.5 16.5 16.5 3.5"/><path d="M3.5 13.4v3.1h3.1M16.5 6.6V3.5h-3.1"/></svg></button>
-        <button class="tool" data-mode="marker" title="Portals" aria-label="Portals"><svg viewBox="0 0 20 20"><path d="M10 3l3 3-3 3-3-3z"/><path d="M10 11l3 3-3 3-3-3z"/><path d="M10 6.2v4.6"/></svg></button>
+        <button class="tool" data-mode="marker" title="Markers" aria-label="Markers"><svg viewBox="0 0 20 20"><path d="M10 3l3 3-3 3-3-3z"/><path d="M10 11l3 3-3 3-3-3z"/><path d="M10 6.2v4.6"/></svg></button>
         <button class="tool" data-mode="op" title="Drop token (Mine/Enemy)" aria-label="Drop token"><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="5.5"/><circle cx="10" cy="10" r="1.6" fill="currentColor" stroke="none"/></svg></button>
         <button class="tool" data-mode="los" title="Line of sight" aria-label="Line of sight"><svg viewBox="0 0 20 20"><path d="M2 10s3-5 8-5 8 5 8 5-3 5-8 5-8-5-8-5z"/><circle cx="10" cy="10" r="2.2" fill="currentColor" stroke="none"/></svg></button>
       </div>
@@ -547,6 +547,15 @@
         <button class="mini" id="addEntry">＋ Entryway</button>
         <button class="mini" id="addTele">＋ Teleport</button>
         <button class="mini" id="addSmoke" title="Arm smoke: tap board to drop (20mm + 1&quot; halo), tap a smoke to remove">＋ Smoke</button>
+        <select class="mini" id="barrSel" title="Barricade type">
+          <option value="portable">Portable 1"</option>
+          <option value="light">Light 2"</option>
+          <option value="heavy" selected>Heavy 1.5"</option>
+          <option value="barbed">Barbed 3"</option>
+        </select>
+        <button class="mini" id="addBarr" title="Arm barricade: tap board to place, tap a barricade to rotate +45°">＋ Barricade</button>
+        <button class="mini" id="addLadder" title="Arm ladder: tap board to place, tap a ladder to rotate +45°">＋ Ladder</button>
+        <button class="mini" id="eraseMk" title="Erase: tap any marker to delete it (portals delete as a pair)">🗑 Erase</button>
         <button class="mini" id="lockToggle" title="Lock markers in place">🔒 Locked</button>
       </span>
       <!-- op side picker, shown only while the Add-operative tool is active. Tap the board
@@ -1057,6 +1066,10 @@ const S = {
   eqPick:{},          // selected equipment per side {"side:fac":[ids]}
   eqTrack:{},         // per-battle limited-use dots {uid:{key:true}} — ported from the Viewer's tracker
   armedSmoke:null,    // truthy while the ＋Smoke tool is armed (tap board to drop / tap a smoke to remove)
+  armedBarr:null,     // ＋Barricade armed (tap empty=place, tap barricade=rotate +45°)
+  armedLadder:null,   // ＋Ladder armed (tap empty=place, tap ladder=rotate +45°)
+  armedErase:null,    // 🗑 Erase armed (tap any marker to delete; portals delete as a pair)
+  barrSub:"heavy",    // selected barricade type for placement
   cp:{m:0,e:0},       // command points per side — scoreboard-equivalent, shown in the mission panel
   moveTrail:null,     // {x0,y0,x1,y1,t} while dragging a model — shows trail + distance
   los:{a:null,b:null,r:null},  // Line-of-sight tool: shooter id, target id, last result
@@ -1148,6 +1161,11 @@ function nearestBoard(x,y){
    why it lives in the engine, not in any pack. */
 function distIn(ax,ay,bx,by){ return Math.hypot(ax-bx,ay-by)/PPI; }   // world px → inches
 function markerById(id){ return S.markers.find(m=>m.id===id); }
+// Delete a marker; entryways/teleports delete together with their twin so no orphan remains.
+function eraseMarker(m){
+  const ids=[m.id]; if(m.mtype==="entryway"||m.mtype==="teleport"){ const tw=twinOf(m); if(tw) ids.push(tw.id); }
+  S.markers=S.markers.filter(x=>!ids.includes(x.id)); save(); renderMarkers(); renderLinks();
+}
 function twinOf(m){
   if(m.mtype==="entryway") return S.markers.find(x=>x!==m && x.mtype==="entryway" && x.pair===m.pair);
   if(m.mtype==="teleport")  return S.markers.find(x=>x!==m && x.mtype==="teleport"  && x.pair===m.pair);
@@ -1809,6 +1827,41 @@ function renderLinks(){
 
 // Portal markers. Entryway = numbered diamond, teleport = ringed circle. Control range
 // drawn as a faint ring so you can see who's "at" the marker. Tinted by board identity.
+// Barricades — ported 1:1 from the Planner's BARR (length/thickness in inches + colours).
+// portable 1", light 2", heavy 1.5", barbed 3" (barbed draws a dashed wire line).
+const BARR={ portable:{name:"Portable",L:1,TH:0.5,fill:"#b89a63",stroke:"#d8bd86"},
+             light:{name:"Light",L:2,TH:0.10,fill:"#9aa6b0",stroke:"#c6d0d8"},
+             heavy:{name:"Heavy",L:1.5,TH:0.5,fill:"#5c6570",stroke:"#8b97a3"},
+             barbed:{name:"Barbed Wire",L:3,TH:0.5,fill:"rgba(120,128,136,.45)",stroke:"#aeb6bf",wire:true} };
+// Draw a barricade marker at its world position, rotated by m.angle (ported from the Planner's
+// drawBarricade — a rounded rect L×TH with an orange rotate handle at one end).
+function drawBarricade(g,m){
+  const b=BARR[m.subtype]||BARR.heavy;
+  const L=(m.L??b.L)*PPI, TH=(m.TH??b.TH)*PPI;
+  const inner=attr(mk("g"),{transform:`translate(${m.x} ${m.y}) rotate(${m.angle||0})`});
+  inner.appendChild(attr(mk("rect"),{x:-L/2,y:-TH/2,width:L,height:TH,rx:Math.min(TH/2,7),
+    fill:b.fill,stroke:b.stroke,"stroke-width":1.6,"vector-effect":"non-scaling-stroke"}));
+  if(b.wire) inner.appendChild(attr(mk("line"),{x1:-L/2,y1:0,x2:L/2,y2:0,stroke:b.stroke,
+    "stroke-width":1.2,"stroke-dasharray":"3 4","vector-effect":"non-scaling-stroke"}));
+  const hr=Math.max(TH*0.6,7);
+  inner.appendChild(attr(mk("circle"),{cx:L/2,cy:0,r:hr,fill:"var(--orange)","fill-opacity":.9,
+    stroke:"#1a1206","stroke-width":1.4,"vector-effect":"non-scaling-stroke"}));
+  g.appendChild(inner);
+}
+// Draw a ladder marker — a simple visual glyph (two rails + rungs), rotatable by m.angle.
+function drawLadder(g,m){
+  const W=(14/25.4)*PPI, H=(24/25.4)*PPI;   // ~14mm wide × 24mm tall glyph
+  const inner=attr(mk("g"),{transform:`translate(${m.x} ${m.y}) rotate(${m.angle||0})`});
+  inner.appendChild(attr(mk("rect"),{x:-W/2-2,y:-H/2-2,width:W+4,height:H+4,rx:4,
+    fill:"rgba(150,158,168,.12)",stroke:"none"}));
+  const rail=(x)=>attr(mk("line"),{x1:x,y1:-H/2,x2:x,y2:H/2,stroke:"var(--muted)","stroke-width":1.8,
+    "stroke-linecap":"round","vector-effect":"non-scaling-stroke"});
+  inner.appendChild(rail(-W/2)); inner.appendChild(rail(W/2));
+  for(let i=0;i<4;i++){ const y=-H/2+H*(i+0.5)/4;
+    inner.appendChild(attr(mk("line"),{x1:-W/2,y1:y,x2:W/2,y2:y,stroke:"var(--muted)","stroke-width":1.4,
+      "stroke-linecap":"round","vector-effect":"non-scaling-stroke"})); }
+  g.appendChild(inner);
+}
 function renderMarkers(){
   gMark.replaceChildren();
   for(const m of S.markers){
@@ -1834,6 +1887,8 @@ function renderMarkers(){
       g.appendChild(attr(Object.assign(mk("text"),{textContent:"S"}),
         {x:m.x,y:m.y+4,"text-anchor":"middle","font-size":11,"font-family":"var(--mono)",
          fill:"var(--muted)","font-weight":700,"pointer-events":"none"}));
+    }else if(m.mtype==="barricade"){ drawBarricade(g,m);
+    }else if(m.mtype==="ladder"){ drawLadder(g,m);
     }else{
       // 60mm teleport pad drawn at its true footprint — the disc IS the "on the pad" area
       const pr=padRadIn(m)*PPI;
@@ -2272,6 +2327,37 @@ svg.addEventListener("pointerdown",e=>{
     else note("Tap inside a killzone to place smoke.",true);
     drag={type:"pan",sx:e.clientX,sy:e.clientY}; return;
   }
+  // Erase tool: tap any marker to delete it. Portals delete as a pair (their twin too).
+  if(S.armedErase){
+    const hit=markerAt(w);
+    if(hit){ eraseMarker(hit); note("Marker erased.",true); }
+    else note("Tap a marker to erase it.",true);
+    drag={type:"pan",sx:e.clientX,sy:e.clientY}; return;
+  }
+  // Barricade tool: tap a barricade to rotate +45°, or tap a board to place the selected type.
+  if(S.armedBarr){
+    const hit=markerAt(w);
+    if(hit&&hit.mtype==="barricade"){ hit.angle=((hit.angle||0)+45)%360; save(); renderMarkers();
+      note("Barricade rotated +45°.",true); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
+    const b=boardAt(w.x,w.y);
+    if(b){ const bd=BARR[S.barrSub]||BARR.heavy;
+      S.markers.push({kind:"marker",mtype:"barricade",subtype:S.barrSub,angle:0,L:bd.L,TH:bd.TH,
+        id:crypto.randomUUID(),board:b.id,x:w.x,y:w.y});
+      save(); renderMarkers(); note(`${bd.name} barricade placed. Tap it to rotate; 🗑 Erase to remove.`,true); }
+    else note("Tap inside a killzone to place a barricade.",true);
+    drag={type:"pan",sx:e.clientX,sy:e.clientY}; return;
+  }
+  // Ladder tool: tap a ladder to rotate +45°, or tap a board to place one (visual marker).
+  if(S.armedLadder){
+    const hit=markerAt(w);
+    if(hit&&hit.mtype==="ladder"){ hit.angle=((hit.angle||0)+45)%360; save(); renderMarkers();
+      note("Ladder rotated +45°.",true); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
+    const b=boardAt(w.x,w.y);
+    if(b){ S.markers.push({kind:"marker",mtype:"ladder",angle:0,id:crypto.randomUUID(),board:b.id,x:w.x,y:w.y});
+      save(); renderMarkers(); note("Ladder placed. Tap it to rotate; 🗑 Erase to remove.",true); }
+    else note("Tap inside a killzone to place a ladder.",true);
+    drag={type:"pan",sx:e.clientX,sy:e.clientY}; return;
+  }
   // If an NPO datacard is armed, tap the board to place it with its stats + photo.
   if(S.armedNPO){
     const b=boardAt(w.x,w.y);
@@ -2319,7 +2405,7 @@ svg.addEventListener("pointerdown",e=>{
   if(S.mode==="marker"){
     const m=markerAt(w);
     if(m){
-      if(S.lockObj && m.mtype!=="smoke"){ note("Pads are locked. Unlock (🔓) to move them."); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
+      if(S.lockObj && !["smoke","barricade","ladder"].includes(m.mtype)){ note("Pads are locked. Unlock (🔓) to move them."); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
       drag={type:"marker",m,ox:w.x-m.x,oy:w.y-m.y,moved:false,x0:m.x,y0:m.y,board0:m.board}; return;
     }
     drag={type:"pan",sx:e.clientX,sy:e.clientY}; return;
@@ -2355,7 +2441,7 @@ svg.addEventListener("pointerdown",e=>{
     renderOverlay(); updateTraverseChip(); openOpSheet(t); hud("Selected"); return; }
   const m=markerAt(w);
   if(m && S.mode==="move"){
-    if(S.lockObj && m.mtype!=="smoke"){ note(`Pads are locked. Unlock (🔓) to move them.`); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
+    if(S.lockObj && !["smoke","barricade","ladder"].includes(m.mtype)){ note(`Pads are locked. Unlock (🔓) to move them.`); drag={type:"pan",sx:e.clientX,sy:e.clientY}; return; }
     drag={type:"marker",m,ox:w.x-m.x,oy:w.y-m.y,moved:false,x0:m.x,y0:m.y,board0:m.board}; return;
   }
 
@@ -2433,8 +2519,9 @@ function doPinch(){ const p=[...pointers.values()]; if(p.length<2) return;
 $("#toolseg").addEventListener("click",e=>{ const b=e.target.closest("[data-mode]"); if(!b) return;
   S.mode=b.dataset.mode; $$("#toolseg .tool").forEach(x=>x.classList.toggle("on",x===b));
   if(S.roomPaint){ S.roomPaint=false; syncRoomPaintBtn(); }
-  // the marker submenu only makes sense while the Portals tool is active
+  // the marker submenu only makes sense while the Markers tool is active
   $("#markerSub").classList.toggle("hidden", S.mode!=="marker");
+  if(S.mode!=="marker" && (S.armedSmoke||S.armedBarr||S.armedLadder||S.armedErase)) armMk(null);
   $("#opSub").classList.toggle("hidden", S.mode!=="op");
   if(S.mode==="marker"){ const lb=$("#lockToggle");
     lb.classList.toggle("on",S.lockObj); lb.textContent=S.lockObj?"🔒 Locked":"🔓 Unlocked"; }
@@ -2748,12 +2835,26 @@ $("#opDelete").addEventListener("click",()=>{ if(!sheetOp) return;
 
 $("#addEntry").addEventListener("click",()=>{ const w=S._lastWorld||[centreX(),0]; placeEntrywayPair(w[0]); });
 $("#addTele").addEventListener("click",()=>{ const w=S._lastWorld||[centreX(),0]; placeTeleportPair(w[0]); });
-$("#addSmoke").addEventListener("click",()=>{
-  S.armedSmoke=!S.armedSmoke;
-  if(S.armedSmoke){ S.armedNPO=null; S.armedModel=null; S.armedPrefab=null; }
-  $("#addSmoke").classList.toggle("on",!!S.armedSmoke);
-  note(S.armedSmoke?"Smoke armed — tap the board to drop (20mm + 1\" halo); tap a smoke to remove.":"Smoke tool off.",true);
-});
+// One armed marker tool at a time. Arms `which` (or disarms if already armed), clears the rest,
+// and syncs the .on button states. Also cancels any armed NPO/model/prefab placement.
+function armMk(which){
+  const on = which && !S["armed"+which];
+  S.armedSmoke=S.armedBarr=S.armedLadder=S.armedErase=null;
+  if(on){ S["armed"+which]=true; S.armedNPO=null; S.armedModel=null; S.armedPrefab=null; }
+  const btn={Smoke:"addSmoke",Barr:"addBarr",Ladder:"addLadder",Erase:"eraseMk"};
+  Object.entries(btn).forEach(([k,id])=>{ const b=$("#"+id); if(b) b.classList.toggle("on", on&&which===k); });
+  return on;
+}
+$("#addSmoke").addEventListener("click",()=>{ const on=armMk("Smoke");
+  note(on?"Smoke armed — tap the board to drop (20mm + 1\" halo); tap a smoke to remove.":"Smoke tool off.",true); });
+$("#addBarr").addEventListener("click",()=>{ const on=armMk("Barr");
+  note(on?`${(BARR[S.barrSub]||{}).name||"Barricade"} armed — tap to place; tap a barricade to rotate +45°.`:"Barricade tool off.",true); });
+$("#addLadder").addEventListener("click",()=>{ const on=armMk("Ladder");
+  note(on?"Ladder armed — tap to place; tap a ladder to rotate +45°.":"Ladder tool off.",true); });
+$("#eraseMk").addEventListener("click",()=>{ const on=armMk("Erase");
+  note(on?"Erase armed — tap any marker to delete it (portals delete as a pair).":"Erase tool off.",true); });
+$("#barrSel").addEventListener("change",e=>{ S.barrSub=e.target.value;
+  if(S.armedBarr) note(`${(BARR[S.barrSub]||{}).name||"Barricade"} selected — tap to place.`,true); });
 $("#lockToggle").addEventListener("click",()=>{ setLock(!S.locked);
   note(S.locked?"Locked — objects & pads won't move by accident.":"Unlocked — drag to reposition.",true); });
 function centreX(){ const b=S.boards[0]; return b?b.ox+b.wpx/2:0; }
@@ -3184,7 +3285,7 @@ $("#palette").addEventListener("click",e=>{
   const grp=e.target.closest("[data-pfgrp]");
   if(grp){ const k=grp.dataset.pfgrp; S.pfOpen[k]=!S.pfOpen[k]; buildPalette(); return; }
   const pl=e.target.closest("[data-pfplace]");
-  if(pl){ const n=pl.dataset.pfplace; S.armedPrefab = S.armedPrefab===n?null:n; buildPalette();
+  if(pl){ const n=pl.dataset.pfplace; S.armedSmoke=S.armedBarr=S.armedLadder=S.armedErase=null; S.armedPrefab = S.armedPrefab===n?null:n; buildPalette();
     note(S.armedPrefab?`${n} armed — tap the ${S.placeBoard} board to place it.`:"Disarmed.",true); }
 });
 
@@ -3697,12 +3798,12 @@ $("#npoRoll").addEventListener("click",()=>{
   const cands=col.filter(k=>S.npoPool.includes(k) && npoAvail(k)>0);
   if(!cands.length){ note(`Rolled ${roll} (category ${row.roll}) — no available ${S.npoTheme==="core"?"Core":"Tomb World"} unit in that category (per the rules, roll again / use the next category).`); return; }
   const pick=cands[Math.floor(Math.random()*cands.length)];
-  S.armedNPO=pick; buildNPOSection();
+  S.armedSmoke=S.armedBarr=S.armedLadder=S.armedErase=null; S.armedNPO=pick; buildNPOSection();
   note(`Rolled ${roll} → category ${row.roll} → ${NPO_LIB[pick].name} armed. Tap the board to place it.`,true);
 });
 $("#npoNemesis").addEventListener("click",()=>{
   const key=S.pack&&S.pack.nemesis_key; if(!key||!NPO_LIB[key]){ note("This pack has no Nemesis."); return; }
-  S.armedNPO=key; buildNPOSection();
+  S.armedSmoke=S.armedBarr=S.armedLadder=S.armedErase=null; S.armedNPO=key; buildNPOSection();
   note(`${NPO_LIB[key].name} armed — tap the board to place the Nemesis.`,true);
 });
 
