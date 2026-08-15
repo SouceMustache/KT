@@ -530,7 +530,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v249</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v250</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -1409,6 +1409,92 @@ function pathBlockedByTerrain(a,b){
   }
   return best;
 }
+
+/* ---------------------------------------------------------------- NAV / PATHFINDER
+   A visibility-graph router so the NPO advisor can go AROUND solid walls (and THROUGH open
+   hatches / removed breaches, which simply aren't in the solid-edge set) instead of proposing
+   a straight line through cover. Nodes are wall-corner points nudged clear of the wall; two
+   nodes see each other if the segment between them crosses no solid wall; the shortest node
+   path (Dijkstra) plus the direct start→goal leg gives the route. The static corner graph is
+   cached per board, rebuilt only when the terrain fingerprint changes (object position/rotation
+   AND hatch open-state), so it stays in step with the Hatch tool by construction. Only invoked
+   when the straight path is blocked, so the common clear-line case pays nothing. */
+function navSolidEdges(board){ return boardEdges(board).filter(e=>e.los==="solid"); }
+// True only when AB properly crosses a wall — touches at either segment tip (rounding a corner,
+// or a node sitting just off a wall end) are allowed, else corners could never be rounded.
+function segBlockedBy(A,B,walls){
+  for(const e of walls){
+    const X=segX(A,B,e.a,e.b); if(!X) continue;
+    if(Math.hypot(X.x-A[0],X.y-A[1])<0.6 || Math.hypot(X.x-B[0],X.y-B[1])<0.6) continue;
+    if(Math.hypot(X.x-e.a[0],X.y-e.a[1])<0.6 || Math.hypot(X.x-e.b[0],X.y-e.b[1])<0.6) continue;
+    return true;
+  }
+  return false;
+}
+let _navCache={};
+function navFingerprint(board){
+  return (S.insts||[]).filter(i=>i.board===board)
+    .map(i=>`${i.ref}|${Math.round(i.x)}|${Math.round(i.y)}|${i.k||0}|${i.open?Object.keys(i.open).sort().join(","):""}`).join(";");
+}
+function navBuild(board){
+  const walls=navSolidEdges(board), CLEAR=0.5*PPI, raw=[];
+  for(const e of walls){
+    const ax=e.a[0],ay=e.a[1],bx=e.b[0],by=e.b[1];
+    const L=Math.hypot(bx-ax,by-ay)||1, ux=(bx-ax)/L, uy=(by-ay)/L, px=-uy, py=ux;   // along / perp
+    for(const [P,dx,dy] of [[[ax,ay],-ux,-uy],[[bx,by],ux,uy]]){   // beyond each tip, both faces
+      const tx=P[0]+dx*CLEAR, ty=P[1]+dy*CLEAR;
+      raw.push([tx+px*CLEAR, ty+py*CLEAR]); raw.push([tx-px*CLEAR, ty-py*CLEAR]);
+    }
+  }
+  const nodes=[], seen=new Set();
+  for(const n of raw){ const k=Math.round(n[0]/3)+","+Math.round(n[1]/3); if(seen.has(k))continue; seen.add(k); nodes.push(n); }
+  const adj=nodes.map(()=>[]);
+  for(let i=0;i<nodes.length;i++) for(let j=i+1;j<nodes.length;j++){
+    if(!segBlockedBy(nodes[i],nodes[j],walls)){
+      const w=Math.hypot(nodes[i][0]-nodes[j][0],nodes[i][1]-nodes[j][1]);
+      adj[i].push({j,w}); adj[j].push({j:i,w}); } }
+  return {nodes,adj,walls};
+}
+function navGraph(board){ const fp=navFingerprint(board), c=_navCache[board];
+  if(c&&c.fp===fp) return c.g; const g=navBuild(board); _navCache[board]={fp,g}; return g; }
+// Shortest route between two same-board items around solid walls. Returns {distPx,distIn,pts}
+// (world-space [x,y], centre→centre) or null if the goal is fully walled off.
+function navPath(a,b){
+  if(!a||!b||a.board!==b.board) return null;
+  const g=navGraph(a.board), walls=g.walls, S0=[a.x,a.y], G=[b.x,b.y];
+  if(!segBlockedBy(S0,G,walls)){ const d=Math.hypot(G[0]-S0[0],G[1]-S0[1]); return {distPx:d,distIn:d/PPI,pts:[S0,G]}; }
+  const N=g.nodes.length, nodes=g.nodes.concat([S0,G]), adj=g.adj.map(a=>a.slice()); adj.push([]); adj.push([]);
+  const si=N, gi=N+1;
+  for(let i=0;i<N;i++){
+    if(!segBlockedBy(S0,nodes[i],walls)){ const w=Math.hypot(S0[0]-nodes[i][0],S0[1]-nodes[i][1]); adj[si].push({j:i,w}); adj[i].push({j:si,w}); }
+    if(!segBlockedBy(G,nodes[i],walls)){ const w=Math.hypot(G[0]-nodes[i][0],G[1]-nodes[i][1]); adj[gi].push({j:i,w}); adj[i].push({j:gi,w}); }
+  }
+  const dist=new Array(nodes.length).fill(Infinity), prev=new Array(nodes.length).fill(-1);
+  dist[si]=0; const pq=[[0,si]];
+  while(pq.length){ pq.sort((x,y)=>x[0]-y[0]); const [d,u]=pq.shift(); if(d>dist[u])continue; if(u===gi)break;
+    for(const {j,w} of adj[u]){ const nd=d+w; if(nd<dist[j]){ dist[j]=nd; prev[j]=u; pq.push([nd,j]); } } }
+  if(dist[gi]===Infinity) return null;
+  const pts=[]; for(let u=gi;u!==-1;u=prev[u]) pts.unshift(nodes[u]);
+  return {distPx:dist[gi], distIn:dist[gi]/PPI, pts};
+}
+// Base-edge distance along a routed path: centre length minus base radii on the first & last
+// legs (direction-aware, oval-safe), so it compares to Move exactly like edgeDist does.
+function routedEdgeDist(a,b,pf){
+  if(!pf||pf.pts.length<2) return null;
+  const p=pf.pts, n=p.length;
+  const ra=baseRadDir(a, p[1][0]-p[0][0], p[1][1]-p[0][1]);
+  const rb=baseRadDir(b, p[n-2][0]-p[n-1][0], p[n-2][1]-p[n-1][1]);
+  return Math.max(0,(pf.distPx-ra-rb)/PPI);
+}
+// Clamp a world-space polyline to an arc length (px); returns {pt,idx} at that distance.
+function clampPolyline(pts,maxPx){
+  let acc=0;
+  for(let i=1;i<pts.length;i++){ const seg=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);
+    if(acc+seg>=maxPx){ const t=(maxPx-acc)/(seg||1);
+      return {pt:[pts[i-1][0]+(pts[i][0]-pts[i-1][0])*t, pts[i-1][1]+(pts[i][1]-pts[i-1][1])*t], idx:i}; }
+    acc+=seg; }
+  return {pt:pts[pts.length-1], idx:pts.length-1};
+}
 function visionCone(A,B,rA,rB,edges,inBand,oa,ob,zones){
   const dx=B[0]-A[0], dy=B[1]-A[1], L=Math.hypot(dx,dy)||1;
   const ux=-dy/L, uy=dx/L;
@@ -1539,7 +1625,8 @@ function scoreCandidate(cand, npo, prio, behLabel){
   if(rank!=null){ score += (10-rank)*10; reasons.push(`${behLabel} prioritises ${cand.action} (#${rank+1})`); }
   else { score += 5; }
   if(cand.reachable===false){ score -= 100; reasons.push("not reachable this activation"); }
-  if(cand.pathBlocked){ score -= 40; reasons.push("wall blocks the direct path"); }
+  if(cand.pathBlocked){ score -= 40; reasons.push("no route — target is walled off"); }
+  else if(cand.routed){ score -= 8; reasons.push("routes around cover"); }
   if(cand.action==="Shoot"){
     if(cand.blocked){ reasons.push("no line of sight"); }
     else if(cand.cover==="heavy"){ score-=20; reasons.push("target in heavy cover"); }
@@ -1604,13 +1691,21 @@ function enumerateNPOActions(npo){
       out.push({action:"Fight", targetId:e.id, weapon:melee[0].n, reachable:true, ap:1, dist:d,
         note:"within control range"});
     }
-    // Charge — reachable if we can close to control range within move + 2", AND no wall blocks
-    // the run-in (a straight charge can't pass through a solid wall).
+    // Charge — reachable if we can close to control range within move + 2". If a wall blocks
+    // the straight run-in, route around it (or through an opening); a charge that has to detour
+    // uses the routed distance, and is impossible if there is no route at all.
     if(melee.length && d>CTRL_DEFAULT){
-      const need=d-CTRL_DEFAULT, reach=move+2, inReach=need<=reach+1e-6;
-      out.push({action:"Charge", targetId:e.id, weapon:melee[0].n, reachable:inReach&&!wall, pathBlocked:!!wall,
-        ap:1, dist:d, need, note: wall ? "wall blocks a straight charge" :
-          (inReach?`close ${need.toFixed(1)}" into engagement`:`${(need-reach).toFixed(1)}" out of charge reach`)});
+      const reach=move+2;
+      let useD=d, routed=false, path=null;
+      if(wall){ const pf=navPath(npo,e); const rd=pf?routedEdgeDist(npo,e,pf):null;
+        if(rd!=null){ useD=rd; routed=true; path=pf.pts; } }
+      const need=useD-CTRL_DEFAULT, inReach=need<=reach+1e-6;
+      const noRoute = wall && !routed;
+      out.push({action:"Charge", targetId:e.id, weapon:melee[0].n,
+        reachable: inReach && !noRoute, pathBlocked:noRoute, routed, path,
+        ap:1, dist:d, need, note: noRoute ? "no route — target is walled off" :
+          (inReach ? `${routed?"charge around cover — ":""}close ${need.toFixed(1)}" into engagement`
+                   : `${(need-reach).toFixed(1)}" out of charge reach${routed?" (around cover)":""}`)});
     }
     // Shoot — one candidate per ranged weapon that can see and reach the target
     for(const w of ranged){
@@ -1626,10 +1721,15 @@ function enumerateNPOActions(npo){
   // Movement candidates (toward the nearest target), plus Fall Back if currently engaged.
   if(nearest){
     const wall=pathBlockedByTerrain(npo,nearest);   // wall across the straight line to the target
-    const via = wall ? ` (wall blocks the direct path — move around)` : "";
-    out.push({action:"Reposition", targetId:nearest.id, reachable:true, pathBlocked:!!wall, ap:1, dist:nearestD, gain:move,
+    // If blocked, try to route around/through an opening. A route means the NPO can still make
+    // progress (not truly blocked) — it just bends toward the gap. No route = boxed in.
+    const pf = wall ? navPath(npo,nearest) : null;
+    const routed = !!(wall && pf), noRoute = !!(wall && !pf);
+    const path = routed ? pf.pts : null;
+    const via = noRoute ? " (no route — walled off)" : (routed ? " (around cover)" : "");
+    out.push({action:"Reposition", targetId:nearest.id, reachable:true, pathBlocked:noRoute, routed, path, ap:1, dist:nearestD, gain:move,
       note:`move up to ${move}" toward ${nearest.label||"nearest"}${via}`});
-    out.push({action:"Dash", targetId:nearest.id, reachable:true, pathBlocked:!!wall, ap:1, dist:nearestD, gain:2,
+    out.push({action:"Dash", targetId:nearest.id, reachable:true, pathBlocked:noRoute, routed, path, ap:1, dist:nearestD, gain:2,
       note:`move up to 2" toward nearest${via}`});
     if(engaged) out.push({action:"Fall Back", reachable:true, ap:1, gain:move,
       note:`disengage — move up to ${move}" away`});
@@ -2114,23 +2214,50 @@ function renderAdvisorOverlay(){
     stroke:"var(--orange)","stroke-width":2,"stroke-dasharray":"4 3","vector-effect":"non-scaling-stroke"}));
   const t=p.targetId && S.items.find(o=>o.id===p.targetId);
   if(t){
-    // If the picked action's straight path is blocked by a wall, show it: orange up to the
-    // wall, red beyond, with an ✗ at the wall — so a "move through a wall" pick reads as wrong.
     const rk=rankNPOActions(npo), c=rk.candidates[p.i];
-    const wall=(c&&(c.pathBlocked||c.reachable===false)) ? pathBlockedByTerrain(npo,t) : null;
-    if(wall){
-      gOvl.appendChild(attr(mk("line"),{x1:npo.x,y1:npo.y,x2:wall.x,y2:wall.y,stroke:"var(--orange)",
-        "stroke-width":1.8,"stroke-dasharray":"5 4","vector-effect":"non-scaling-stroke"}));
-      gOvl.appendChild(attr(mk("line"),{x1:wall.x,y1:wall.y,x2:t.x,y2:t.y,stroke:"var(--inj)",
-        "stroke-width":1.8,"stroke-dasharray":"2 4","vector-effect":"non-scaling-stroke",opacity:.9}));
-      const s=5;
-      gOvl.appendChild(attr(mk("line"),{x1:wall.x-s,y1:wall.y-s,x2:wall.x+s,y2:wall.y+s,stroke:"var(--inj)","stroke-width":2,"vector-effect":"non-scaling-stroke"}));
-      gOvl.appendChild(attr(mk("line"),{x1:wall.x-s,y1:wall.y+s,x2:wall.x+s,y2:wall.y-s,stroke:"var(--inj)","stroke-width":2,"vector-effect":"non-scaling-stroke"}));
-      gOvl.appendChild(attr(mk("circle"),{cx:t.x,cy:t.y,r:itemR(t)+5,fill:"none",stroke:"var(--inj)",
+    const line=(x1,y1,x2,y2,col,dash,extra)=>gOvl.appendChild(attr(mk("line"),Object.assign(
+      {x1,y1,x2,y2,stroke:col,"stroke-width":1.8,"vector-effect":"non-scaling-stroke"},
+      dash?{"stroke-dasharray":dash}:{}, extra||{})));
+    if(c && c.routed && c.path && c.path.length>=2){
+      // Routed detour: draw the real polyline. Solid up to the Move allowance (how far it gets
+      // THIS activation), dashed for the remainder, with a dot where the activation runs out.
+      const reachPx=(c.gain!=null?c.gain:(NPO_LIB[npo.npoKey]||{}).move||6)*PPI;
+      const cut=clampPolyline(c.path,reachPx), pts=c.path;
+      // solid segment: pts[0..cut.idx-1] + cut.pt
+      let dSolid="M"+pts[0][0]+" "+pts[0][1];
+      for(let i=1;i<cut.idx;i++) dSolid+=" L"+pts[i][0]+" "+pts[i][1];
+      dSolid+=" L"+cut.pt[0]+" "+cut.pt[1];
+      gOvl.appendChild(attr(mk("path"),{d:dSolid,fill:"none",stroke:"var(--orange)","stroke-width":2,
+        "stroke-linejoin":"round","vector-effect":"non-scaling-stroke"}));
+      // dashed remainder from the cut point to the target
+      let dRest="M"+cut.pt[0]+" "+cut.pt[1];
+      for(let i=cut.idx;i<pts.length;i++) dRest+=" L"+pts[i][0]+" "+pts[i][1];
+      gOvl.appendChild(attr(mk("path"),{d:dRest,fill:"none",stroke:"var(--orange)","stroke-width":1.6,
+        "stroke-dasharray":"5 5","opacity":.6,"stroke-linejoin":"round","vector-effect":"non-scaling-stroke"}));
+      // reach dot + target ring
+      gOvl.appendChild(attr(mk("circle"),{cx:cut.pt[0],cy:cut.pt[1],r:3.5,fill:"var(--bg)",stroke:"var(--orange)",
+        "stroke-width":1.6,"vector-effect":"non-scaling-stroke"}));
+      gOvl.appendChild(attr(mk("circle"),{cx:t.x,cy:t.y,r:itemR(t)+5,fill:"none",stroke:"var(--orange)",
         "stroke-width":2,"vector-effect":"non-scaling-stroke"}));
+    } else if(c && (c.pathBlocked || c.reachable===false)){
+      // No route (walled off) or otherwise unreachable: orange to the wall, red beyond, ✗ at the
+      // wall, so a genuinely impossible move reads as wrong.
+      const wall=pathBlockedByTerrain(npo,t);
+      if(wall){
+        line(npo.x,npo.y,wall.x,wall.y,"var(--orange)","5 4");
+        line(wall.x,wall.y,t.x,t.y,"var(--inj)","2 4",{opacity:.9});
+        const s=5;
+        line(wall.x-s,wall.y-s,wall.x+s,wall.y+s,"var(--inj)",null,{"stroke-width":2});
+        line(wall.x-s,wall.y+s,wall.x+s,wall.y-s,"var(--inj)",null,{"stroke-width":2});
+        gOvl.appendChild(attr(mk("circle"),{cx:t.x,cy:t.y,r:itemR(t)+5,fill:"none",stroke:"var(--inj)",
+          "stroke-width":2,"vector-effect":"non-scaling-stroke"}));
+      } else {
+        line(npo.x,npo.y,t.x,t.y,"var(--inj)","5 4");
+        gOvl.appendChild(attr(mk("circle"),{cx:t.x,cy:t.y,r:itemR(t)+5,fill:"none",stroke:"var(--inj)",
+          "stroke-width":2,"vector-effect":"non-scaling-stroke"}));
+      }
     } else {
-      gOvl.appendChild(attr(mk("line"),{x1:npo.x,y1:npo.y,x2:t.x,y2:t.y,stroke:"var(--orange)",
-        "stroke-width":1.8,"stroke-dasharray":"5 4","vector-effect":"non-scaling-stroke"}));
+      line(npo.x,npo.y,t.x,t.y,"var(--orange)","5 4");
       gOvl.appendChild(attr(mk("circle"),{cx:t.x,cy:t.y,r:itemR(t)+5,fill:"none",stroke:"var(--orange)",
         "stroke-width":2,"vector-effect":"non-scaling-stroke"}));
     }
