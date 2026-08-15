@@ -209,6 +209,15 @@
   .subseg{display:inline-flex;gap:6px;align-items:center;}
   .subseg .mini{padding:6px 9px;font-size:11px;}
   .subseg .mini.on{border-color:var(--orange);color:var(--orange);background:rgba(242,160,61,.12);}
+  /* The board-tools strip can hold more controls than fit on a phone, so let #ctxrow scroll
+     sideways (swipe) instead of pushing buttons off-screen unreachably. Segments keep their
+     full width (flex:0 0 auto) so they overflow into the scroll rather than getting squished;
+     the flex:1 spacer still right-aligns short segments (Mine/Enemy) when nothing overflows. */
+  #ctxrow{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
+    scrollbar-width:none;scroll-snap-type:x proximity;}
+  #ctxrow::-webkit-scrollbar{display:none;}
+  #ctxrow>.subseg,#ctxrow>.packtag,#ctxrow>.modechip{flex:0 0 auto;}
+  #ctxrow>.subseg>.mini,#ctxrow>.subseg>#barrSel{flex:0 0 auto;scroll-snap-align:end;}
 
   /* operative editor sheet, slides up from the bottom */
   #opSheet{position:absolute;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));
@@ -521,7 +530,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v246</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v248</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -530,6 +539,7 @@
         <button class="tool" data-mode="op" title="Drop token (Mine/Enemy)" aria-label="Drop token"><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="5.5"/><circle cx="10" cy="10" r="1.6" fill="currentColor" stroke="none"/></svg></button>
         <button class="tool" data-mode="los" title="Line of sight" aria-label="Line of sight"><svg viewBox="0 0 20 20"><path d="M2 10s3-5 8-5 8 5 8 5-3 5-8 5-8-5-8-5z"/><circle cx="10" cy="10" r="2.2" fill="currentColor" stroke="none"/></svg></button>
       </div>
+      <button class="iconbtn" id="hatchBtn" title="Open / close hatchways: tap a hatch, breach point or hatch-removed wall to flip it (breach points can't re-close)" aria-label="Open / close hatchways"><svg viewBox="0 0 20 20"><rect x="4" y="3" width="12" height="14" rx="1"/><circle cx="12.5" cy="10" r="1" fill="currentColor" stroke="none"/></svg></button>
       <button class="iconbtn" id="undoBtn" title="Undo move" disabled><svg viewBox="0 0 20 20"><path d="M7 5L3 9l4 4"/><path d="M3 9h9a5 5 0 0 1 0 10h-2"/></svg></button>
       <button class="iconbtn" id="terrainBtn" title="Maps, objects & rooms"><svg viewBox="0 0 20 20"><path d="M3 6l5-2 4 2 5-2v12l-5 2-4-2-5 2z"/><path d="M8 4v12M12 6v12"/></svg></button>
       <button class="iconbtn" id="missionBtn" title="Mission &amp; trackers"><svg viewBox="0 0 20 20"><path d="M5 3v14"/><path d="M5 4h9l-2 3 2 3H5"/></svg></button>
@@ -555,7 +565,6 @@
         </select>
         <button class="mini" id="addBarr" title="Arm barricade: tap board to place, tap a barricade to rotate +45°">＋ Barricade</button>
         <button class="mini" id="addLadder" title="Arm ladder: tap board to place, tap a ladder to rotate +45°">＋ Ladder</button>
-        <button class="mini" id="addHatch" title="Open/close hatchways: tap a hatch, breach point or hatch-removed wall to flip it (breaches can't re-close)">🚪 Hatch</button>
         <button class="mini" id="eraseMk" title="Erase: tap any marker to delete it (portals delete as a pair)">🗑 Erase</button>
         <button class="mini" id="lockToggle" title="Lock markers in place">🔒 Locked</button>
       </span>
@@ -2542,18 +2551,27 @@ function doPinch(){ const p=[...pointers.values()]; if(p.length<2) return;
   lastPinch={d,mid}; }
 
 /* ------------------------------------------------------------------ toolbar */
-$("#toolseg").addEventListener("click",e=>{ const b=e.target.closest("[data-mode]"); if(!b) return;
-  S.mode=b.dataset.mode; $$("#toolseg .tool").forEach(x=>x.classList.toggle("on",x===b));
+// Switching the active board mode (move / measure / marker / op / los). Factored out so the
+// Hatch toggle can force a compatible mode too (taps only reach the hatch handler in
+// move/marker/op — measure/room/los return earlier), mirroring the Planner's setHatchMode.
+function setToolMode(m){
+  S.mode=m; $$("#toolseg .tool").forEach(x=>x.classList.toggle("on",x.dataset.mode===m));
   if(S.roomPaint){ S.roomPaint=false; syncRoomPaintBtn(); }
   // the marker submenu only makes sense while the Markers tool is active
   $("#markerSub").classList.toggle("hidden", S.mode!=="marker");
-  if(S.mode!=="marker" && (S.armedSmoke||S.armedBarr||S.armedLadder||S.armedErase)) armMk(null);
   $("#opSub").classList.toggle("hidden", S.mode!=="op");
   if(S.mode==="marker"){ const lb=$("#lockToggle");
     lb.classList.toggle("on",S.lockObj); lb.textContent=S.lockObj?"🔒 Locked":"🔓 Unlocked"; }
   if(S.mode!=="move"){ S.traverse=null; closeOpSheet(); }
   if(S.mode!=="los"){ clearLos(); }
   updateTraverseChip();
+}
+$("#toolseg").addEventListener("click",e=>{ const b=e.target.closest("[data-mode]"); if(!b) return;
+  setToolMode(b.dataset.mode);
+  if(S.mode!=="marker" && (S.armedSmoke||S.armedBarr||S.armedLadder||S.armedErase)) armMk(null);
+  // Hatch is a standalone toggle, not a marker tool — picking any mode disarms it so the icon
+  // never stays lit while board taps are going to a different tool.
+  if(S.armedHatch) armMk(null);
 });
 // op side picker
 $("#opSub").addEventListener("click",e=>{ const b=e.target.closest("[data-side]"); if(!b) return;
@@ -2892,7 +2910,7 @@ function armMk(which){
   const on = which && !S["armed"+which];
   S.armedSmoke=S.armedBarr=S.armedLadder=S.armedErase=S.armedHatch=null;
   if(on){ S["armed"+which]=true; S.armedNPO=null; S.armedModel=null; S.armedPrefab=null; }
-  const btn={Smoke:"addSmoke",Barr:"addBarr",Ladder:"addLadder",Erase:"eraseMk",Hatch:"addHatch"};
+  const btn={Smoke:"addSmoke",Barr:"addBarr",Ladder:"addLadder",Erase:"eraseMk",Hatch:"hatchBtn"};
   Object.entries(btn).forEach(([k,id])=>{ const b=$("#"+id); if(b) b.classList.toggle("on", on&&which===k); });
   return on;
 }
@@ -2904,7 +2922,8 @@ $("#addLadder").addEventListener("click",()=>{ const on=armMk("Ladder");
   note(on?"Ladder armed — tap to place; tap a ladder to rotate +45°.":"Ladder tool off.",true); });
 $("#eraseMk").addEventListener("click",()=>{ const on=armMk("Erase");
   note(on?"Erase armed — tap any marker to delete it (portals delete as a pair).":"Erase tool off.",true); });
-$("#addHatch").addEventListener("click",()=>{ const on=armMk("Hatch");
+$("#hatchBtn").addEventListener("click",()=>{ const on=armMk("Hatch");
+  if(on) setToolMode("move");   // taps only reach toggleHatchAt outside measure/room/los — force move
   note(on?"Hatch armed — tap a hatchway to open/close it (breach points can't re-close).":"Hatch tool off.",true); });
 $("#barrSel").addEventListener("change",e=>{ S.barrSub=e.target.value;
   if(S.armedBarr) note(`${(BARR[S.barrSub]||{}).name||"Barricade"} selected — tap to place.`,true); });
