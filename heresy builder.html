@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>VI Legion — Space Wolves · builder</title>
+<style>
+  :root{
+    --bg:#0d1117; --surface:#161b24; --card:#1c2333; --border:#2a3347;
+    --accent:#4a9eff; --accent2:#7ec8e3; --text:#e6edf3; --muted:#8b949e;
+    --gold:#d4a843; --red:#e05c5c; --green:#4ac07a; --overlay:rgba(10,13,20,0.97);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif;min-height:100vh;overflow-x:hidden;padding-bottom:80px}
+
+  header{background:linear-gradient(180deg,#0a0e16,var(--bg));border-bottom:1px solid var(--border);padding:14px 14px 10px;position:sticky;top:0;z-index:20}
+  .htop{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  header h1{font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--accent)}
+  .rname{background:transparent;border:none;color:var(--text);font-size:18px;font-weight:800;letter-spacing:-.02em;width:100%;margin-top:1px;outline:none}
+  .rname::placeholder{color:var(--muted)}
+  .menu-btn{flex:none;background:var(--card);border:1px solid var(--border);color:var(--accent2);font-size:16px;font-weight:700;padding:6px 11px;border-radius:8px;cursor:pointer}
+
+  .totals{display:flex;align-items:center;gap:10px;margin-top:9px;flex-wrap:wrap}
+  .pts{font-size:22px;font-weight:800;letter-spacing:-.02em}
+  .pts .cap{font-size:13px;color:var(--muted);font-weight:600}
+  .pts.over{color:var(--red)} .pts.ok{color:var(--green)}
+  .capbox{flex:none;display:flex;align-items:center;gap:5px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:4px 8px}
+  .capbox label{font-size:9px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+  .capbox input{width:56px;background:transparent;border:none;color:var(--text);font-size:14px;font-weight:700;text-align:right;outline:none}
+
+  .foc{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}
+  .foc .slot{font-size:10px;font-weight:700;letter-spacing:.04em;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:3px 7px;color:var(--muted)}
+  .foc .slot b{color:var(--text)}
+  .foc .slot.warn{border-color:var(--red);color:var(--red)}
+  .foc .slot.warn b{color:var(--red)}
+  .foc .slot.good{border-color:#2c4a38}
+
+  .wrap{padding:12px}
+  .add-row{display:flex;gap:8px;margin-bottom:12px}
+  .add-btn{flex:1;background:linear-gradient(180deg,#243049,#1c2333);border:1px solid var(--accent);color:var(--accent2);font-size:14px;font-weight:800;padding:12px;border-radius:12px;cursor:pointer;letter-spacing:.02em}
+  .add-btn:active{transform:scale(.98)}
+
+  .empty{text-align:center;color:var(--muted);font-size:13px;padding:40px 20px;line-height:1.5}
+
+  .entry{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden}
+  .entry.warn{border-color:#5a3a3a}
+  .ehead{display:flex;align-items:center;gap:10px;padding:11px 12px;cursor:pointer;user-select:none}
+  .ehead .role{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+  .ehead .nm{font-size:14px;font-weight:700;line-height:1.15}
+  .ehead .sub{font-size:10px;color:var(--muted);margin-top:1px}
+  .ehead .grow{flex:1;min-width:0}
+  .ehead .ec{flex:none;background:var(--gold);color:#0d1117;font-size:12px;font-weight:800;padding:3px 8px;border-radius:6px}
+  .ehead .chev{flex:none;color:var(--muted);font-size:12px;transition:transform .15s}
+  .entry.open .chev{transform:rotate(90deg)}
+
+  .ebody{display:none;border-top:1px solid var(--border);padding:10px 12px 12px}
+  .entry.open .ebody{display:block}
+
+  .mrow{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:7px 10px;margin-bottom:9px}
+  .mrow .ml{font-size:12px;font-weight:600}
+  .mrow .ml small{display:block;color:var(--muted);font-size:10px;font-weight:400}
+  .stepper{display:flex;align-items:center;gap:2px}
+  .stepper button{width:30px;height:30px;border-radius:7px;background:var(--card);border:1px solid var(--border);color:var(--accent2);font-size:17px;font-weight:800;cursor:pointer;line-height:1}
+  .stepper button:active{background:#243049}
+  .stepper button:disabled{opacity:.3;cursor:default}
+  .stepper .val{min-width:26px;text-align:center;font-size:14px;font-weight:800}
+
+  .opt{margin-bottom:11px}
+  .opt-l{font-size:11px;color:var(--muted);margin-bottom:6px;line-height:1.3}
+  .opt-l .mode{display:inline-block;font-size:8px;letter-spacing:.06em;text-transform:uppercase;background:#243049;color:var(--accent2);padding:1px 5px;border-radius:4px;margin-left:4px;vertical-align:middle}
+  .opt.consul .opt-l{color:var(--gold);font-weight:700}
+  .picks{display:flex;flex-wrap:wrap;gap:5px}
+  .pick{display:flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 9px;font-size:12px;cursor:pointer;user-select:none}
+  .pick .p{font-weight:800;color:var(--gold);font-size:11px}
+  .pick .p.free{color:var(--green)}
+  .pick.sel{border-color:var(--accent);background:#1a2740;color:var(--accent2)}
+  .pick.sel .p{color:var(--accent2)}
+  .pick .cnt{display:flex;align-items:center;gap:4px;margin-left:2px}
+  .pick .cnt button{width:22px;height:22px;border-radius:5px;background:var(--card);border:1px solid var(--border);color:var(--accent2);font-size:14px;font-weight:800;line-height:1;cursor:pointer}
+  .pick .cnt button:disabled{opacity:.3;cursor:default}
+  .pick .cnt .n{min-width:16px;text-align:center;font-weight:800}
+  .opt-note{font-size:10px;color:var(--muted);font-style:italic;margin-top:5px;line-height:1.35}
+  .cx-info{font-size:10px;color:var(--accent2);margin-top:4px;line-height:1.4}
+
+  .ewarn{font-size:11px;color:var(--red);margin-top:2px;line-height:1.4}
+  .eactions{display:flex;gap:7px;margin-top:12px;border-top:1px solid var(--border);padding-top:10px}
+  .eactions button{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--muted);font-size:11px;font-weight:700;padding:8px;border-radius:8px;cursor:pointer;letter-spacing:.03em}
+  .eactions button.dup:active{color:var(--accent2);border-color:var(--accent)}
+  .eactions button.del:active{color:#fff;background:var(--red);border-color:var(--red)}
+
+  /* overlay: catalog picker + menu */
+  .overlay{position:fixed;inset:0;background:var(--overlay);z-index:50;display:none;overflow-y:auto;padding:16px 12px 60px}
+  .overlay.show{display:block}
+  .close-x{position:fixed;top:14px;right:14px;z-index:70;width:40px;height:40px;border-radius:50%;background:var(--card);border:1px solid var(--border);color:var(--text);font-size:18px;font-weight:700;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.4)}
+  .close-x:active{background:var(--red);color:#fff}
+  .osheet{max-width:560px;margin:0 auto}
+  .osheet h3{font-size:15px;font-weight:800;margin:6px 2px 12px;color:var(--accent2)}
+  .grp{margin-bottom:16px}
+  .grp-t{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:700;margin:0 2px 7px}
+  .pcard{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:7px;cursor:pointer}
+  .pcard:active{border-color:var(--accent);transform:scale(.99)}
+  .pcard .pn{flex:1;font-size:13px;font-weight:700}
+  .pcard .pc{flex:none;background:var(--gold);color:#0d1117;font-size:11px;font-weight:800;padding:2px 7px;border-radius:5px}
+
+  .menu{max-width:560px;margin:0 auto}
+  .menu h3{font-size:15px;font-weight:800;margin:6px 2px 14px;color:var(--accent2)}
+  .mbtn{width:100%;background:var(--card);border:1px solid var(--border);color:var(--text);font-size:13px;font-weight:700;padding:13px;border-radius:10px;margin-bottom:9px;cursor:pointer;text-align:left}
+  .mbtn:active{border-color:var(--accent)}
+  .mbtn.danger:active{background:var(--red);border-color:var(--red);color:#fff}
+  .mbtn small{display:block;color:var(--muted);font-weight:400;font-size:11px;margin-top:2px}
+  textarea.io{width:100%;height:150px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:monospace;font-size:11px;padding:10px;margin-top:8px;outline:none}
+
+  .attach{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 10px;margin:11px 0 0}
+  .attach-h{font-size:11px;font-weight:800;letter-spacing:.03em;color:var(--accent2);display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .attach-h .ec2{flex:none;background:var(--gold);color:#0d1117;font-size:11px;font-weight:800;padding:2px 7px;border-radius:5px}
+  .attach-nm{font-size:13px;font-weight:700;margin:4px 0 8px}
+  .attach-add{width:100%;background:var(--card);border:1px dashed var(--accent);color:var(--accent2);font-size:12px;font-weight:800;padding:10px;border-radius:8px;cursor:pointer}
+  .attach-add:active{background:#243049}
+  .mini-del{margin-top:9px;width:100%;background:var(--card);border:1px solid var(--border);color:var(--muted);font-size:11px;font-weight:700;padding:7px;border-radius:7px;cursor:pointer}
+  .mini-del:active{color:#fff;background:var(--red);border-color:var(--red)}
+  .rsel{width:100%;margin-top:2px;background:var(--card);border:1px solid var(--border);color:var(--text);font-size:13px;font-weight:600;padding:9px;border-radius:8px;outline:none}
+  .subvar{margin:5px 0 3px 12px;padding:5px 0 2px 9px;border-left:2px solid var(--accent)}
+  .pick.sm{font-size:11px;padding:4px 8px;background:var(--card)}
+  .pick.sm.sel{background:#1a2740;border-color:var(--accent)}
+  /* stock loadout note + gloss popup (podgląd statystyk broni) */
+  .stock{font-size:11px;color:var(--muted);margin:0 0 10px;line-height:1.7}
+  .stock .lbl{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-right:5px}
+  .chip{display:inline-block;font-size:11px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:3px 7px;margin:2px 3px 2px 0;color:var(--text)}
+  .chip-link{cursor:pointer;border-color:#3a4d6b;color:var(--accent2)}
+  .chip-link:active{background:#243049;border-color:var(--accent)}
+  .chip-link::after{content:"\203A";margin-left:4px;color:var(--accent);font-weight:800}
+  .winfo{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-left:5px;border-radius:50%;background:#243049;color:var(--accent2);font-size:10px;font-weight:800;cursor:pointer;vertical-align:middle}
+  .winfo:active{background:var(--accent);color:#0d1117}
+  .gwrap{position:fixed;inset:0;background:rgba(5,7,12,.72);z-index:90;display:none;align-items:center;justify-content:center;padding:24px}
+  .gwrap.show{display:flex}
+  #gcard{max-width:460px;width:100%;max-height:82vh;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 10px 44px rgba(0,0,0,.6)}
+  #gcard .gt{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  #gcard h4{font-size:16px;font-weight:800;margin:2px 0 10px}
+  #gcard .weapon h4{color:var(--gold)}
+  #gcard .rulecard h4{color:var(--accent2)}
+  #gcard .rule-body{font-size:13px;line-height:1.5;color:var(--text)}
+  #gcard .note-src{font-size:11px;color:var(--muted);font-style:italic;margin-top:8px;line-height:1.4}
+  table.gstats{width:100%;border-collapse:collapse;margin-top:4px}
+  table.gstats th{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:3px 6px;text-align:center;border-bottom:1px solid var(--border)}
+  table.gstats td{font-size:12px;font-weight:700;padding:4px 6px;text-align:center;border-bottom:1px solid var(--border)}
+  table.gstats td.pname{text-align:left;color:var(--accent2);font-weight:600}
+  table.gstats td.gtype{text-align:left;white-space:normal;font-family:monospace;font-size:10px;color:var(--accent2);line-height:1.3;font-weight:400}
+  /* pasek widoku Builder/Podgląd */
+  .viewbar{display:flex;align-items:center;gap:8px;margin-top:9px}
+  .seg{display:inline-flex;background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .seg button{background:transparent;border:none;color:var(--muted);font-size:12px;font-weight:800;padding:6px 14px;cursor:pointer}
+  .seg button.on{background:var(--accent);color:#0d1117}
+  .printb{margin-left:auto;background:var(--card);border:1px solid var(--border);color:var(--accent2);font-size:12px;font-weight:700;padding:6px 11px;border-radius:8px;cursor:pointer}
+
+  /* datasheet cards */
+  .dtitle{font-size:15px;font-weight:800;margin:2px 2px 12px;display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .dtitle .dpts{font-size:13px;font-weight:800;color:var(--green)}
+  .dtitle .dpts.over{color:var(--red)}
+  .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .dtile{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 12px 10px;cursor:pointer;position:relative;overflow:hidden;user-select:none}
+  .dtile:active{transform:scale(.97);border-color:var(--accent)}
+  .dt-cost{position:absolute;top:9px;right:9px;background:var(--gold);color:#0d1117;font-size:10px;font-weight:800;padding:2px 6px;border-radius:5px}
+  .dt-role{font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+  .dt-name{font-size:13px;font-weight:700;line-height:1.15;margin:3px 26px 2px 0}
+  .dt-sub{font-size:10px;color:var(--muted);margin-bottom:7px}
+  .mini{display:grid;gap:2px;margin-top:4px}
+  .mini div{text-align:center}
+  .mini .k{font-size:8px;color:var(--muted);letter-spacing:.02em}
+  .mini .v{font-size:12px;font-weight:800}
+  .oh{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px}
+  .oh h3{font-size:18px;font-weight:800;line-height:1.1}
+  .oh .role{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:700}
+  .oh .oh-sub{font-size:11px;color:var(--muted);margin-top:3px}
+  .oh .cost{flex:none;background:var(--gold);color:#0d1117;font-size:13px;font-weight:800;padding:4px 10px;border-radius:7px}
+  #printArea{display:none}
+  .psheet{margin-bottom:16px}
+  .chips{display:flex;flex-wrap:wrap;gap:3px}
+  table.wtab{width:100%;border-collapse:collapse;margin-top:2px}
+  table.wtab th{font-size:8px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:3px 5px;text-align:center;border-bottom:1px solid var(--border)}
+  table.wtab th:first-child,table.wtab td.wn{text-align:left}
+  table.wtab td{font-size:11px;font-weight:700;padding:5px;text-align:center;border-bottom:1px solid rgba(42,51,71,.5);vertical-align:top}
+  table.wtab td.wn{color:var(--accent2);font-weight:600}
+  .wsublbl{color:var(--muted);font-weight:400;font-size:10px}
+  .wsub2{color:var(--muted);font-weight:400;padding-left:8px}
+  td.wtype{text-align:left}
+  .pill{display:inline-block;font-size:9px;font-weight:700;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:1px 7px;margin:1px 2px 1px 0;color:var(--text);white-space:nowrap}
+  .pill-link{cursor:pointer;border-color:#3a4d6b;color:var(--accent2)}
+  .pill-link:active{background:#243049}
+  .dsec{margin-bottom:12px}
+  .dsec-t{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:6px}
+  .cfg{display:flex;gap:8px;font-size:12px;padding:3px 0;border-bottom:1px solid rgba(42,51,71,.5);flex-wrap:wrap}
+  .cfg-l{color:var(--muted);flex:0 0 auto;min-width:120px;max-width:45%}
+  .cfg-v{flex:1;min-width:0}
+  .cfg-sub{color:var(--accent2);font-size:11px}
+  .wpn{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;margin-bottom:6px}
+  .wpn b{color:var(--gold);font-size:13px}
+  .wpn .wprof{font-family:monospace;font-size:11px;color:var(--accent2)}
+  .rule-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 11px;margin-bottom:7px}
+  .rule-name{font-weight:800;color:var(--accent2);font-size:13px;margin-bottom:4px}
+  .rule-body,.rule-part{font-size:12px;line-height:1.45;color:var(--text)}
+  .rule-part{margin-top:4px}.rp-l{font-weight:700;color:var(--accent);margin-right:5px}
+  table.stats{width:100%;border-collapse:collapse;margin-bottom:4px}
+  table.stats th{font-size:9px;text-transform:uppercase;color:var(--muted);font-weight:700;padding:3px 4px;border-bottom:1px solid var(--border)}
+  table.stats td{font-size:12px;font-weight:700;padding:4px;text-align:center;border-bottom:1px solid rgba(42,51,71,.5)}
+  table.stats td.pname{text-align:left;color:var(--accent2);font-weight:600;font-size:11px}
+
+  @media print{
+    header, .viewbar, #addRow, #roster, #catalog, #menu, #gwrap, #dispWrap{display:none !important}
+    #printArea{display:block !important}
+    body{background:#fff;color:#000;padding:0}
+    .psheet{break-inside:avoid}
+    .dtitle,.dtitle .dpts{color:#000}
+    .chip,.chip-link{border-color:#999;color:#000;background:#fff}.chip-link::after{content:""}
+    .dsec-t,.rule-name,.cfg-sub,.wpn b,.wpn .wprof,table.stats td.pname,.oh h3,.oh .role{color:#000}
+    .oh .cost{background:#000;color:#fff}
+    table.stats td,table.stats th{border-color:#ccc;color:#000}
+    table.wtab td,table.wtab th,table.wtab td.wn{border-color:#ccc;color:#000}
+    .pill,.pill-link{border-color:#999;color:#000;background:#fff}
+    .rule-card,.wpn{background:#fff;border-color:#ccc}
+  }
+  .err{padding:30px 16px;color:var(--red);font-size:14px;text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <div class="htop">
+    <div class="grow" style="flex:1;min-width:0">
+      <h1>VI Legio Astartes · Space Wolves</h1>
+      <input class="rname" id="rname" placeholder="Nazwa rostera…" oninput="setName(this.value)">
+    </div>
+    <button class="menu-btn" onclick="openMenu()">&#9776;</button>
+  </div>
+  <div class="totals">
+    <div class="pts" id="ptsBox"><span id="ptsTotal">0</span><span class="cap"> / <span id="ptsCap">3000</span> pts</span></div>
+    <div class="capbox"><label>Limit</label><input id="capInput" type="number" inputmode="numeric" value="3000" oninput="setCap(this.value)"></div>
+  </div>
+  <div class="foc" id="focStrip"></div>
+  <div class="viewbar">
+    <div class="seg"><button id="vBuild" class="on" onclick="setView('build')">Builder</button><button id="vDisp" onclick="setView('display')">Podgląd</button></div>
+    <button class="printb" id="printBtn" onclick="window.print()" style="display:none">🖨 Drukuj</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="add-row" id="addRow"><button class="add-btn" onclick="openCatalog()">+ Dodaj jednostkę</button></div>
+  <div id="roster"></div>
+  <div id="printArea"></div>
+</div>
+
+<div class="overlay" id="catalog" onclick="closeCatalog(event)"><button class="close-x" onclick="closeCatalog()">&#10005;</button><div class="osheet" id="catalogSheet"></div></div>
+<div class="overlay" id="menu" onclick="closeMenu(event)"><button class="close-x" onclick="closeMenu()">&#10005;</button><div class="menu" id="menuSheet"></div></div>
+<div class="overlay" id="dispWrap" onclick="closeDisp(event)"><button class="close-x" onclick="closeDisp()">&#10005;</button><div class="osheet" id="dispSheet"></div></div>
+<div class="gwrap" id="gwrap" onclick="closeGloss()"><div id="gcard" onclick="event.stopPropagation()"></div></div>
+
+<script src="heresy-units.js"></script>
+<script src="heresy-weapons.js"></script>
+<script src="heresy-rules.js"></script>
+<script>
+const UNITS=(typeof HERESY_UNITS!=='undefined')?HERESY_UNITS:[];
+const ROLES={HQ:'HQ',EL:'Elites',TR:'Troops',FA:'Fast Attack',HS:'Heavy Support',DT:'Transport',LO:'Lord of War',PR:'Primarch'};
+const SLOT_ORDER=['HQ','PR','LO','EL','TR','FA','HS','DT'];
+// miękkie limity FOC (Crusade Army List 2.0); DT bez limitu
+const FOC_LIM={HQ:{min:1,max:2},TR:{min:2,max:6},EL:{min:0,max:3},FA:{min:0,max:3},HS:{min:0,max:3},LO:{min:0,max:1},PR:{min:0,max:1}};
+const LS_KEY='heresy_roster_v1';
+
+let STATE={name:'',cap:3000,entries:[]};
+let UID=1;
+
+function esc(s){return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escAttr(s){return esc(s).replace(/"/g,'&quot;');}
+
+/* ── B5: podgląd statystyk broni / reguł (port z viewera) ───────────────── */
+function resolveChip(name){
+  var w=(typeof heresyWeapon!=='undefined')?heresyWeapon(name):null; if(w)return{type:'weapon',data:w};
+  var g=(typeof heresyGloss!=='undefined')?heresyGloss(name):null;   if(g)return{type:'gloss',data:g};
+  return null;
+}
+function chipHtml(name){
+  var can=!!resolveChip(name);
+  return '<span class="chip'+(can?' chip-link':'')+'"'+(can?' data-gloss="'+escAttr(name)+'" onclick="glossTap(event)"':'')+'>'+esc(name)+'</span>';
+}
+function infoIcon(name){ return resolveChip(name)?'<span class="winfo" data-gloss="'+escAttr(name)+'" onclick="glossTap(event)">\u24D8</span>':''; }
+function glossTap(ev){ ev.stopPropagation(); var el=ev.currentTarget; if(el)openGloss(el.getAttribute('data-gloss')); }
+function wpnRow(p,multi){
+  return '<tr>'+(multi?'<td class="pname">'+esc(p.sub||'')+'</td>':'')+
+    '<td>'+esc(p.rng)+'</td><td>'+esc(p.S)+'</td><td>'+esc(p.AP)+'</td><td class="gtype">'+esc(p.type)+'</td></tr>';
+}
+function weaponCardHtml(w){
+  var multi=!!w.profiles;
+  var head='<tr>'+(multi?'<th></th>':'')+'<th>Rng</th><th>S</th><th>AP</th><th style="text-align:left">Type</th></tr>';
+  var rows=multi?w.profiles.map(function(p){return wpnRow(p,true);}).join(''):wpnRow(w,false);
+  var note=w.note?'<div class="note-src">'+esc(w.note)+'</div>':'';
+  return '<div class="weapon"><div class="gt">Wpn \u00b7 '+esc(w.cat)+'</div><h4>'+esc(w.key)+'</h4>'+
+    '<table class="gstats">'+head+rows+'</table>'+note+'</div>';
+}
+function glossCardHtml(g){
+  return '<div class="rulecard"><div class="gt">'+esc(g.cat)+'</div><h4>'+esc(g.key)+'</h4>'+
+    '<div class="rule-body">'+esc(g.text)+'</div></div>';
+}
+function openGloss(name){
+  var r=resolveChip(name); if(!r)return;
+  document.getElementById('gcard').innerHTML=(r.type==='weapon')?weaponCardHtml(r.data):glossCardHtml(r.data);
+  var gw=document.getElementById('gwrap');gw.classList.add('show');gw.scrollTop=0;
+}
+function closeGloss(){document.getElementById('gwrap').classList.remove('show');}
+function unitById(id){return UNITS.find(u=>u.id===id);}
+function findEntry(uid){ for(const e of STATE.entries){ if(e.uid===uid)return e; if(e.transport&&e.transport.uid===uid)return e.transport; } return null; }
+function eligibleForTransport(u){ return !!(u&&u.transportNote)&&u.slot!=='DT'; }
+function transportUnits(){ return UNITS.filter(u=>u.slot==='DT'); }
+function isMasterUnit(u){ return !!u&&(u.rules||[]).includes('Master of the Legion'); }
+// klasa pancerza (do parowania Command Squad ↔ host)
+function armourClass(u){ const w=((u&&u.wargear)||[]).join('|');
+  if(/Cataphractii/i.test(w))return 'cataphractii';
+  if(/Tartaros/i.test(w))return 'tartaros';
+  if(/Power armour|Artificer/i.test(w))return 'power';
+  return null; }
+const ARMOUR_PL={cataphractii:'Cataphractii',tartaros:'Tartaros',power:'power/artificer'};
+// rodzaj retinue: 'command' (rule Retinue) lub 'deathsworn' (Cult of Morkai)
+function retinueKind(u){ if(!u)return null;
+  if((u.rules||[]).includes('Retinue'))return 'command';
+  if((u.rules||[]).includes('Cult of Morkai'))return 'deathsworn';
+  return null; }
+function isRetinueUnit(u){ return !!retinueKind(u); }
+// id-y wybranych konsulów danej jednostki
+function hostConsul(host){ const hu=unitById(host.unitId); if(!hu)return [];
+  const ids=[]; (hu.options||[]).forEach(o=>{ if(o.mode==='consul'){ const sel=host.sel[o.id]; if(sel)ids.push(sel); } }); return ids; }
+// dozwoleni hostowie dla danej jednostki-retinue
+function validHostEntries(e){ const u=unitById(e.unitId); const kind=retinueKind(u); if(!kind)return [];
+  if(kind==='command'){ const ac=armourClass(u);
+    return STATE.entries.filter(m=>m.uid!==e.uid && isMasterUnit(unitById(m.unitId)) && armourClass(unitById(m.unitId))===ac); }
+  if(kind==='deathsworn'){
+    return STATE.entries.filter(m=>m.uid!==e.uid && hostConsul(m).some(id=>id==='speaker_of_the_dead'||id==='caster_of_runes')); }
+  return []; }
+function retinueValid(e){ return !!(e.retinueOf&&validHostEntries(e).some(m=>m.uid===e.retinueOf)); }
+function newUid(){return 'e'+(UID++);}
+
+/* ── SILNIK: modele + koszt ─────────────────────────────────────────────── */
+function modelCount(e){
+  const u=unitById(e.unitId); if(!u)return 0;
+  let n=(u.composition&&u.composition.start)||1;
+  (u.options||[]).forEach(o=>{ if(o.mode==='add-models'){ const s=e.sel[o.id]||{}; Object.keys(s).forEach(cid=>{n+=(s[cid]||0);}); } });
+  return n;
+}
+function maxAddModels(u){ let m=0; (u.options||[]).forEach(o=>{ if(o.mode==='add-models')m+=(o.max||0); }); return m; }
+function ratioAllowed(o,models){ const per=(o.ratio&&o.ratio.per)||1; const cnt=(o.ratio&&o.ratio.count)||1; return Math.floor(models/per)*cnt; }
+// wspólna pula slotów broni: konkurujące ratio-swapy współdzielą limit = liczba modeli
+function optCount(e,o){ const s=e.sel[o.id]; if(!s||typeof s!=='object')return 0; return Object.values(s).reduce((a,b)=>a+b,0); }
+function poolUsage(e,u,poolId){ let n=0; (u.options||[]).forEach(o=>{ if(o.mode==='ratio-swap'&&o.pools&&o.pools.indexOf(poolId)>=0)n+=optCount(e,o); }); return n; }
+function effAllowed(e,o){ const u=unitById(e.unitId); const models=modelCount(e); let cap=ratioAllowed(o,models);
+  if(o.pools&&o.pools.length){ o.pools.forEach(p=>{ const others=poolUsage(e,u,p)-optCount(e,o); cap=Math.min(cap, models-others); }); }
+  return Math.max(0,cap); }
+function reconcileRatios(e){ const u=unitById(e.unitId); if(!u)return;
+  (u.options||[]).forEach(o=>{ if(o.mode!=='ratio-swap')return; const s=e.sel[o.id]; if(!s||typeof s!=='object')return;
+    const al=effAllowed(e,o); let used=Object.values(s).reduce((a,b)=>a+b,0);
+    if(used>al){ let over=used-al; Object.keys(s).sort((a,b)=>s[b]-s[a]).forEach(id=>{ if(over<=0)return; const t=Math.min(over,s[id]); s[id]-=t; over-=t; if(s[id]===0)delete s[id]; }); }
+  }); }
+
+function entryCost(e){
+  const u=unitById(e.unitId); if(!u)return 0;
+  let c=u.baseCost||0; const models=modelCount(e);
+  (u.options||[]).forEach(o=>{
+    const sel=e.sel[o.id];
+    if(o.mode==='add-models'){ const s=sel||{}; (o.choices||[]).forEach(ch=>{ c+=(s[ch.id]||0)*(ch.cost||0); }); }
+    else if(o.mode==='toggle'){ const s=sel||{}; (o.choices||[]).forEach(ch=>{ if(s[ch.id]) c+=(ch.cost||0); }); }
+    else if(o.mode==='unit-per-model'){ const s=sel||{}; (o.choices||[]).forEach(ch=>{ if(s[ch.id]) c+=(ch.cost||0)*models; }); }
+    else if(o.mode==='ratio-swap'){ const s=sel||{}; (o.choices||[]).forEach(ch=>{ c+=(s[ch.id]||0)*(ch.cost||0); }); }
+    else if(o.mode==='pick-one'&&o.scope==='each-model'){ const s=(sel&&typeof sel==='object')?sel:{}; (o.choices||[]).forEach(ch=>{ c+=(s[ch.id]||0)*(ch.cost||0); }); }
+    else if(o.mode==='pick-one'||o.mode==='single-swap'||o.mode==='consul'){ if(sel){ const ch=(o.choices||[]).find(x=>x.id===sel); if(ch)c+=(ch.costMode==='per-model')?(ch.cost||0)*models:(ch.cost||0); } }
+  });
+  return c;
+}
+function entryTotalCost(e){ return entryCost(e)+(e.transport?entryCost(e.transport):0); }
+function rosterTotal(){ return STATE.entries.reduce((s,e)=>s+entryTotalCost(e),0); }
+
+/* walidacja miękka pojedynczej jednostki */
+function entryWarnings(e){
+  const u=unitById(e.unitId); if(!u)return [];
+  const w=[]; const models=modelCount(e); const comp=u.composition||{};
+  if(isRetinueUnit(u)&&!retinueValid(e)){ const k=retinueKind(u);
+    w.push(k==='deathsworn'
+      ? 'Deathsworn jako Retinue tylko przy Speaker of the Dead / Caster of Runes.'
+      : 'Command Squad musi by\u0107 Retinue przy Master of the Legion w tym samym pancerzu ('+(ARMOUR_PL[armourClass(u)]||'?')+').'); }
+  if(comp.min!=null&&models<comp.min)w.push('Za mało modeli ('+models+' < min '+comp.min+').');
+  if(comp.max!=null&&models>comp.max)w.push('Za dużo modeli ('+models+' > max '+comp.max+').');
+  (u.options||[]).forEach(o=>{
+    if(o.mode==='ratio-swap'){ const s=e.sel[o.id]||{}; const used=Object.values(s).reduce((a,b)=>a+b,0); const al=effAllowed(e,o);
+      if(used>al)w.push('„'+o.label+'" — wybrano '+used+' / dozwolone '+al+'.'); }
+  });
+  return w;
+}
+
+/* ── FABRYKA ŚWIEŻEGO WPISU ─────────────────────────────────────────────── */
+function freshEntry(unitId){
+  const u=unitById(unitId);
+  const e={uid:newUid(),unitId:unitId,sel:{},var:{}};
+  (u.options||[]).forEach(o=>{
+    if(o.mode==='pick-one'&&o.scope==='each-model'){ e.sel[o.id]={}; if(o.base&&o.choices&&o.choices[0]){ const st=(u.composition&&u.composition.start)||1; e.sel[o.id][o.choices[0].id]=st; } }
+    else if(o.mode==='add-models'||o.mode==='toggle'||o.mode==='unit-per-model'||o.mode==='ratio-swap')e.sel[o.id]={};
+    else e.sel[o.id]=null;
+  });
+  return e;
+}
+// each-model: utrzymaj Σ przydziałów ≤ modelCount (przy usuwaniu modeli przytnij od największego)
+function reconcileEach(e){
+  const u=unitById(e.unitId); if(!u)return; const models=modelCount(e);
+  (u.options||[]).forEach(o=>{
+    if(o.mode==='pick-one'&&o.scope==='each-model'){
+      let s=e.sel[o.id]; if(!s||typeof s!=='object')s=e.sel[o.id]={};
+      let assigned=Object.values(s).reduce((a,b)=>a+b,0);
+      if(assigned>models){ let over=assigned-models; Object.keys(s).sort((a,b)=>s[b]-s[a]).forEach(id=>{ if(over<=0)return; const t=Math.min(over,s[id]); s[id]-=t; over-=t; if(s[id]===0)delete s[id]; }); }
+    }
+  });
+}
+/* ── B4: pod-archetyp dla swapowych meta-broni (cost-neutral) ──────────── */
+const META_POWER=[{id:'sword',name:'Power sword'},{id:'axe',name:'Power axe'},{id:'maul',name:'Power maul'},{id:'lance',name:'Power lance'}];
+const META_CHARN=[{id:'sabre',name:'Charnabal sabre'},{id:'tabar',name:'Charnabal tabar'},{id:'glaive',name:'Charnabal glaive'}];
+const META_FROST=[{id:'fsword',name:'Frost sword'},{id:'faxe',name:'Frost axe'},{id:'fclaw',name:'Frost claw'}];
+function metaVariants(name){ if(name==='Power weapon')return META_POWER; if(name==='Charnabal weapon')return META_CHARN; if(/frost blade\s*\(/i.test(name||''))return META_FROST; return null; }
+function activeCount(e,o,ch){ const sel=e.sel[o.id];
+  if(o.mode==='ratio-swap'||o.mode==='add-models')return (sel&&sel[ch.id])||0;
+  if(o.mode==='toggle'||o.mode==='unit-per-model')return (sel&&sel[ch.id])?1:0;
+  return sel===ch.id?1:0; }
+function reconcileVars(e){ const u=unitById(e.unitId); if(!u)return; e.var=e.var||{};
+  (u.options||[]).forEach(o=>(o.choices||[]).forEach(ch=>{ if(!metaVariants(ch.name))return;
+    const key=o.id+'|'+ch.id; const ac=activeCount(e,o,ch);
+    if(ac<=0){ if(e.var[key])delete e.var[key]; return; }
+    let s=e.var[key]; if(!s||typeof s!=='object')s=e.var[key]={};
+    let assigned=Object.values(s).reduce((a,b)=>a+b,0);
+    if(assigned>ac){ let over=assigned-ac; Object.keys(s).sort((a,b)=>s[b]-s[a]).forEach(id=>{ if(over<=0)return; const t=Math.min(over,s[id]); s[id]-=t; over-=t; if(s[id]===0)delete s[id]; }); }
+  })); }
+function stepVar(uid,key,vid,d){ const e=findEntry(uid); e.var=e.var||{}; const s=e.var[key]=(e.var[key]&&typeof e.var[key]==='object')?e.var[key]:{};
+  const p=key.split('|'); const u=unitById(e.unitId); const o=(u.options||[]).find(x=>x.id===p[0]); const ch=o&&(o.choices||[]).find(x=>x.id===p[1]); if(!ch)return;
+  const ac=activeCount(e,o,ch); const assigned=Object.values(s).reduce((a,b)=>a+b,0);
+  if(d>0&&assigned>=ac)return; let v=(s[vid]||0)+d; v=Math.max(0,v); s[vid]=v; if(v===0)delete s[vid]; render();save(); }
+function setVarExclusive(uid,key,vid){ const e=findEntry(uid); e.var=e.var||{}; e.var[key]={}; e.var[key][vid]=1; render();save(); }
+function variantBlock(e,o,ch){ const vars=metaVariants(ch.name); if(!vars)return '';
+  const ac=activeCount(e,o,ch); if(ac<=0)return '';
+  const key=o.id+'|'+ch.id; const s=(e.var&&e.var[key]&&typeof e.var[key]==='object')?e.var[key]:{};
+  const assigned=Object.values(s).reduce((a,b)=>a+b,0); const rem=ac-assigned;
+  if(ac===1){ const rows=vars.map(v=>'<div class="pick sm'+(s[v.id]===1?' sel':'')+'" onclick="setVarExclusive(\''+e.uid+'\',\''+key+'\',\''+v.id+'\')"><span class="nm">'+esc(v.name)+'</span></div>').join('');
+    return '<div class="subvar"><div class="cx-info">Wybierz typ:</div><div class="picks">'+rows+'</div></div>'; }
+  const rows=vars.map(v=>{ const cv=s[v.id]||0;
+    return '<div class="pick sm'+(cv>0?' sel':'')+'"><span class="nm">'+esc(v.name)+'</span>'+
+      '<span class="cnt"><button onclick="stepVar(\''+e.uid+'\',\''+key+'\',\''+v.id+'\',-1)">\u2212</button>'+
+      '<span class="n">'+cv+'</span>'+
+      '<button onclick="stepVar(\''+e.uid+'\',\''+key+'\',\''+v.id+'\',1)"'+(rem<=0?' disabled':'')+'>+</button></span></div>';
+  }).join('');
+  return '<div class="subvar"><div class="cx-info">Typ: przydzielono '+assigned+' / '+ac+(rem>0?' \u00b7 pozosta\u0142o '+rem:'')+'</div><div class="picks">'+rows+'</div></div>';
+}
+/* ── B6: Retinue mount = napęd przyłączonego bohatera (auto) ────────────── */
+const MOUNT_NAMES=['Legion Warhawk jump pack','Legion Spatha combat bike','Legion Scimitar jetbike'];
+function selectedMountName(host){
+  if(!host)return null; const hu=unitById(host.unitId); if(!hu)return null;
+  for(const o of (hu.options||[])){ const sel=host.sel[o.id]; if(!sel||typeof sel!=='string')continue;
+    const c=(o.choices||[]).find(x=>x.id===sel); if(c&&MOUNT_NAMES.includes(c.name))return c.name; }
+  return null;
+}
+function reconcileRetinueMount(e){
+  const u=unitById(e.unitId); if(!u)return;
+  const rmOpt=(u.options||[]).find(o=>o.id==='retinue_mount'); if(!rmOpt)return;
+  let target=null;
+  if(retinueValid(e)){ const host=STATE.entries.find(m=>m.uid===e.retinueOf); const name=selectedMountName(host);
+    if(name){ const ch=rmOpt.choices.find(c=>c.name===name); target=ch?ch.id:null; } }
+  e.sel['retinue_mount']=target;
+}
+
+/* ── AKCJE STANU ────────────────────────────────────────────────────────── */
+function setName(v){STATE.name=v;save();}
+function setCap(v){STATE.cap=Math.max(0,parseInt(v,10)||0);document.getElementById('ptsCap').textContent=STATE.cap;renderTotals();save();}
+function addUnit(unitId){STATE.entries.push(freshEntry(unitId));closeCatalog();render();save();}
+let PICK_FOR=null;
+function catalogPick(unitId){ if(PICK_FOR&&PICK_FOR.kind==='transport'){addTransport(PICK_FOR.uid,unitId);} else {addUnit(unitId);} PICK_FOR=null; }
+function addTransport(carrierUid,unitId){ const e=findEntry(carrierUid); if(!e)return; e.transport=freshEntry(unitId); closeCatalog(); render(); save(); }
+function removeTransport(carrierUid){ const e=findEntry(carrierUid); if(e){delete e.transport;render();save();} }
+function attachRetinue(uid,hostUid){ const e=findEntry(uid); if(!e)return; e.retinueOf=hostUid||null; render(); save(); }
+function removeEntry(uid){STATE.entries.forEach(e=>{if(e.retinueOf===uid)e.retinueOf=null;});STATE.entries=STATE.entries.filter(e=>e.uid!==uid);render();save();}
+function dupEntry(uid){const e=STATE.entries.find(x=>x.uid===uid);if(!e)return;const c=JSON.parse(JSON.stringify(e));c.uid=newUid();if(c.transport)c.transport.uid=newUid();c.retinueOf=null;const i=STATE.entries.indexOf(e);STATE.entries.splice(i+1,0,c);render();save();}
+function toggleOpen(uid){const e=STATE.entries.find(x=>x.uid===uid);if(e){e._open=!e._open;render();}}
+
+function stepModel(uid,optId,cid,d){
+  const e=findEntry(uid);const u=unitById(e.unitId);const o=u.options.find(x=>x.id===optId);
+  const s=e.sel[optId]=e.sel[optId]||{}; let v=(s[cid]||0)+d;
+  v=Math.max(o.min||0,Math.min(o.max!=null?o.max:99,v));
+  s[cid]=v; reconcileEach(e); render();save();
+}
+function stepEachModel(uid,optId,cid,d){
+  const e=findEntry(uid); const s=e.sel[optId]=(e.sel[optId]&&typeof e.sel[optId]==='object')?e.sel[optId]:{};
+  const models=modelCount(e); const assigned=Object.values(s).reduce((a,b)=>a+b,0);
+  if(d>0&&assigned>=models)return; // brak wolnych modeli
+  let v=(s[cid]||0)+d; v=Math.max(0,v); s[cid]=v; if(v===0)delete s[cid]; render();save();
+}
+function setEachExclusive(uid,optId,cid){ const e=findEntry(uid); e.sel[optId]={}; e.sel[optId][cid]=1; render();save(); }
+function stepRatio(uid,optId,cid,d){
+  const e=findEntry(uid);const u=unitById(e.unitId);const o=u.options.find(x=>x.id===optId);
+  const models=modelCount(e); const al=effAllowed(e,o);
+  const s=e.sel[optId]=e.sel[optId]||{}; const used=Object.values(s).reduce((a,b)=>a+b,0);
+  let v=(s[cid]||0)+d;
+  if(d>0&&used>=al)return; // limit
+  v=Math.max(0,v); s[cid]=v; if(v===0)delete s[cid]; render();save();
+}
+function toggleChoice(uid,optId,cid){
+  const e=findEntry(uid); const s=e.sel[optId]=e.sel[optId]||{};
+  if(s[cid])delete s[cid]; else s[cid]=true; render();save();
+}
+function pickOne(uid,optId,cid){
+  const e=findEntry(uid);
+  e.sel[optId]=(e.sel[optId]===cid)?null:cid; render();save();
+}
+
+/* ── RENDER ─────────────────────────────────────────────────────────────── */
+function ptsHtml(ch){const per=ch.costMode==='per-model'?'/mdl':(ch.costMode==='per-each'?'/szt':'');
+  if(ch.free||ch.cost===0)return '<span class="p free">Free</span>';
+  return '<span class="p">+'+ch.cost+per+'</span>';}
+
+/* ── TRYB PODGLĄD (datasheet rostera) ──────────────────────────────────── */
+let VIEW='build';
+function setView(v){ VIEW=v;
+  document.getElementById('vBuild').classList.toggle('on',v==='build');
+  document.getElementById('vDisp').classList.toggle('on',v==='display');
+  document.getElementById('printBtn').style.display=(v==='display')?'':'none';
+  render();
+}
+function statTable(u){
+  const cols=(u.profileType==='vehicle')?['M','BS','front','side','rear','hp','capacity']:['M','WS','BS','S','T','W','I','A','Ld','Sv','Inv'];
+  const lbl={front:'Fr',side:'Sd',rear:'Rr',hp:'HP',capacity:'Cap'};
+  const head='<th></th>'+cols.map(c=>'<th>'+(lbl[c]||c)+'</th>').join('');
+  const rows=(u.profiles||[]).map(p=>'<tr><td class="pname">'+esc(p.name)+'</td>'+cols.map(c=>'<td>'+esc(p[c]!=null?p[c]:'\u2014')+'</td>').join('')+'</tr>').join('');
+  return '<table class="stats"><tr>'+head+'</tr>'+rows+'</table>';
+}
+function ruleCard(r){ let body='';
+  if(r.parts&&r.parts.length)body=r.parts.map(p=>'<div class="rule-part"><span class="rp-l">'+esc(p.label)+'</span>'+esc(p.text)+'</div>').join('');
+  else if(r.text)body='<div class="rule-body">'+esc(r.text)+'</div>';
+  return '<div class="rule-card"><div class="rule-name">'+esc(r.name)+'</div>'+body+'</div>';
+}
+function cfgLabel(o){ let l=o.label||''; return l.replace(/\s*(for )?one of:?\s*$/i,'').replace(/\s*:\s*$/,'').trim(); }
+function cfgRow(l,v){ return '<div class="cfg"><span class="cfg-l">'+esc(l)+'</span><span class="cfg-v">'+v+'</span></div>'; }
+function variantSummary(e,o,ch){ const vars=metaVariants(ch.name); if(!vars)return ''; const key=o.id+'|'+ch.id; const s=(e.var&&e.var[key])||{};
+  return vars.filter(v=>s[v.id]>0).map(v=>s[v.id]+'\u00d7 '+esc(v.name)).join(', '); }
+function configSummary(e){ const u=unitById(e.unitId); const rows=[];
+  (u.options||[]).forEach(o=>{ const sel=e.sel[o.id];
+    if(o.id==='retinue_mount'){ if(sel){const ch=(o.choices||[]).find(c=>c.id===sel); if(ch)rows.push(cfgRow('Mount', chipHtml(ch.name))); } return; }
+    if(o.mode==='add-models'){ const s=sel||{}; const p=(o.choices||[]).filter(c=>s[c.id]>0).map(c=>s[c.id]+'\u00d7 '+esc(c.name)); if(p.length)rows.push(cfgRow('Dodatkowe modele', p.join(', '))); return; }
+    if(o.mode==='pick-one'&&o.scope==='each-model'){ const s=(sel&&typeof sel==='object')?sel:{}; const p=(o.choices||[]).filter(c=>s[c.id]>0).map(c=>s[c.id]+'\u00d7 '+chipHtml(c.name)); if(p.length)rows.push(cfgRow(cfgLabel(o), p.join(', '))); return; }
+    if(o.mode==='ratio-swap'){ const s=sel||{}; (o.choices||[]).filter(c=>s[c.id]>0).forEach(c=>{ let v=s[c.id]+'\u00d7 '+chipHtml(c.name); const vs=variantSummary(e,o,c); if(vs)v+=' <span class="cfg-sub">\u2192 '+vs+'</span>'; rows.push(cfgRow(cfgLabel(o), v)); }); return; }
+    if(o.mode==='toggle'||o.mode==='unit-per-model'){ const s=sel||{}; const p=(o.choices||[]).filter(c=>s[c.id]).map(c=>chipHtml(c.name)); if(p.length)rows.push(cfgRow(cfgLabel(o), p.join(', '))); return; }
+    if(sel){ const ch=(o.choices||[]).find(c=>c.id===sel); if(ch){ let v=chipHtml(ch.name); const vs=variantSummary(e,o,ch); if(vs)v+=' <span class="cfg-sub">\u2192 '+vs+'</span>';
+      if(o.mode==='consul'){ if(ch.addsRules)v+=' <span class="cfg-sub">+ '+ch.addsRules.map(esc).join(', ')+'</span>'; if(ch.grantsWargear)v+=' <span class="cfg-sub">\u2694 '+ch.grantsWargear.map(esc).join(', ')+'</span>'; }
+      rows.push(cfgRow(cfgLabel(o), v)); } }
+  });
+  return rows.join('');
+}
+function typePills(typeStr){ return String(typeStr||'').split(',').map(t=>t.trim()).filter(Boolean).map(t=>{
+    const r=(typeof heresyRule!=='undefined')?heresyRule(t):null;
+    return r?'<span class="pill pill-link" data-gloss="'+escAttr(t)+'" onclick="glossTap(event)">'+esc(t)+'</span>':'<span class="pill">'+esc(t)+'</span>';
+  }).join(''); }
+function wRow(name,p,sub){
+  const nc = name ? (esc(name)+(sub?' <span class="wsublbl">'+esc(sub)+'</span>':'')) : '<span class="wsub2">› '+esc(sub||'')+'</span>';
+  return '<tr><td class="wn">'+nc+'</td><td>'+esc(p.rng)+'</td><td>'+esc(p.S)+'</td><td>'+esc(p.AP)+'</td><td class="wtype">'+typePills(p.type)+'</td></tr>';
+}
+function isWpn(n){ return !!(typeof heresyWeapon!=='undefined'&&n&&heresyWeapon(n)); }
+function unitWeapons(e){ const u=unitById(e.unitId); const out=[],seen={};
+  const add=n=>{ if(n&&!seen[n]&&isWpn(n)){seen[n]=1;out.push(n);} };
+  (u.wargear||[]).forEach(add);
+  (u.options||[]).forEach(o=>{ const sel=e.sel[o.id];
+    if(o.mode==='ratio-swap'||o.mode==='add-models'||o.mode==='toggle'||o.mode==='unit-per-model'||(o.mode==='pick-one'&&o.scope==='each-model')){ const s=(sel&&typeof sel==='object')?sel:{}; (o.choices||[]).forEach(c=>{ if(s[c.id])add(c.name); }); }
+    else if(sel){ const c=(o.choices||[]).find(x=>x.id===sel); if(c)add(c.name); }
+  });
+  return out; }
+function weaponTable(e){ const names=unitWeapons(e); if(!names.length)return '';
+  let rows=''; names.forEach(n=>{ const w=heresyWeapon(n); if(!w)return;
+    if(w.profiles&&w.profiles.length){ w.profiles.forEach((p,i)=>{ rows+=wRow(i===0?w.key:'', p, p.sub||''); }); }
+    else rows+=wRow(w.key,w,''); });
+  return '<table class="wtab"><tr><th>Broń</th><th>Rng</th><th>S</th><th>AP</th><th>Typ</th></tr>'+rows+'</table>';
+}
+function dsheetBody(e){
+  const u=unitById(e.unitId); const cfg=configSummary(e);
+  let body='<div class="dsec"><div class="dsec-t">Profil</div>'+statTable(u)+'</div>';
+  const wtab=weaponTable(e); if(wtab)body+='<div class="dsec"><div class="dsec-t">Bronie</div>'+wtab+'</div>';
+  const gear=(u.wargear||[]).filter(w=>!isWpn(w));
+  if(gear.length)body+='<div class="dsec"><div class="dsec-t">Wyposażenie</div><div class="chips">'+gear.map(w=>chipHtml(w)).join('')+'</div></div>';
+  if(cfg)body+='<div class="dsec"><div class="dsec-t">Konfiguracja</div>'+cfg+'</div>';
+  if(u.weaponProfiles&&u.weaponProfiles.length)body+='<div class="dsec"><div class="dsec-t">Bronie sygnaturowe</div>'+u.weaponProfiles.map(w=>'<div class="wpn"><b>'+esc(w.name)+'</b> <span class="wprof">'+esc(w.profile)+'</span>'+(w.note?'<div class="note-src">'+esc(w.note)+'</div>':'')+'</div>').join('')+'</div>';
+  if(u.rules&&u.rules.length)body+='<div class="dsec"><div class="dsec-t">Zasady specjalne</div><div class="chips">'+u.rules.map(w=>chipHtml(w)).join('')+'</div></div>';
+  if(u.rulesText&&u.rulesText.length)body+='<div class="dsec">'+u.rulesText.map(ruleCard).join('')+'</div>';
+  if(e.transport){ const tu=unitById(e.transport.unitId); const tcfg=configSummary(e.transport);
+    body+='<div class="dsec"><div class="dsec-t">\uD83D\uDE9A Transport: '+esc(tu.name)+' ('+entryCost(e.transport)+' pts)</div>'+statTable(tu)+weaponTable(e.transport)+
+      (tu.wargear&&tu.wargear.length?'<div class="chips">'+tu.wargear.filter(w=>!isWpn(w)).map(w=>chipHtml(w)).join('')+'</div>':'')+tcfg+'</div>'; }
+  return body;
+}
+const MINI=[['M','M'],['WS','WS'],['BS','BS'],['S','S'],['T','T'],['W','W'],['Sv','Sv'],['Inv','Inv']];
+const MINI_VEH=[['M','M'],['BS','BS'],['Fr','front'],['Sd','side'],['Rr','rear'],['HP','hp'],['Cap','capacity']];
+function dispTile(e){
+  const u=unitById(e.unitId); const p=(u.profiles&&u.profiles[0])||{};
+  const set=(u.profileType==='vehicle')?MINI_VEH:MINI;
+  const mini=set.map(pair=>{let v=p[pair[1]];if(v==null)v='\u2014';return '<div><div class="k">'+pair[0]+'</div><div class="v">'+esc(v)+'</div></div>';}).join('');
+  const badge=(retinueValid(e)?' \uD83D\uDEE1':'')+(e.transport?' \uD83D\uDE9A':'');
+  return '<div class="dtile" onclick="openDisp(\''+e.uid+'\')">'+
+    '<div class="dt-cost">'+entryTotalCost(e)+'</div>'+
+    '<div class="dt-role">'+esc(ROLES[u.slot]||u.slot)+'</div>'+
+    '<div class="dt-name">'+esc(u.name)+'</div>'+
+    '<div class="dt-sub">'+modelCount(e)+'\u00d7 '+(u.profileType==='vehicle'?'poj.':'mdl')+badge+'</div>'+
+    '<div class="mini" style="grid-template-columns:repeat('+set.length+',1fr)">'+mini+'</div></div>';
+}
+function openDisp(uid){ const e=STATE.entries.find(x=>x.uid===uid); if(!e)return; const u=unitById(e.unitId);
+  document.getElementById('dispSheet').innerHTML='<div class="oh"><div><div class="role">'+esc(ROLES[u.slot]||u.slot)+'</div><h3>'+esc(u.name)+'</h3><div class="oh-sub">'+modelCount(e)+'\u00d7 '+(u.profileType==='vehicle'?'poj.':'mdl')+'</div></div><div class="cost">'+entryTotalCost(e)+' pts</div></div>'+dsheetBody(e);
+  const ov=document.getElementById('dispWrap');ov.classList.add('show');ov.scrollTop=0;
+}
+function closeDisp(ev){ if(ev&&ev.target&&ev.target.id!=='dispWrap')return; document.getElementById('dispWrap').classList.remove('show'); }
+function renderDisplay(){
+  const r=document.getElementById('roster');
+  if(!STATE.entries.length){r.innerHTML='<div class="empty">Roster jest pusty.<br>Prze\u0142\u0105cz na Builder i dodaj jednostki.</div>';document.getElementById('printArea').innerHTML='';return;}
+  const ordered=[...STATE.entries].sort((a,b)=>SLOT_ORDER.indexOf(unitById(a.unitId).slot)-SLOT_ORDER.indexOf(unitById(b.unitId).slot));
+  const t=rosterTotal(); const over=t>STATE.cap;
+  const title='<div class="dtitle">'+esc(STATE.name||'Roster')+'<span class="dpts'+(over?' over':'')+'">'+t+' / '+STATE.cap+' pts</span></div>';
+  r.innerHTML=title+'<div class="dgrid">'+ordered.map(dispTile).join('')+'</div>';
+  document.getElementById('printArea').innerHTML=title.replace('dpts'+(over?' over':''),'dpts')+
+    ordered.map(e=>{const u=unitById(e.unitId);return '<div class="psheet"><div class="oh"><div><div class="role">'+esc(ROLES[u.slot]||u.slot)+'</div><h3>'+esc(u.name)+'</h3></div><div class="cost">'+entryTotalCost(e)+' pts \u00b7 '+modelCount(e)+'\u00d7</div></div>'+dsheetBody(e)+'</div>';}).join('');
+}
+
+function renderTotals(){
+  const t=rosterTotal();
+  document.getElementById('ptsTotal').textContent=t;
+  const box=document.getElementById('ptsBox');
+  box.className='pts'+(t>STATE.cap?' over':(t>0?' ok':''));
+  // FOC
+  const counts={}; STATE.entries.forEach(e=>{const u=unitById(e.unitId);if(!u)return;if(retinueValid(e))return;counts[u.slot]=(counts[u.slot]||0)+1;});
+  const strip=document.getElementById('focStrip');
+  strip.innerHTML=SLOT_ORDER.filter(s=>counts[s]||FOC_LIM[s]).map(s=>{
+    const n=counts[s]||0; const lim=FOC_LIM[s]; let cls='slot';
+    if(lim){ if(n>lim.max||n<lim.min)cls+=' warn'; else if(n>0)cls+=' good'; }
+    const limTxt=lim?(' /'+lim.max):'';
+    return '<span class="'+cls+'">'+esc(ROLES[s]||s)+' <b>'+n+'</b>'+limTxt+'</span>';
+  }).join('') || '<span class="slot">Brak jednostek</span>';
+}
+
+function optControl(e,o){
+  const models=modelCount(e); const sel=e.sel[o.id];
+  let inner='';
+  if(o.id==='retinue_mount'){ // auto: dopasowane do napędu przyłączonego bohatera
+    let msg;
+    if(!retinueValid(e)) msg='Przypnij oddzia\u0142 jako Retinue \u2014 mount dopasuje si\u0119 do nap\u0119du bohatera.';
+    else { const host=STATE.entries.find(m=>m.uid===e.retinueOf); const name=selectedMountName(host);
+      msg = name ? ('Auto: '+name+' \u2014 dopasowane do bohatera (koszt \u00d7modele)') : 'Bohater pieszy \u2014 oddzia\u0142 bez mounta.'; }
+    return '<div class="opt"><div class="opt-l">'+esc(o.label)+'<span class="mode">auto</span></div><div class="cx-info">'+esc(msg)+'</div></div>';
+  }
+  if(o.mode==='add-models'){
+    inner=(o.choices||[]).map(ch=>{
+      const v=(sel&&sel[ch.id])||0;
+      return '<div class="pick sel"><span class="nm">'+esc(ch.name)+'</span>'+ptsHtml(ch)+
+        '<span class="cnt"><button onclick="stepModel(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\',-1)">\u2212</button>'+
+        '<span class="n">'+v+'</span>'+
+        '<button onclick="stepModel(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\',1)">+</button></span></div>';
+    }).join('');
+  } else if(o.mode==='ratio-swap'){
+    const al=effAllowed(e,o); const used=sel?Object.values(sel).reduce((a,b)=>a+b,0):0;
+    const poolNote=(o.pools&&o.pools.length)?' \u00b7 wsp\u00f3lna pula: '+o.pools.join('+'):'';
+    inner='<div class="cx-info">Dozwolone: '+used+' / '+al+' (1 na '+((o.ratio&&o.ratio.per)||1)+' modeli)'+poolNote+'</div>'+
+      (o.choices||[]).map(ch=>{
+        const v=(sel&&sel[ch.id])||0;
+        return '<div class="pick'+(v>0?' sel':'')+'"><span class="nm">'+esc(ch.name)+infoIcon(ch.name)+'</span>'+ptsHtml(ch)+
+          '<span class="cnt"><button onclick="stepRatio(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\',-1)">\u2212</button>'+
+          '<span class="n">'+v+'</span>'+
+          '<button onclick="stepRatio(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\',1)"'+(used>=al?' disabled':'')+'>+</button></span></div>'+variantBlock(e,o,ch);
+      }).join('');
+  } else if(o.mode==='pick-one'&&o.scope==='each-model'){
+    const s=(sel&&typeof sel==='object')?sel:{};
+    const assigned=Object.values(s).reduce((a,b)=>a+b,0); const rem=models-assigned;
+    if(o.base&&models<=1){ // bazowa broń, pojedynczy model → radio (ekskluzywny wybór)
+      inner=(o.choices||[]).map(ch=>{
+        const on=s[ch.id]===1;
+        return '<div class="pick'+(on?' sel':'')+'" onclick="setEachExclusive(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\')"><span class="nm">'+esc(ch.name)+'</span>'+ptsHtml(ch)+'</div>';
+      }).join('');
+    } else { // wiele modeli → licznik na wariant (Σ ≤ liczba modeli)
+      const info=o.base?('Przydzielono '+assigned+' / '+models+(rem>0?' \u00b7 nieprzydzielone: '+rem:'')):('Wybrano '+assigned+' / '+models+' modeli');
+      inner='<div class="cx-info">'+info+'</div>'+
+        (o.choices||[]).map(ch=>{
+          const v=s[ch.id]||0;
+          return '<div class="pick'+(v>0?' sel':'')+'"><span class="nm">'+esc(ch.name)+'</span>'+ptsHtml(ch)+
+            '<span class="cnt"><button onclick="stepEachModel(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\',-1)">\u2212</button>'+
+            '<span class="n">'+v+'</span>'+
+            '<button onclick="stepEachModel(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\',1)"'+(rem<=0?' disabled':'')+'>+</button></span></div>';
+        }).join('');
+    }
+  } else if(o.mode==='toggle'||o.mode==='unit-per-model'){
+    inner=(o.choices||[]).map(ch=>{
+      const on=!!(sel&&sel[ch.id]);
+      return '<div class="pick'+(on?' sel':'')+'" onclick="toggleChoice(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\')"><span class="nm">'+esc(ch.name)+'</span>'+ptsHtml(ch)+'</div>';
+    }).join('');
+  } else { // pick-one / single-swap / consul (radio, deselectable)
+    inner=(o.choices||[]).map(ch=>{
+      const on=sel===ch.id;
+      let extra='';
+      if(ch.addsRules)extra+='<div class="cx-info">+ '+ch.addsRules.map(esc).join(', ')+'</div>';
+      if(ch.grantsWargear)extra+='<div class="cx-info">\u2694 '+ch.grantsWargear.map(esc).join(', ')+'</div>';
+      return '<div class="pick'+(on?' sel':'')+'" onclick="pickOne(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\')"><span class="nm">'+esc(ch.name)+infoIcon(ch.name)+extra+'</span>'+ptsHtml(ch)+'</div>'+variantBlock(e,o,ch);
+    }).join('');
+  }
+  const isC=o.mode==='consul';
+  return '<div class="opt'+(isC?' consul':'')+'"><div class="opt-l">'+esc(o.label)+
+    '<span class="mode">'+esc(o.mode)+'</span></div><div class="picks">'+inner+'</div>'+
+    (o.note?'<div class="opt-note">'+esc(o.note)+'</div>':'')+'</div>';
+}
+
+function renderEntry(e){
+  const u=unitById(e.unitId); if(!u)return '';
+  reconcileEach(e); reconcileVars(e);
+  const cost=entryTotalCost(e); const models=modelCount(e); const warns=entryWarnings(e);
+  const compMax=maxAddModels(u);
+  let body='';
+  // notka uzbrojenia bazowego (stock) — klikalne chipy z podglądem statystyk
+  if(u.wargear&&u.wargear.length)body+='<div class="stock"><span class="lbl">Baza</span>'+u.wargear.map(w=>chipHtml(w)).join('')+'</div>';
+  // model stepper (tylko gdy skład zmienny)
+  if(compMax>0){
+    const addOpt=(u.options||[]).find(o=>o.mode==='add-models');
+    const cur=addOpt?Object.values(e.sel[addOpt.id]||{}).reduce((a,b)=>a+b,0):0;
+    const ch=addOpt.choices[0];
+    const start=(u.composition&&u.composition.start)||1;
+    body+='<div class="mrow"><div class="ml">Modele: '+models+'<small>bazowo '+start+' \u00b7 +'+ch.cost+' pkt/model (max +'+addOpt.max+')</small></div>'+
+      '<div class="stepper"><button onclick="stepModel(\''+e.uid+'\',\''+addOpt.id+'\',\''+ch.id+'\',-1)" '+(cur<=(addOpt.min||0)?'disabled':'')+'>\u2212</button>'+
+      '<span class="val">'+models+'</span>'+
+      '<button onclick="stepModel(\''+e.uid+'\',\''+addOpt.id+'\',\''+ch.id+'\',1)" '+(cur>=addOpt.max?'disabled':'')+'>+</button></div></div>';
+  }
+  // pozostałe opcje
+  (u.options||[]).forEach(o=>{ if(o.mode==='add-models')return; body+=optControl(e,o); });
+  if(u.transportNote)body+='<div class="opt-note">\uD83D\uDE9A '+esc(u.transportNote)+'</div>';
+
+  // ── Retinue (Command Squad → pasujący pancerzem Master; Deathsworn → Speaker/Caster) ──
+  if(isRetinueUnit(u)){
+    const kind=retinueKind(u); const hosts=validHostEntries(e);
+    const title=kind==='deathsworn'?'\uD83D\uDEE1 Retinue \u2192 Speaker of the Dead / Caster of Runes':'\uD83D\uDEE1 Retinue \u2192 Master of the Legion ('+esc(ARMOUR_PL[armourClass(u)]||'?')+')';
+    let opts='<option value="">\u2014 nie przypi\u0119to \u2014</option>';
+    hosts.forEach(m=>{ opts+='<option value="'+m.uid+'"'+(e.retinueOf===m.uid?' selected':'')+'>'+esc(unitById(m.unitId).name)+'</option>'; });
+    const hint=kind==='deathsworn'
+      ? 'Dodaj Centuriona z konsulem Speaker of the Dead lub Caster of Runes.'
+      : 'Dodaj HQ z Master of the Legion w pancerzu '+(ARMOUR_PL[armourClass(u)]||'?')+' (Praetor / Geigor / Hvarl).';
+    body+='<div class="attach"><div class="attach-h">'+title+'</div>'+
+      '<select class="rsel" onchange="attachRetinue(\''+e.uid+'\',this.value)">'+opts+'</select>'+
+      (retinueValid(e)?'<div class="cx-info">Przypi\u0119to \u2014 nie zu\u017cywa slotu FOC.</div>'
+        :(hosts.length?'':'<div class="opt-note">'+esc(hint)+'</div>'))+
+      '</div>';
+  }
+
+  // ── Dedicated Transport ──
+  if(eligibleForTransport(u)){
+    if(e.transport){
+      const tu=unitById(e.transport.unitId); const tcap=(tu.profiles&&tu.profiles[0]&&tu.profiles[0].capacity);
+      body+='<div class="attach"><div class="attach-h">\uD83D\uDE9A Dedicated Transport<span class="ec2">'+entryCost(e.transport)+'</span></div>'+
+        '<div class="attach-nm">'+esc(tu.name)+(tcap?' <span class="cx-info" style="display:inline">(cap. '+esc(String(tcap))+')</span>':'')+'</div>';
+      (tu.options||[]).forEach(o=>{ if(o.mode==='add-models')return; body+=optControl(e.transport,o); });
+      body+='<button class="mini-del" onclick="removeTransport(\''+e.uid+'\')">\u2715 Usu\u0144 transport</button></div>';
+    } else {
+      body+='<div class="attach"><button class="attach-add" onclick="openTransportPicker(\''+e.uid+'\')">+ Dodaj Dedicated Transport</button></div>';
+    }
+  }
+
+  const warnHtml=warns.length?'<div class="ewarn">\u26A0 '+warns.map(esc).join('<br>\u26A0 ')+'</div>':'';
+  let sub=models+' '+(u.profileType==='vehicle'?'poj.':'mdl');
+  if(retinueValid(e))sub+=' \u00b7 \uD83D\uDEE1 Retinue';
+  if(e.transport)sub+=' \u00b7 \uD83D\uDE9A '+esc(unitById(e.transport.unitId).name);
+
+  return '<div class="entry'+(e._open?' open':'')+(warns.length?' warn':'')+'">'+
+    '<div class="ehead" onclick="toggleOpen(\''+e.uid+'\')">'+
+      '<div class="grow"><div class="role">'+esc(ROLES[u.slot]||u.slot)+'</div>'+
+      '<div class="nm">'+esc(u.name)+'</div><div class="sub">'+sub+warnHtml+'</div></div>'+
+      '<div class="ec">'+cost+'</div><div class="chev">\u203A</div></div>'+
+    '<div class="ebody">'+body+
+      '<div class="eactions"><button class="dup" onclick="dupEntry(\''+e.uid+'\')">\u29C9 Duplikuj</button>'+
+      '<button class="del" onclick="removeEntry(\''+e.uid+'\')">\u2715 Usu\u0144</button></div>'+
+    '</div></div>';
+}
+
+function render(){
+  STATE.entries.forEach(reconcileRatios);
+  STATE.entries.forEach(reconcileRetinueMount);
+  renderTotals();
+  document.getElementById('addRow').style.display=(VIEW==='display')?'none':'';
+  const r=document.getElementById('roster');
+  if(!UNITS.length){r.innerHTML='<div class="err">Nie znaleziono heresy-units.js<br>Umie\u015b\u0107 plik danych obok tego HTML.</div>';return;}
+  if(VIEW==='display'){ renderDisplay(); }
+  else if(!STATE.entries.length){ r.innerHTML='<div class="empty">Roster jest pusty.<br>Dodaj jednostki przyciskiem powy\u017cej.</div>'; }
+  else { r.innerHTML=STATE.entries.map(renderEntry).join(''); }
+  document.getElementById('rname').value=STATE.name||'';
+  document.getElementById('capInput').value=STATE.cap;
+  document.getElementById('ptsCap').textContent=STATE.cap;
+}
+
+/* ── KATALOG (dodawanie) ────────────────────────────────────────────────── */
+function openCatalog(){
+  PICK_FOR=null; renderCatalog(UNITS,'Dodaj jednostk\u0119');
+}
+function openTransportPicker(uid){ PICK_FOR={kind:'transport',uid:uid}; renderCatalog(transportUnits(),'Wybierz Dedicated Transport'); }
+function renderCatalog(list,title){
+  const groups=SLOT_ORDER.map(s=>{
+    const l=list.filter(u=>u.slot===s); if(!l.length)return '';
+    return '<div class="grp"><div class="grp-t">'+esc(ROLES[s]||s)+'</div>'+
+      l.map(u=>'<div class="pcard" onclick="catalogPick(\''+u.id+'\')"><span class="pn">'+esc(u.name)+'</span><span class="pc">'+u.baseCost+'</span></div>').join('')+'</div>';
+  }).join('');
+  document.getElementById('catalogSheet').innerHTML='<h3>'+esc(title)+'</h3>'+groups;
+  const ov=document.getElementById('catalog');ov.classList.add('show');ov.scrollTop=0;
+}
+function closeCatalog(ev){ if(ev&&ev.target&&ev.target.id!=='catalog')return; document.getElementById('catalog').classList.remove('show'); }
+
+/* ── MENU (export/import/clear) ─────────────────────────────────────────── */
+function openMenu(){
+  document.getElementById('menuSheet').innerHTML='<h3>Roster \u2014 menu</h3>'+
+    '<button class="mbtn" onclick="doExport()">\u2B07 Eksport JSON<small>Kopiuj JSON lub pobierz jako &lt;nazwa-rostera&gt;.json</small></button>'+
+    '<button class="mbtn" onclick="doImportUI()">\u2B06 Import JSON<small>Wklej zawarto\u015b\u0107 rostera</small></button>'+
+    '<button class="mbtn danger" onclick="doClear()">\u2715 Wyczy\u015b\u0107 roster<small>Usuwa wszystkie jednostki</small></button>'+
+    '<div id="ioZone"></div>';
+  const ov=document.getElementById('menu');ov.classList.add('show');ov.scrollTop=0;
+}
+function closeMenu(ev){ if(ev&&ev.target&&ev.target.id!=='menu')return; document.getElementById('menu').classList.remove('show'); }
+function exportObj(){
+  const ridOf=new Map(); STATE.entries.forEach((e,i)=>ridOf.set(e.uid,'r'+i));
+  return {app:'heresy-roster',v:2,name:STATE.name,cap:STATE.cap,
+    entries:STATE.entries.map((e,i)=>({
+      rid:'r'+i, unitId:e.unitId, sel:e.sel, var:e.var||{},
+      retinueOf:(e.retinueOf&&ridOf.has(e.retinueOf))?ridOf.get(e.retinueOf):null,
+      transport:e.transport?{unitId:e.transport.unitId,sel:e.transport.sel}:null
+    }))}; }
+function doExport(){
+  const json=JSON.stringify(exportObj(),null,2);
+  document.getElementById('ioZone').innerHTML='<textarea class="io" readonly onclick="this.select()">'+esc(json)+'</textarea>'+
+    '<button class="mbtn" onclick="downloadJson()">\uD83D\uDCBE Pobierz plik</button>';
+}
+function downloadJson(){
+  const blob=new Blob([JSON.stringify(exportObj(),null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=(STATE.name||'heresy-roster').replace(/[^a-z0-9]+/gi,'_').toLowerCase()+'.json';a.click();
+}
+function doImportUI(){
+  document.getElementById('ioZone').innerHTML='<textarea class="io" id="ioIn" placeholder="Wklej JSON tutaj\u2026"></textarea>'+
+    '<button class="mbtn" onclick="doImport()">Wczytaj</button>';
+}
+function doImport(){
+  try{ const o=JSON.parse(document.getElementById('ioIn').value); loadObj(o); closeMenu(); render(); save(); }
+  catch(err){ alert('B\u0142\u0119dny JSON: '+err.message); }
+}
+function loadObj(o){
+  if(!o||!Array.isArray(o.entries))throw new Error('brak entries');
+  STATE.name=o.name||''; STATE.cap=o.cap||3000;
+  const ridMap={};
+  STATE.entries=o.entries.filter(en=>unitById(en.unitId)).map(en=>{
+    const uid=newUid(); if(en.rid)ridMap[en.rid]=uid;
+    const t=(en.transport&&unitById(en.transport.unitId))?{uid:newUid(),unitId:en.transport.unitId,sel:en.transport.sel||{}}:undefined;
+    return {uid,unitId:en.unitId,sel:en.sel||{},var:en.var||{},_ret:en.retinueOf||null,transport:t};
+  });
+  STATE.entries.forEach(e=>{ if(e._ret&&ridMap[e._ret])e.retinueOf=ridMap[e._ret]; delete e._ret; });
+}
+function doClear(){ if(confirm('Usun\u0105\u0107 wszystkie jednostki z rostera?')){STATE.entries=[];closeMenu();render();save();} }
+
+/* ── PERSISTENCJA ───────────────────────────────────────────────────────── */
+function save(){ try{ localStorage.setItem(LS_KEY,JSON.stringify(exportObj())); }catch(e){} }
+function load(){ try{ const raw=localStorage.getItem(LS_KEY); if(raw)loadObj(JSON.parse(raw)); }catch(e){} }
+
+load();
+render();
+</script>
+</body>
+</html>
