@@ -175,6 +175,17 @@
   #printArea{display:none}
   .psheet{margin-bottom:16px}
   .chips{display:flex;flex-wrap:wrap;gap:3px}
+  table.wtab{width:100%;border-collapse:collapse;margin-top:2px}
+  table.wtab th{font-size:8px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:3px 5px;text-align:center;border-bottom:1px solid var(--border)}
+  table.wtab th:first-child,table.wtab td.wn{text-align:left}
+  table.wtab td{font-size:11px;font-weight:700;padding:5px;text-align:center;border-bottom:1px solid rgba(42,51,71,.5);vertical-align:top}
+  table.wtab td.wn{color:var(--accent2);font-weight:600}
+  .wsublbl{color:var(--muted);font-weight:400;font-size:10px}
+  .wsub2{color:var(--muted);font-weight:400;padding-left:8px}
+  td.wtype{text-align:left}
+  .pill{display:inline-block;font-size:9px;font-weight:700;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:1px 7px;margin:1px 2px 1px 0;color:var(--text);white-space:nowrap}
+  .pill-link{cursor:pointer;border-color:#3a4d6b;color:var(--accent2)}
+  .pill-link:active{background:#243049}
   .dsec{margin-bottom:12px}
   .dsec-t{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:6px}
   .cfg{display:flex;gap:8px;font-size:12px;padding:3px 0;border-bottom:1px solid rgba(42,51,71,.5);flex-wrap:wrap}
@@ -203,6 +214,8 @@
     .dsec-t,.rule-name,.cfg-sub,.wpn b,.wpn .wprof,table.stats td.pname,.oh h3,.oh .role{color:#000}
     .oh .cost{background:#000;color:#fff}
     table.stats td,table.stats th{border-color:#ccc;color:#000}
+    table.wtab td,table.wtab th,table.wtab td.wn{border-color:#ccc;color:#000}
+    .pill,.pill-link{border-color:#999;color:#000;background:#fff}
     .rule-card,.wpn{background:#fff;border-color:#ccc}
   }
   .err{padding:30px 16px;color:var(--red);font-size:14px;text-align:center}
@@ -536,17 +549,42 @@ function configSummary(e){ const u=unitById(e.unitId); const rows=[];
   });
   return rows.join('');
 }
+function typePills(typeStr){ return String(typeStr||'').split(',').map(t=>t.trim()).filter(Boolean).map(t=>{
+    const r=(typeof heresyRule!=='undefined')?heresyRule(t):null;
+    return r?'<span class="pill pill-link" data-gloss="'+escAttr(t)+'" onclick="glossTap(event)">'+esc(t)+'</span>':'<span class="pill">'+esc(t)+'</span>';
+  }).join(''); }
+function wRow(name,p,sub){
+  const nc = name ? (esc(name)+(sub?' <span class="wsublbl">'+esc(sub)+'</span>':'')) : '<span class="wsub2">› '+esc(sub||'')+'</span>';
+  return '<tr><td class="wn">'+nc+'</td><td>'+esc(p.rng)+'</td><td>'+esc(p.S)+'</td><td>'+esc(p.AP)+'</td><td class="wtype">'+typePills(p.type)+'</td></tr>';
+}
+function isWpn(n){ return !!(typeof heresyWeapon!=='undefined'&&n&&heresyWeapon(n)); }
+function unitWeapons(e){ const u=unitById(e.unitId); const out=[],seen={};
+  const add=n=>{ if(n&&!seen[n]&&isWpn(n)){seen[n]=1;out.push(n);} };
+  (u.wargear||[]).forEach(add);
+  (u.options||[]).forEach(o=>{ const sel=e.sel[o.id];
+    if(o.mode==='ratio-swap'||o.mode==='add-models'||o.mode==='toggle'||o.mode==='unit-per-model'||(o.mode==='pick-one'&&o.scope==='each-model')){ const s=(sel&&typeof sel==='object')?sel:{}; (o.choices||[]).forEach(c=>{ if(s[c.id])add(c.name); }); }
+    else if(sel){ const c=(o.choices||[]).find(x=>x.id===sel); if(c)add(c.name); }
+  });
+  return out; }
+function weaponTable(e){ const names=unitWeapons(e); if(!names.length)return '';
+  let rows=''; names.forEach(n=>{ const w=heresyWeapon(n); if(!w)return;
+    if(w.profiles&&w.profiles.length){ w.profiles.forEach((p,i)=>{ rows+=wRow(i===0?w.key:'', p, p.sub||''); }); }
+    else rows+=wRow(w.key,w,''); });
+  return '<table class="wtab"><tr><th>Broń</th><th>Rng</th><th>S</th><th>AP</th><th>Typ</th></tr>'+rows+'</table>';
+}
 function dsheetBody(e){
   const u=unitById(e.unitId); const cfg=configSummary(e);
   let body='<div class="dsec"><div class="dsec-t">Profil</div>'+statTable(u)+'</div>';
-  if(u.wargear&&u.wargear.length)body+='<div class="dsec"><div class="dsec-t">Uzbrojenie bazowe</div><div class="chips">'+u.wargear.map(w=>chipHtml(w)).join('')+'</div></div>';
+  const wtab=weaponTable(e); if(wtab)body+='<div class="dsec"><div class="dsec-t">Bronie</div>'+wtab+'</div>';
+  const gear=(u.wargear||[]).filter(w=>!isWpn(w));
+  if(gear.length)body+='<div class="dsec"><div class="dsec-t">Wyposażenie</div><div class="chips">'+gear.map(w=>chipHtml(w)).join('')+'</div></div>';
   if(cfg)body+='<div class="dsec"><div class="dsec-t">Konfiguracja</div>'+cfg+'</div>';
   if(u.weaponProfiles&&u.weaponProfiles.length)body+='<div class="dsec"><div class="dsec-t">Bronie sygnaturowe</div>'+u.weaponProfiles.map(w=>'<div class="wpn"><b>'+esc(w.name)+'</b> <span class="wprof">'+esc(w.profile)+'</span>'+(w.note?'<div class="note-src">'+esc(w.note)+'</div>':'')+'</div>').join('')+'</div>';
   if(u.rules&&u.rules.length)body+='<div class="dsec"><div class="dsec-t">Zasady specjalne</div><div class="chips">'+u.rules.map(w=>chipHtml(w)).join('')+'</div></div>';
   if(u.rulesText&&u.rulesText.length)body+='<div class="dsec">'+u.rulesText.map(ruleCard).join('')+'</div>';
   if(e.transport){ const tu=unitById(e.transport.unitId); const tcfg=configSummary(e.transport);
-    body+='<div class="dsec"><div class="dsec-t">\uD83D\uDE9A Transport: '+esc(tu.name)+' ('+entryCost(e.transport)+' pts)</div>'+statTable(tu)+
-      (tu.wargear&&tu.wargear.length?'<div class="chips">'+tu.wargear.map(w=>chipHtml(w)).join('')+'</div>':'')+tcfg+'</div>'; }
+    body+='<div class="dsec"><div class="dsec-t">\uD83D\uDE9A Transport: '+esc(tu.name)+' ('+entryCost(e.transport)+' pts)</div>'+statTable(tu)+weaponTable(e.transport)+
+      (tu.wargear&&tu.wargear.length?'<div class="chips">'+tu.wargear.filter(w=>!isWpn(w)).map(w=>chipHtml(w)).join('')+'</div>':'')+tcfg+'</div>'; }
   return body;
 }
 const MINI=[['M','M'],['WS','WS'],['BS','BS'],['S','S'],['T','T'],['W','W'],['Sv','Sv'],['Inv','Inv']];
