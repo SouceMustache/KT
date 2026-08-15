@@ -530,7 +530,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v248</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v249</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -1392,6 +1392,23 @@ function boardEdges(board){ const out=[];
 function boardZones(board){ const out=[];
   (S.insts||[]).forEach(inst=>{ if(inst.board!==board) return; out.push(...instGeom(inst).zones); });
   return out; }
+// Does a solid wall stand across the straight base-centre path between two same-board items?
+// Reuses the very edge set the LoS engine and renderer use (boardEdges → instGeom), so an
+// OPEN hatch (los "open") or a removed breach leaves a gap and does NOT block — movement and
+// the Hatch tool agree by construction. Only full sight-blocking walls (los "solid") stop a
+// straight ground move; low cover/windows are left for a later height-aware pass. Returns the
+// nearest blocking point to `a` as {x,y,dist(px)}, or null when the path is clear.
+function pathBlockedByTerrain(a,b){
+  if(!a||!b||a.board!==b.board) return null;
+  const A=[a.x,a.y], B=[b.x,b.y]; let best=null;
+  for(const e of boardEdges(a.board)){
+    if(e.los!=="solid") continue;
+    const x=segX(A,B,e.a,e.b); if(!x) continue;
+    const d=Math.hypot(x.x-a.x, x.y-a.y);
+    if(!best || d<best.dist) best={x:x.x, y:x.y, dist:d};
+  }
+  return best;
+}
 function visionCone(A,B,rA,rB,edges,inBand,oa,ob,zones){
   const dx=B[0]-A[0], dy=B[1]-A[1], L=Math.hypot(dx,dy)||1;
   const ux=-dy/L, uy=dx/L;
@@ -1522,6 +1539,7 @@ function scoreCandidate(cand, npo, prio, behLabel){
   if(rank!=null){ score += (10-rank)*10; reasons.push(`${behLabel} prioritises ${cand.action} (#${rank+1})`); }
   else { score += 5; }
   if(cand.reachable===false){ score -= 100; reasons.push("not reachable this activation"); }
+  if(cand.pathBlocked){ score -= 40; reasons.push("wall blocks the direct path"); }
   if(cand.action==="Shoot"){
     if(cand.blocked){ reasons.push("no line of sight"); }
     else if(cand.cover==="heavy"){ score-=20; reasons.push("target in heavy cover"); }
@@ -1580,16 +1598,19 @@ function enumerateNPOActions(npo){
     if(d<nearestD){ nearestD=d; nearest=e; }
     if(d<=CTRL_DEFAULT) engaged=true;
     const los=losCheck(npo,e);   // same-board visibility + cover
+    const wall=pathBlockedByTerrain(npo,e);   // solid wall across the straight base-centre path
     // Fight — target already within control range, needs a melee weapon
     if(melee.length && d<=CTRL_DEFAULT+1e-6){
       out.push({action:"Fight", targetId:e.id, weapon:melee[0].n, reachable:true, ap:1, dist:d,
         note:"within control range"});
     }
-    // Charge — reachable if we can close to control range within move + 2"
+    // Charge — reachable if we can close to control range within move + 2", AND no wall blocks
+    // the run-in (a straight charge can't pass through a solid wall).
     if(melee.length && d>CTRL_DEFAULT){
-      const need=d-CTRL_DEFAULT, reach=move+2;
-      out.push({action:"Charge", targetId:e.id, weapon:melee[0].n, reachable:need<=reach+1e-6,
-        ap:1, dist:d, need, note:need<=reach?`close ${need.toFixed(1)}" into engagement`:`${(need-reach).toFixed(1)}" out of charge reach`});
+      const need=d-CTRL_DEFAULT, reach=move+2, inReach=need<=reach+1e-6;
+      out.push({action:"Charge", targetId:e.id, weapon:melee[0].n, reachable:inReach&&!wall, pathBlocked:!!wall,
+        ap:1, dist:d, need, note: wall ? "wall blocks a straight charge" :
+          (inReach?`close ${need.toFixed(1)}" into engagement`:`${(need-reach).toFixed(1)}" out of charge reach`)});
     }
     // Shoot — one candidate per ranged weapon that can see and reach the target
     for(const w of ranged){
@@ -1604,10 +1625,12 @@ function enumerateNPOActions(npo){
   }
   // Movement candidates (toward the nearest target), plus Fall Back if currently engaged.
   if(nearest){
-    out.push({action:"Reposition", targetId:nearest.id, reachable:true, ap:1, dist:nearestD, gain:move,
-      note:`move up to ${move}" toward ${nearest.label||"nearest"}`});
-    out.push({action:"Dash", targetId:nearest.id, reachable:true, ap:1, dist:nearestD, gain:2,
-      note:'move up to 2" toward nearest'});
+    const wall=pathBlockedByTerrain(npo,nearest);   // wall across the straight line to the target
+    const via = wall ? ` (wall blocks the direct path — move around)` : "";
+    out.push({action:"Reposition", targetId:nearest.id, reachable:true, pathBlocked:!!wall, ap:1, dist:nearestD, gain:move,
+      note:`move up to ${move}" toward ${nearest.label||"nearest"}${via}`});
+    out.push({action:"Dash", targetId:nearest.id, reachable:true, pathBlocked:!!wall, ap:1, dist:nearestD, gain:2,
+      note:`move up to 2" toward nearest${via}`});
     if(engaged) out.push({action:"Fall Back", reachable:true, ap:1, gain:move,
       note:`disengage — move up to ${move}" away`});
   }
@@ -2091,10 +2114,26 @@ function renderAdvisorOverlay(){
     stroke:"var(--orange)","stroke-width":2,"stroke-dasharray":"4 3","vector-effect":"non-scaling-stroke"}));
   const t=p.targetId && S.items.find(o=>o.id===p.targetId);
   if(t){
-    gOvl.appendChild(attr(mk("line"),{x1:npo.x,y1:npo.y,x2:t.x,y2:t.y,stroke:"var(--orange)",
-      "stroke-width":1.8,"stroke-dasharray":"5 4","vector-effect":"non-scaling-stroke"}));
-    gOvl.appendChild(attr(mk("circle"),{cx:t.x,cy:t.y,r:itemR(t)+5,fill:"none",stroke:"var(--orange)",
-      "stroke-width":2,"vector-effect":"non-scaling-stroke"}));
+    // If the picked action's straight path is blocked by a wall, show it: orange up to the
+    // wall, red beyond, with an ✗ at the wall — so a "move through a wall" pick reads as wrong.
+    const rk=rankNPOActions(npo), c=rk.candidates[p.i];
+    const wall=(c&&(c.pathBlocked||c.reachable===false)) ? pathBlockedByTerrain(npo,t) : null;
+    if(wall){
+      gOvl.appendChild(attr(mk("line"),{x1:npo.x,y1:npo.y,x2:wall.x,y2:wall.y,stroke:"var(--orange)",
+        "stroke-width":1.8,"stroke-dasharray":"5 4","vector-effect":"non-scaling-stroke"}));
+      gOvl.appendChild(attr(mk("line"),{x1:wall.x,y1:wall.y,x2:t.x,y2:t.y,stroke:"var(--inj)",
+        "stroke-width":1.8,"stroke-dasharray":"2 4","vector-effect":"non-scaling-stroke",opacity:.9}));
+      const s=5;
+      gOvl.appendChild(attr(mk("line"),{x1:wall.x-s,y1:wall.y-s,x2:wall.x+s,y2:wall.y+s,stroke:"var(--inj)","stroke-width":2,"vector-effect":"non-scaling-stroke"}));
+      gOvl.appendChild(attr(mk("line"),{x1:wall.x-s,y1:wall.y+s,x2:wall.x+s,y2:wall.y-s,stroke:"var(--inj)","stroke-width":2,"vector-effect":"non-scaling-stroke"}));
+      gOvl.appendChild(attr(mk("circle"),{cx:t.x,cy:t.y,r:itemR(t)+5,fill:"none",stroke:"var(--inj)",
+        "stroke-width":2,"vector-effect":"non-scaling-stroke"}));
+    } else {
+      gOvl.appendChild(attr(mk("line"),{x1:npo.x,y1:npo.y,x2:t.x,y2:t.y,stroke:"var(--orange)",
+        "stroke-width":1.8,"stroke-dasharray":"5 4","vector-effect":"non-scaling-stroke"}));
+      gOvl.appendChild(attr(mk("circle"),{cx:t.x,cy:t.y,r:itemR(t)+5,fill:"none",stroke:"var(--orange)",
+        "stroke-width":2,"vector-effect":"non-scaling-stroke"}));
+    }
   }
 }
 // Nightbringer Reanimation marker: a dark disc + green pulsing ring, with a count badge.
