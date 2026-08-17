@@ -270,6 +270,8 @@
   .oschip.blue.on{background:rgba(90,168,255,.16);color:#5aa8ff;border-color:rgba(90,168,255,.5);}
   .oschip.danger{border-color:rgba(229,72,77,.4);color:var(--red);}
   .oschip.danger.on{background:rgba(229,72,77,.18);color:#ff6b66;border-color:rgba(229,72,77,.6);}
+  .eff-wrap{display:flex;flex-wrap:wrap;gap:6px;flex:1;min-width:0;align-items:center;}
+  .oschip.effc{background:rgba(242,160,61,.10);color:var(--orange);border-color:rgba(242,160,61,.35);}
   .ostat-inj{font-size:11px;padding:4px 8px;border-radius:7px;color:var(--dim);border:1px dashed transparent;}
   .ostat-inj.on{color:#ff9d5c;border-color:rgba(242,160,61,.5);background:rgba(242,160,61,.08);}
   #opDelete{border-color:rgba(229,72,77,.4);color:var(--red);}
@@ -530,7 +532,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v250</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v251</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -2840,6 +2842,9 @@ function renderStatusStrip(op){
     <div class="ostat-row"><span class="ostat-l">Placement</span>
       <button class="mini oschip ${op.off?"on":""}" data-st="off" title="Cycle: On board → Reserve → Underground → Out of KZ. Drag from the strip to bring it back.">${op.off?OFF_LABEL[op.off]:"On board"}</button>
     </div>
+    <div class="ostat-row"><span class="ostat-l" title="Custom statuses: Challenge, Marked, etc.">Statuses</span>
+      <span id="opEffWrap" class="eff-wrap">${(op.effects||[]).map((e,i)=>`<button class="mini oschip effc" data-eff="${i}" title="Tap to remove">${esc(e)} ✕</button>`).join("")}<button class="mini oschip" data-st="effadd" title="Add a custom status">＋</button><input id="opEffIn" class="coordin" type="text" maxlength="24" placeholder="status…" style="display:none;width:6.5em"></span>
+    </div>
     <div class="ostat-row"><span class="ostat-l" title="Board-local inches from this board's top-left, matching the edge rulers">Coords</span>
       <input id="opCX" class="coordin" type="number" step="0.1" inputmode="decimal" placeholder="x" value="${_cx}">
       <input id="opCY" class="coordin" type="number" step="0.1" inputmode="decimal" placeholder="y" value="${_cy}">
@@ -2847,8 +2852,10 @@ function renderStatusStrip(op){
       ${_bl}
     </div>`;
 }
-$("#opStatus").addEventListener("click",e=>{ const b=e.target.closest("[data-st]"); if(!b||!sheetOp) return;
+$("#opStatus").addEventListener("click",e=>{ const b=e.target.closest("[data-st],[data-eff]"); if(!b||!sheetOp) return;
   const op=sheetOp, st=b.dataset.st;
+  if(b.dataset.eff!=null){ (op.effects=op.effects||[]).splice(+b.dataset.eff,1); renderStatusStrip(op); renderItems(); save(); return; }
+  if(st==="effadd"){ const inp=$("#opEffIn"); if(inp){ inp.style.display="inline-block"; inp.value=""; inp.focus(); } return; }
   if(st==="order" && canConceal(op)) op.order = ordOf(op)==="conceal"?"engage":"conceal";
   else if(st==="expend") op.expended=!op.expended;
   else if(st==="dead"){ op.dead=!op.dead; if(op.dead && (op.wounds||0)>0) {} }
@@ -2868,8 +2875,14 @@ $("#opStatus").addEventListener("click",e=>{ const b=e.target.closest("[data-st]
   renderStatusStrip(op); renderItems(); renderOverlay(); save();
 });
 // Enter in either coord field commits the placement (mobile keyboards show a "go" key)
-$("#opStatus").addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.classList.contains("coordin")){
-  e.preventDefault(); const b=$("#opStatus").querySelector('[data-st="place"]'); if(b) b.click(); } });
+$("#opStatus").addEventListener("keydown",e=>{
+  if(e.key==="Enter"&&e.target.id==="opEffIn"){ e.preventDefault(); const op=sheetOp; if(!op) return;
+    const v=e.target.value.trim(); e.target.value=""; if(v){ (op.effects=op.effects||[]).push(v); renderStatusStrip(op); renderItems(); save(); }
+    const inp=$("#opEffIn"); if(inp){ inp.style.display="inline-block"; inp.focus(); } return; }
+  if(e.key==="Enter"&&e.target.classList.contains("coordin")){
+    e.preventDefault(); const b=$("#opStatus").querySelector('[data-st="place"]'); if(b) b.click(); } });
+$("#opStatus").addEventListener("focusout",e=>{ if(e.target.id!=="opEffIn") return; const op=sheetOp; if(!op) return;
+  const v=e.target.value.trim(); if(v){ (op.effects=op.effects||[]).push(v); renderStatusStrip(op); renderItems(); save(); } });
 function bindOpSheet(){
   const op=sheetOp; if(!op) return;
   renderStatusStrip(op);
