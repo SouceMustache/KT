@@ -532,7 +532,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v252</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v253</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -1422,54 +1422,82 @@ function pathBlockedByTerrain(a,b){
    AND hatch open-state), so it stays in step with the Hatch tool by construction. Only invoked
    when the straight path is blocked, so the common clear-line case pays nothing. */
 function navSolidEdges(board){ return boardEdges(board).filter(e=>e.los==="solid"); }
-// True only when AB properly crosses a wall — touches at either segment tip (rounding a corner,
-// or a node sitting just off a wall end) are allowed, else corners could never be rounded.
-function segBlockedBy(A,B,walls){
-  for(const e of walls){
-    const X=segX(A,B,e.a,e.b); if(!X) continue;
-    if(Math.hypot(X.x-A[0],X.y-A[1])<0.6 || Math.hypot(X.x-B[0],X.y-B[1])<0.6) continue;
-    if(Math.hypot(X.x-e.a[0],X.y-e.a[1])<0.6 || Math.hypot(X.x-e.b[0],X.y-e.b[1])<0.6) continue;
-    return true;
-  }
+// --- base-aware corridor geometry -------------------------------------------------
+// The router must move a BASE, not a point: a route is only valid if the operative's base
+// (radius clr, in px) can travel it without clipping a solid wall. These helpers measure
+// wall proximity so navBuild/navPath can reject gaps narrower than the base and keep the
+// path clear of corners — which is what makes the drawn path AND the reachability rating agree.
+function _ptSegDist(px,py,ax,ay,bx,by){
+  const vx=bx-ax,vy=by-ay,wx=px-ax,wy=py-ay, L2=vx*vx+vy*vy||1e-9;
+  let t=(wx*vx+wy*vy)/L2; t=Math.max(0,Math.min(1,t));
+  return Math.hypot(px-(ax+t*vx), py-(ay+t*vy));
+}
+function _segSegDist(a1,a2,b1,b2){
+  if(segX(a1,a2,b1,b2)) return 0;
+  return Math.min(
+    _ptSegDist(a1[0],a1[1],b1[0],b1[1],b2[0],b2[1]),
+    _ptSegDist(a2[0],a2[1],b1[0],b1[1],b2[0],b2[1]),
+    _ptSegDist(b1[0],b1[1],a1[0],a1[1],a2[0],a2[1]),
+    _ptSegDist(b2[0],b2[1],a1[0],a1[1],a2[0],a2[1]));
+}
+// Corridor test: can a base of radius clr travel A→B clear of every wall? Endpoints may sit
+// against cover (a base legitimately hugging a wall at start/finish), so we test only the
+// interior, shrunk inward by ~clr at each end. Blocked if any wall comes within clr of it.
+function fatBlocked(A,B,walls,clr){
+  const dx=B[0]-A[0],dy=B[1]-A[1],L=Math.hypot(dx,dy);
+  const m=clr*0.9; if(L<=2*m) return false;
+  const ux=dx/L,uy=dy/L, P=[A[0]+ux*m,A[1]+uy*m], Q=[B[0]-ux*m,B[1]-uy*m];
+  for(const e of walls){ if(_segSegDist(P,Q,e.a,e.b) < clr) return true; }
   return false;
+}
+// True if the straight base-centre run A→B would clip a wall with this operative's base —
+// even when the centre line itself crosses nothing. Used to decide when a detour is needed.
+function baseClips(a,b){
+  if(!a||!b||a.board!==b.board) return false;
+  const clr=itemR(a)+0.15*PPI;
+  return fatBlocked([a.x,a.y],[b.x,b.y], navSolidEdges(a.board), clr);
 }
 let _navCache={};
 function navFingerprint(board){
   return (S.insts||[]).filter(i=>i.board===board)
     .map(i=>`${i.ref}|${Math.round(i.x)}|${Math.round(i.y)}|${i.k||0}|${i.open?Object.keys(i.open).sort().join(","):""}`).join(";");
 }
-function navBuild(board){
-  const walls=navSolidEdges(board), CLEAR=0.5*PPI, raw=[];
+// Build the corner graph for a given base clearance (px). Nodes sit clr beyond each wall tip
+// on both faces, so a base centred on a node clears the wall; two nodes connect only if a base
+// of radius clr can travel between them (fatBlocked). Cached per board + clearance bucket.
+function navBuild(board,clr){
+  const walls=navSolidEdges(board), OFF=Math.max(clr,0.35*PPI), raw=[];
   for(const e of walls){
     const ax=e.a[0],ay=e.a[1],bx=e.b[0],by=e.b[1];
     const L=Math.hypot(bx-ax,by-ay)||1, ux=(bx-ax)/L, uy=(by-ay)/L, px=-uy, py=ux;   // along / perp
     for(const [P,dx,dy] of [[[ax,ay],-ux,-uy],[[bx,by],ux,uy]]){   // beyond each tip, both faces
-      const tx=P[0]+dx*CLEAR, ty=P[1]+dy*CLEAR;
-      raw.push([tx+px*CLEAR, ty+py*CLEAR]); raw.push([tx-px*CLEAR, ty-py*CLEAR]);
+      const tx=P[0]+dx*OFF, ty=P[1]+dy*OFF;
+      raw.push([tx+px*OFF, ty+py*OFF]); raw.push([tx-px*OFF, ty-py*OFF]);
     }
   }
   const nodes=[], seen=new Set();
   for(const n of raw){ const k=Math.round(n[0]/3)+","+Math.round(n[1]/3); if(seen.has(k))continue; seen.add(k); nodes.push(n); }
   const adj=nodes.map(()=>[]);
   for(let i=0;i<nodes.length;i++) for(let j=i+1;j<nodes.length;j++){
-    if(!segBlockedBy(nodes[i],nodes[j],walls)){
+    if(!fatBlocked(nodes[i],nodes[j],walls,clr)){
       const w=Math.hypot(nodes[i][0]-nodes[j][0],nodes[i][1]-nodes[j][1]);
       adj[i].push({j,w}); adj[j].push({j:i,w}); } }
   return {nodes,adj,walls};
 }
-function navGraph(board){ const fp=navFingerprint(board), c=_navCache[board];
-  if(c&&c.fp===fp) return c.g; const g=navBuild(board); _navCache[board]={fp,g}; return g; }
-// Shortest route between two same-board items around solid walls. Returns {distPx,distIn,pts}
-// (world-space [x,y], centre→centre) or null if the goal is fully walled off.
+function navGraph(board,clr){ const fp=navFingerprint(board)+"|"+Math.round(clr/4), c=_navCache[board];
+  if(c&&c.fp===fp) return c.g; const g=navBuild(board,clr); _navCache[board]={fp,g}; return g; }
+// Shortest base-legal route between two same-board items around solid walls. Returns
+// {distPx,distIn,pts} (world-space [x,y], centre→centre) or null if no route fits the base.
 function navPath(a,b){
   if(!a||!b||a.board!==b.board) return null;
-  const g=navGraph(a.board), walls=g.walls, S0=[a.x,a.y], G=[b.x,b.y];
-  if(!segBlockedBy(S0,G,walls)){ const d=Math.hypot(G[0]-S0[0],G[1]-S0[1]); return {distPx:d,distIn:d/PPI,pts:[S0,G]}; }
+  const clr=itemR(a)+0.15*PPI;
+  const g=navGraph(a.board,clr), walls=g.walls, S0=[a.x,a.y], G=[b.x,b.y];
+  if(!fatBlocked(S0,G,walls,clr)){ const d=Math.hypot(G[0]-S0[0],G[1]-S0[1]); return {distPx:d,distIn:d/PPI,pts:[S0,G]}; }
   const N=g.nodes.length, nodes=g.nodes.concat([S0,G]), adj=g.adj.map(a=>a.slice()); adj.push([]); adj.push([]);
   const si=N, gi=N+1;
   for(let i=0;i<N;i++){
-    if(!segBlockedBy(S0,nodes[i],walls)){ const w=Math.hypot(S0[0]-nodes[i][0],S0[1]-nodes[i][1]); adj[si].push({j:i,w}); adj[i].push({j:si,w}); }
-    if(!segBlockedBy(G,nodes[i],walls)){ const w=Math.hypot(G[0]-nodes[i][0],G[1]-nodes[i][1]); adj[gi].push({j:i,w}); adj[i].push({j:gi,w}); }
+    if(!fatBlocked(S0,nodes[i],walls,clr)){ const w=Math.hypot(S0[0]-nodes[i][0],S0[1]-nodes[i][1]); adj[si].push({j:i,w}); adj[i].push({j:si,w}); }
+    if(!fatBlocked(G,nodes[i],walls,clr)){ const w=Math.hypot(G[0]-nodes[i][0],G[1]-nodes[i][1]); adj[gi].push({j:i,w}); adj[i].push({j:gi,w}); }
   }
   const dist=new Array(nodes.length).fill(Infinity), prev=new Array(nodes.length).fill(-1);
   dist[si]=0; const pq=[[0,si]];
@@ -1699,10 +1727,11 @@ function enumerateNPOActions(npo){
     if(melee.length && d>CTRL_DEFAULT){
       const reach=move+2;
       let useD=d, routed=false, path=null;
-      if(wall){ const pf=navPath(npo,e); const rd=pf?routedEdgeDist(npo,e,pf):null;
+      const detour = wall || baseClips(npo,e);   // wall crossed OR base would clip a corner
+      if(detour){ const pf=navPath(npo,e); const rd=pf?routedEdgeDist(npo,e,pf):null;
         if(rd!=null){ useD=rd; routed=true; path=pf.pts; } }
       const need=useD-CTRL_DEFAULT, inReach=need<=reach+1e-6;
-      const noRoute = wall && !routed;
+      const noRoute = detour && !routed;
       out.push({action:"Charge", targetId:e.id, weapon:melee[0].n,
         reachable: inReach && !noRoute, pathBlocked:noRoute, routed, path,
         ap:1, dist:d, need, note: noRoute ? "no route — target is walled off" :
@@ -1723,10 +1752,12 @@ function enumerateNPOActions(npo){
   // Movement candidates (toward the nearest target), plus Fall Back if currently engaged.
   if(nearest){
     const wall=pathBlockedByTerrain(npo,nearest);   // wall across the straight line to the target
-    // If blocked, try to route around/through an opening. A route means the NPO can still make
-    // progress (not truly blocked) — it just bends toward the gap. No route = boxed in.
-    const pf = wall ? navPath(npo,nearest) : null;
-    const routed = !!(wall && pf), noRoute = !!(wall && !pf);
+    // If blocked — either the centre line crosses a wall, or the base would clip a corner —
+    // try to route around/through an opening. A route means the NPO can still make progress
+    // (it just bends toward the gap). No route = boxed in for a base this size.
+    const detour = !!wall || baseClips(npo,nearest);
+    const pf = detour ? navPath(npo,nearest) : null;
+    const routed = !!(detour && pf), noRoute = !!(detour && !pf);
     const path = routed ? pf.pts : null;
     const via = noRoute ? " (no route — walled off)" : (routed ? " (around cover)" : "");
     out.push({action:"Reposition", targetId:nearest.id, reachable:true, pathBlocked:noRoute, routed, path, ap:1, dist:nearestD, gain:move,
