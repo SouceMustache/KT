@@ -532,7 +532,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v251</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v252</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -2149,15 +2149,18 @@ function renderItems(){
     // K2a status cues: order pip (blue=conceal, orange=engage), dim if expended, red ✕ if dead
     const _ord=ordOf(t), _dead=isDead(t);
     const _pb=isOval(t)?baseAxes(t).b*PPI:itemR(t), _pa=isOval(t)?baseAxes(t).a*PPI:itemR(t);
-    g.appendChild(attr(mk("circle"),{cx:t.x-_pa*0.66, cy:t.y-_pb*0.66, r:3.4,
-      fill:_ord==="conceal"?"#5aa8ff":"#f2a03d", stroke:"#0d1013","stroke-width":1,"vector-effect":"non-scaling-stroke"}));
-    // rim status badges (mirroring the Planner): injured, APL modifier, elevation, wounds
+    // rim status badges (ported from the Planner). Enemy sides (npo/enemy) face the player across
+    // the table, so their badges mirror to the top half via A() — keeping the readable side toward us.
     if(!_dead){
       const _rr=Math.max(_pa,_pb);
-      if(isInjured(t)) rimBadge(g,t.x,t.y,_rr,20,"var(--inj)","I","#12171c");
-      if(t.aplMod===1) rimBadge(g,t.x,t.y,_rr,125,"var(--aplup)","+","#12171c");
-      else if(t.aplMod===-1) rimBadge(g,t.x,t.y,_rr,125,"var(--apldn)","−","#12171c");
-      if((t.elev||0)>0) rimBadge(g,t.x,t.y,_rr,55,"var(--elev)",String(t.elev),"#12171c");
+      const _foe=(t.side==="npo"||t.side==="enemy");
+      const A=deg=> _foe ? 360-deg : deg;
+      rimBadge(g,t.x,t.y,_rr,A(90),_ord==="conceal"?"#5aa8ff":"var(--orange)","",null);
+      if(isInjured(t)) rimBadge(g,t.x,t.y,_rr,A(20),"var(--inj)","I","#12171c");
+      if(t.aplMod===1) rimBadge(g,t.x,t.y,_rr,A(125),"var(--aplup)","+","#12171c");
+      else if(t.aplMod===-1) rimBadge(g,t.x,t.y,_rr,A(125),"var(--apldn)","−","#12171c");
+      if((t.elev||0)>0) rimBadge(g,t.x,t.y,_rr,A(55),"var(--elev)",String(t.elev),"#12171c");
+      if(t.effects&&t.effects.length) rimBadge(g,t.x,t.y,_rr,A(160),"#67c99a",String(t.effects.length),"#0d1013");
       if(t.woundsMax) badgeBox(g,t.x,t.y+_rr+_rr*0.9,_rr*1.2,_rr*0.72,"#0d1013","♥"+(t.wounds||0),"#ff8a80");
     }
     if(t.expended && !_dead) g.setAttribute("opacity","0.5");
