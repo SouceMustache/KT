@@ -532,7 +532,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v257</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v258</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -3146,6 +3146,9 @@ function opDatacard(op){ return (op.npoKey&&NPO_LIB[op.npoKey]) || op.model || n
 function renderNPOCard(op){
   const dc=opDatacard(op); if(!dc){ return; } const isNPO=!!(op.npoKey&&NPO_LIB[op.npoKey]);
   const host=$("#opCard"); const tab=S.opTab||"stats";
+  // The status-editor block (order/APL/height/placement/statuses/coords) belongs to the Stats
+  // tab only — on the other tabs it just pushes the tab content off-screen, so hide it there.
+  const _st=$("#opStatus"); if(_st) _st.style.display = (tab==="stats") ? "" : "none";
   let body="";
   if(tab==="stats"){
     body=`<div style="font-size:15px;font-weight:700;margin-bottom:2px">${esc(dc.name)}</div>
