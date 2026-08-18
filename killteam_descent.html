@@ -119,6 +119,10 @@
   .meta-main{flex:1 1 auto;min-width:0;}
   .meta-name{font-size:12.5px;font-weight:600;}
   .meta-act{font-size:10.5px;color:var(--muted);}
+  .meta-brd{font-size:9.5px;color:var(--dim);font-weight:500;text-transform:uppercase;letter-spacing:.03em;margin-left:4px;}
+  .meta-press{font-size:10px;color:var(--muted);opacity:.85;}
+  .meta-press.hot{color:#ff8a5c;font-weight:600;opacity:1;}
+  .meta-press.cold{color:var(--dim);}
   .meta-score{font-family:var(--mono);font-size:12px;color:var(--orange);font-weight:700;}
   .mpmission{display:flex;align-items:center;gap:8px;padding:10px 0 6px;border-bottom:1px solid var(--line);margin-bottom:4px;}
   .mpmission .mpmname{flex:1 1 auto;font-size:12.5px;font-weight:600;text-align:center;}
@@ -532,7 +536,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v258</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v259</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -1534,6 +1538,18 @@ function reachAcross(npo, target){
   const steps=[]; for(let u=idx.G; u!==-1 && prev[u]!==-1; u=prev[u]){ if(pmeta[u]) steps.unshift(pmeta[u]); }
   return { distIn:dist[idx.G], steps };
 }
+// Best legal effective move-distance from this NPO to ANY player operative, across both boards
+// (reachAcross already folds in same-board direct, around-wall detours, and portal crossings —
+// so teleport access from TP2 naturally shortens this). Returns {distIn, target, steps} or null.
+function npoThreat(npo){
+  const targets=S.items.filter(o=>o!==npo && o.kind==="op" && o.side!=="npo" && !o.off);
+  let best=null;
+  for(const t of targets){ const r=reachAcross(npo,t);
+    if(r && (!best || r.distIn<best.distIn)) best={distIn:r.distIn, target:t, steps:r.steps}; }
+  return best;
+}
+// Does any step in a reach plan cross via a teleport pad? (Used to badge fast portal pressure.)
+function planUsesTeleport(steps){ return !!(steps||[]).some(s=>s.type==="cross" && s.p && s.p.type==="teleport"); }
 // --- base-aware corridor geometry -------------------------------------------------
 // The router must move a BASE, not a point: a route is only valid if the operative's base
 // (radius clr, in px) can travel it without clipping a solid wall. These helpers measure
@@ -3606,11 +3622,24 @@ $("#missionBtn").addEventListener("click",()=>{ const p=$("#missionPanel");
 $("#missionClose").addEventListener("click",()=>{ $("#missionPanel").classList.add("hidden"); $("#missionBtn").classList.remove("on"); });
 
 /* ---- K2c: meta-advisor — which NPO to activate this turn ---- */
-// Rank every READY npo (not expended, not dead) by the score of its single best available action.
+// Rank every READY npo (not expended, not dead, on-board) by how much PRESSURE it exerts on the
+// player: an NPO that can fight/shoot/charge a player operative THIS activation is the top tier;
+// otherwise it's ranked by the effective (cross-board-aware) distance to the nearest player
+// operative, so a model that can cross quickly — e.g. a Volkus model dropping through a teleport
+// from the 2nd turning point — outranks one that's walled off from everyone.
 function rankReadyNPOs(){
   const ready=S.items.filter(o=>o.kind==="op" && o.side==="npo" && !o.expended && !isDead(o) && !o.off);
-  return ready.map(npo=>{ const rk=rankNPOActions(npo); return {npo, best:rk.best, score:rk.best?rk.best.score:-999}; })
-    .sort((a,b)=> b.score-a.score);
+  return ready.map(npo=>{
+    const rk=rankNPOActions(npo), best=rk.best;
+    const immediate = !!(best && (best.action==="Fight" ||
+      (best.action==="Charge" && best.reachable) || (best.action==="Shoot" && best.reachable)));
+    const thr=npoThreat(npo);
+    let pressure;
+    if(immediate)               pressure = 200 + (best?best.score:0);          // can strike now
+    else if(thr && isFinite(thr.distIn)) pressure = 120 - Math.min(thr.distIn,100); // closer = hotter
+    else                        pressure = 0;                                   // no route to anyone
+    return {npo, best, score:best?best.score:-999, pressure, threat:thr, immediate};
+  }).sort((a,b)=> b.pressure - a.pressure);
 }
 function buildMeta(){
   const body=$("#metaBody"); if(!body) return;
@@ -3619,11 +3648,19 @@ function buildMeta(){
   body.innerHTML=list.map((r,i)=>{
     const dc=NPO_LIB[r.npo.npoKey]||{}; const tgt=r.best&&r.best.targetId&&S.items.find(o=>o.id===r.best.targetId);
     const act=r.best?`${r.best.action}${tgt?` → ${esc(tgt.label||"target")}`:""}`:"no action";
+    const _bd=boardById(r.npo.board); const bl=_bd?(_bd.name||_bd.id):"";
+    // pressure readout: strike now, else effective reach to the nearest player operative
+    let press;
+    if(r.immediate) press=`<span class="meta-press hot">can strike now</span>`;
+    else if(r.threat && isFinite(r.threat.distIn)){
+      const tp=planUsesTeleport(r.threat.steps);
+      press=`<span class="meta-press">${r.threat.distIn.toFixed(1)}" to ${esc(r.threat.target.label||"target")}${tp?" ⚡tp":""}</span>`;
+    } else press=`<span class="meta-press cold">no route to any operative</span>`;
     return `<div class="meta-row" data-meta="${r.npo.id}">
       <span class="meta-rank">${i+1}</span>
-      <div class="meta-main"><div class="meta-name">${esc(dc.name||r.npo.label||"NPO")}</div>
-        <div class="meta-act">${act}</div></div>
-      <span class="meta-score">${r.best?r.best.score:"—"}</span></div>`;
+      <div class="meta-main"><div class="meta-name">${esc(dc.name||r.npo.label||"NPO")} <span class="meta-brd">${esc(bl)}</span></div>
+        <div class="meta-act">${act}</div>${press}</div>
+      <span class="meta-score">${Math.round(r.pressure)}</span></div>`;
   }).join("");
 }
 $("#metaBody").addEventListener("click",e=>{ const row=e.target.closest("[data-meta]"); if(!row) return;
