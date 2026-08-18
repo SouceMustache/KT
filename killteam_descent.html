@@ -532,7 +532,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v254</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v255</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -1488,7 +1488,15 @@ function navBuild(board,clr){
     }
   }
   const nodes=[], seen=new Set();
-  for(const n of raw){ const k=Math.round(n[0]/3)+","+Math.round(n[1]/3); if(seen.has(k))continue; seen.add(k); nodes.push(n); }
+  // Confine nodes to this board's playable rectangle: wall tips near the top/bottom edge would
+  // otherwise spawn offset nodes OUT in the inter-board gutter, letting a route "escape" off the
+  // killzone and around the outside. The rect is convex and start/goal sit on-board, so dropping
+  // out-of-board nodes is enough — no leg between two in-board nodes can leave the rectangle.
+  const bd=boardById(board), pad=0.1*PPI;
+  const inBoard = bd ? (x,y)=> x>=bd.ox-pad && x<=bd.ox+bd.wpx+pad && y>=bd.oy-pad && y<=bd.oy+bd.hpx+pad
+                     : ()=>true;
+  for(const n of raw){ if(!inBoard(n[0],n[1])) continue;
+    const k=Math.round(n[0]/3)+","+Math.round(n[1]/3); if(seen.has(k))continue; seen.add(k); nodes.push(n); }
   const adj=nodes.map(()=>[]);
   for(let i=0;i<nodes.length;i++) for(let j=i+1;j<nodes.length;j++){
     if(!fatBlocked(nodes[i],nodes[j],walls,clr)){
