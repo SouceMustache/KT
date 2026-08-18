@@ -532,7 +532,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v256</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v257</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -1456,6 +1456,84 @@ function travNote(actions){
   if(nB) bits.push(nB>1?`breach ${nB} walls (2AP each)`:"breach the wall (2AP)");
   return bits.join(" & ");
 }
+
+/* ============================================================ CROSS-BOARD PORTALS
+   Entryway markers and teleport pads link the two killzones. Climbing an Entryway costs 3" of
+   move (you emerge within Control Range of the twin marker); a teleport pad costs 0" but only
+   from the 2nd turning point, needs the whole base on the pad, and swaps with any occupant. A
+   target on the far board — or on the walled-off far HALF of the same board — is reached by a
+   sequence of on-board legs stitched through these portals. reachAcross() is a small Dijkstra
+   over {start, goal, every portal marker}: on-board legs are routed base-aware distances (with
+   hatch/breach traversal costs), portal edges carry the crossing cost. It naturally finds a
+   double crossing (down→up→down through Volkus) when that's the only legal way across. */
+function crossPortals(){
+  const ms=(S.markers||[]).filter(m=> m.mtype==="entryway" || m.mtype==="teleport");
+  const byPair={}; ms.forEach(m=>{ (byPair[m.pair]=byPair[m.pair]||[]).push(m); });
+  const out=[];
+  for(const pr in byPair){ const g=byPair[pr]; if(g.length<2) continue;
+    out.push({pair:+pr, type:g[0].mtype, cost:(g[0].mtype==="teleport"?0:3), markers:g}); }
+  return out;
+}
+// Move distance (inches) for `op` to get into position to USE marker m on its own board:
+// within CR for an Entryway, or wholly on the pad for a teleport. null if unreachable on-board.
+function reachToMarker(op, m){
+  const pf=navPath(op, {x:m.x, y:m.y, board:m.board, baseMm:op.baseMm});
+  if(!pf) return null;
+  const tr=routeTraversal(pf.pts, m.board), br=opBaseRadIn(op);
+  const reach = m.mtype==="teleport" ? Math.max(0, padRadIn(m)-br) : (CTRL_DEFAULT+br);
+  return { move: Math.max(0, pf.distIn - reach) + tr.plusIn, pts:pf.pts, tr };
+}
+// Move distance for an operative emerging at marker m to then reach `goal` on m's board.
+function reachFromMarker(m, goal){
+  const pf=navPath({x:m.x, y:m.y, board:m.board, baseMm:goal.baseMm||32}, goal);
+  if(!pf) return null;
+  const tr=routeTraversal(pf.pts, m.board);
+  return { move: Math.max(0, pf.distIn - opBaseRadIn(goal)) + tr.plusIn, pts:pf.pts };
+}
+// On-board routed move distance between two portal markers on the same board.
+function reachMarkerToMarker(m1, m2, baseMm){
+  const pf=navPath({x:m1.x,y:m1.y,board:m1.board,baseMm}, {x:m2.x,y:m2.y,board:m2.board,baseMm});
+  if(!pf) return null;
+  return pf.distIn + routeTraversal(pf.pts, m1.board).plusIn;
+}
+// Best legal move-distance for `npo` to threaten `target`, stitching on-board legs through
+// portals. Returns {distIn, steps:[{type,label,...}]} or null if there is no legal route.
+// steps describe the plan in order: an initial on-board leg to a marker, a crossing, etc.
+function reachAcross(npo, target){
+  const tp=(S.mission&&S.mission.tp)||1;
+  const portals=crossPortals();
+  // meta-nodes: "S", "G", plus one per portal marker (id). Build edges, then Dijkstra.
+  const nodes=["S","G"], mById={};
+  portals.forEach(p=>p.markers.forEach(m=>{ nodes.push(m.id); mById[m.id]=m; }));
+  const idx={}; nodes.forEach((n,i)=>idx[n]=i);
+  const adj=nodes.map(()=>[]);
+  const link=(a,b,w,meta)=>{ if(w==null||!isFinite(w))return; adj[idx[a]].push({j:idx[b],w,meta}); };
+  // direct same-board leg
+  if(npo.board===target.board){ const pf=navPath(npo,target);
+    if(pf) link("S","G", routedEdgeDist(npo,target,pf)+routeTraversal(pf.pts,npo.board).plusIn, {type:"walk"}); }
+  // start → each reachable marker on the npo's board
+  portals.forEach(p=>p.markers.forEach(m=>{ if(m.board!==npo.board) return;
+    const r=reachToMarker(npo,m); if(r) link("S",m.id,r.move,{type:"toMarker",m,p}); }));
+  // portal crossings (marker ↔ twin); teleport only from TP2
+  portals.forEach(p=>{ if(p.type==="teleport" && tp<2) return;
+    for(const a of p.markers) for(const b of p.markers){ if(a===b) continue;
+      link(a.id,b.id,p.cost,{type:"cross",p,from:a,to:b}); } });
+  // same-board marker → marker (walk on the far board between portals)
+  portals.forEach(p1=>p1.markers.forEach(m1=> portals.forEach(p2=>p2.markers.forEach(m2=>{
+    if(m1===m2 || m1.board!==m2.board) return;
+    const w=reachMarkerToMarker(m1,m2,npo.baseMm); if(w!=null) link(m1.id,m2.id,w,{type:"walkMarker"}); }))));
+  // any marker on the target's board → goal
+  portals.forEach(p=>p.markers.forEach(m=>{ if(m.board!==target.board) return;
+    const r=reachFromMarker(m,target); if(r) link(m.id,"G",r.move,{type:"toGoal",m}); }));
+  // Dijkstra
+  const N=nodes.length, dist=new Array(N).fill(Infinity), prev=new Array(N).fill(-1), pmeta=new Array(N).fill(null);
+  dist[idx.S]=0; const pq=[[0,idx.S]];
+  while(pq.length){ pq.sort((a,b)=>a[0]-b[0]); const [d,u]=pq.shift(); if(d>dist[u])continue; if(u===idx.G)break;
+    for(const {j,w,meta} of adj[u]){ const nd=d+w; if(nd<dist[j]){ dist[j]=nd; prev[j]=u; pmeta[j]=meta; pq.push([nd,j]); } } }
+  if(!isFinite(dist[idx.G])) return null;
+  const steps=[]; for(let u=idx.G; u!==-1 && prev[u]!==-1; u=prev[u]){ if(pmeta[u]) steps.unshift(pmeta[u]); }
+  return { distIn:dist[idx.G], steps };
+}
 // --- base-aware corridor geometry -------------------------------------------------
 // The router must move a BASE, not a point: a route is only valid if the operative's base
 // (radius clr, in px) can travel it without clipping a solid wall. These helpers measure
@@ -1718,6 +1796,7 @@ function scoreCandidate(cand, npo, prio, behLabel){
     else if(cand.obscured){ score-=8; reasons.push("target obscured"); }
     else { score+=8; reasons.push("clean line of fire"); }
   }
+  if(cand.crossing){ score += 6; reasons.push("only way to threaten a player operative is across the killzones"); }
   if(cand.action==="Fight"){ score+=15; reasons.push("already engaged — no move needed"); }
   // Cost of any access actions the route needs (open a hatch = a spent action; breach = 2AP).
   if(cand.actions && cand.actions.length){
@@ -1833,6 +1912,38 @@ function enumerateNPOActions(npo){
       note:`move up to 2" toward nearest${via}`});
     if(engaged) out.push({action:"Fall Back", reachable:true, ap:1, gain:move,
       note:`disengage — move up to ${move}" away`});
+  }
+  // Cross-board / walled-off targets: if no player operative is reachable by ground on this
+  // board, the NPO's real play is to head for a portal and cross (Threat Principle: it can move
+  // between killzones to reach its target; climbing an Entryway counts as 3"). Find the best
+  // effective route to ANY player operative across both boards and, if the first step is an
+  // on-board move to a portal, offer it as the advance. This is the "move toward Entryway N to
+  // cross" suggestion; the full multi-leg plan is described in the note.
+  const groundReachable = out.some(c=> c.reachable && !c.pathBlocked && !c.blocked &&
+    (c.action==="Fight"||c.action==="Shoot"||c.action==="Charge"||c.action==="Reposition"||c.action==="Dash"));
+  if(!groundReachable){
+    const allTargets=S.items.filter(o=>o!==npo && o.kind==="op" && o.side!=="npo" && !o.off);
+    let best=null;
+    for(const t of allTargets){ const r=reachAcross(npo,t);
+      if(r && (!best || r.distIn<best.r.distIn)) best={t, r}; }
+    if(best && best.r.steps.length){
+      const first=best.r.steps[0];
+      const cross=best.r.steps.find(s=>s.type==="cross");
+      const mk0 = first.type==="toMarker" ? first.m : (cross?cross.from:null);
+      const via = cross ? (cross.p.type==="teleport"?`teleport pad ${cross.p.pair}`:`Entryway ${cross.p.pair} (climb 3")`) : "the crossing";
+      if(mk0){
+        const pf=navPath(npo,{x:mk0.x,y:mk0.y,board:mk0.board,baseMm:npo.baseMm});
+        const trav = pf?routeTraversal(pf.pts,mk0.board):null;
+        const acts = trav?trav.actions:[];
+        const opNote = acts.length?` — ${travNote(acts)} en route`:"";
+        out.push({action:"Reposition", targetId:best.t.id, reachable:true, crossing:true,
+          path: pf?pf.pts:null, actions:acts, ap:1, dist:best.r.distIn, gain:move,
+          note:`no ground route here — advance to ${via} toward ${best.t.label||"target"} (${best.r.distIn.toFixed(1)}" via crossing)${opNote}`});
+        out.push({action:"Dash", targetId:best.t.id, reachable:true, crossing:true,
+          path: pf?pf.pts:null, actions:acts, ap:1, dist:best.r.distIn, gain:2,
+          note:`edge toward ${via} (heading for ${best.t.label||"target"} across the killzones)${opNote}`});
+      }
+    }
   }
   return out;
 }
@@ -2321,7 +2432,7 @@ function renderAdvisorOverlay(){
     const line=(x1,y1,x2,y2,col,dash,extra)=>gOvl.appendChild(attr(mk("line"),Object.assign(
       {x1,y1,x2,y2,stroke:col,"stroke-width":1.8,"vector-effect":"non-scaling-stroke"},
       dash?{"stroke-dasharray":dash}:{}, extra||{})));
-    if(c && c.routed && c.path && c.path.length>=2){
+    if(c && (c.routed || c.crossing) && c.path && c.path.length>=2){
       // Routed detour: draw the real polyline. Solid up to the Move allowance (how far it gets
       // THIS activation), dashed for the remainder, with a dot where the activation runs out.
       const reachPx=(c.gain!=null?c.gain:(NPO_LIB[npo.npoKey]||{}).move||6)*PPI;
