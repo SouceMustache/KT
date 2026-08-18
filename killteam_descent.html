@@ -532,7 +532,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v253</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v254</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -1440,21 +1440,33 @@ function _segSegDist(a1,a2,b1,b2){
     _ptSegDist(b1[0],b1[1],a1[0],a1[1],a2[0],a2[1]),
     _ptSegDist(b2[0],b2[1],a1[0],a1[1],a2[0],a2[1]));
 }
-// Corridor test: can a base of radius clr travel A→B clear of every wall? Endpoints may sit
-// against cover (a base legitimately hugging a wall at start/finish), so we test only the
-// interior, shrunk inward by ~clr at each end. Blocked if any wall comes within clr of it.
+// Corridor test: can a base of radius clr travel A→B clear of every wall? Two failure modes:
+//   (1) the centre line properly crosses a wall — always blocked, at any leg length (this is
+//       the check that keeps node-to-node legs from stitching straight THROUGH a wall);
+//   (2) the base would clip a wall without the centre crossing — the wall passes within clr of
+//       the segment's interior. Endpoints may sit against cover (a base legitimately hugging a
+//       wall at start/finish), so the near-miss test ignores a short zone at each end.
 function fatBlocked(A,B,walls,clr){
+  for(const e of walls){
+    const X=segX(A,B,e.a,e.b); if(!X) continue;
+    // touches at a segment tip (rounding a corner / a node just off a wall end) are allowed
+    if(Math.hypot(X.x-A[0],X.y-A[1])<0.6 || Math.hypot(X.x-B[0],X.y-B[1])<0.6) continue;
+    if(Math.hypot(X.x-e.a[0],X.y-e.a[1])<0.6 || Math.hypot(X.x-e.b[0],X.y-e.b[1])<0.6) continue;
+    return true;   // genuine crossing
+  }
   const dx=B[0]-A[0],dy=B[1]-A[1],L=Math.hypot(dx,dy);
-  const m=clr*0.9; if(L<=2*m) return false;
-  const ux=dx/L,uy=dy/L, P=[A[0]+ux*m,A[1]+uy*m], Q=[B[0]-ux*m,B[1]-uy*m];
-  for(const e of walls){ if(_segSegDist(P,Q,e.a,e.b) < clr) return true; }
+  if(L>2){
+    const m=Math.min(clr*0.9, L*0.4), ux=dx/L, uy=dy/L;
+    const P=[A[0]+ux*m,A[1]+uy*m], Q=[B[0]-ux*m,B[1]-uy*m];
+    for(const e of walls){ if(_segSegDist(P,Q,e.a,e.b) < clr) return true; }
+  }
   return false;
 }
 // True if the straight base-centre run A→B would clip a wall with this operative's base —
 // even when the centre line itself crosses nothing. Used to decide when a detour is needed.
 function baseClips(a,b){
   if(!a||!b||a.board!==b.board) return false;
-  const clr=itemR(a)+0.15*PPI;
+  const clr=itemR(a)+0.05*PPI;
   return fatBlocked([a.x,a.y],[b.x,b.y], navSolidEdges(a.board), clr);
 }
 let _navCache={};
@@ -1466,7 +1478,7 @@ function navFingerprint(board){
 // on both faces, so a base centred on a node clears the wall; two nodes connect only if a base
 // of radius clr can travel between them (fatBlocked). Cached per board + clearance bucket.
 function navBuild(board,clr){
-  const walls=navSolidEdges(board), OFF=Math.max(clr,0.35*PPI), raw=[];
+  const walls=navSolidEdges(board), OFF=Math.max(clr,0.35*PPI)+0.3*PPI, raw=[];
   for(const e of walls){
     const ax=e.a[0],ay=e.a[1],bx=e.b[0],by=e.b[1];
     const L=Math.hypot(bx-ax,by-ay)||1, ux=(bx-ax)/L, uy=(by-ay)/L, px=-uy, py=ux;   // along / perp
@@ -1490,7 +1502,7 @@ function navGraph(board,clr){ const fp=navFingerprint(board)+"|"+Math.round(clr/
 // {distPx,distIn,pts} (world-space [x,y], centre→centre) or null if no route fits the base.
 function navPath(a,b){
   if(!a||!b||a.board!==b.board) return null;
-  const clr=itemR(a)+0.15*PPI;
+  const clr=itemR(a)+0.05*PPI;
   const g=navGraph(a.board,clr), walls=g.walls, S0=[a.x,a.y], G=[b.x,b.y];
   if(!fatBlocked(S0,G,walls,clr)){ const d=Math.hypot(G[0]-S0[0],G[1]-S0[1]); return {distPx:d,distIn:d/PPI,pts:[S0,G]}; }
   const N=g.nodes.length, nodes=g.nodes.concat([S0,G]), adj=g.adj.map(a=>a.slice()); adj.push([]); adj.push([]);
