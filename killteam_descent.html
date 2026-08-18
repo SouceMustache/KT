@@ -532,7 +532,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v255</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v256</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -1422,6 +1422,40 @@ function pathBlockedByTerrain(a,b){
    AND hatch open-state), so it stays in step with the Hatch tool by construction. Only invoked
    when the straight path is blocked, so the common clear-line case pays nothing. */
 function navSolidEdges(board){ return boardEdges(board).filter(e=>e.los==="solid"); }
+// HARD walls only — solid edges that are NOT an openable access point. A closed hatchway or
+// breach point is left OUT of this set so the router may plan a route THROUGH it (the traversal
+// is then flagged as needing an Open/Breach action + the 1" opening cost). Plain walls and the
+// swung Gallowdark panel (solid, no hatch kind) stay hard and always block.
+function navHardEdges(board){ return boardEdges(board).filter(e=> e.los==="solid" && !e.hatch); }
+const _mid=e=>[ (e.a[0]+e.b[0])/2, (e.a[1]+e.b[1])/2 ];
+// Classify the access points a routed polyline passes through, on its board. Returns the extra
+// movement cost (1" per opening) and the actions the traversal requires (open a hatch, or breach
+// a wall for 2AP). Open access points are already passable; closed ones need the flagged action.
+function routeTraversal(pts, board){
+  if(!pts || pts.length<2) return {plusIn:0, opens:[], actions:[]};
+  const edges=boardEdges(board);
+  const openEdges=edges.filter(e=> e.openHatch);                    // already open — walk through
+  const shutEdges=edges.filter(e=> e.los==="solid" && e.hatch);     // closed hatch / breach point
+  const seen=new Set(), opens=[];
+  const key=e=>`${e.inst&&e.inst.id||"?"}:${e.ei}`;
+  for(let i=1;i<pts.length;i++){ const A=pts[i-1], B=pts[i];
+    for(const e of openEdges){ if(segX(A,B,e.a,e.b)){ const k=key(e); if(!seen.has(k)){ seen.add(k);
+      opens.push({type:"open", kind:e.hatch, at:_mid(e), inst:e.inst, ei:e.ei}); } } }
+    for(const e of shutEdges){ if(segX(A,B,e.a,e.b)){ const k=key(e); if(!seen.has(k)){ seen.add(k);
+      opens.push({type:e.hatch==="breach"?"breach":"hatch", kind:e.hatch, at:_mid(e), inst:e.inst, ei:e.ei}); } } }
+  }
+  const actions=opens.filter(o=>o.type!=="open");
+  return {plusIn:opens.length, opens, actions};
+}
+// Human-readable summary of the open/breach actions a route requires.
+function travNote(actions){
+  if(!actions||!actions.length) return "";
+  const nH=actions.filter(a=>a.type==="hatch").length, nB=actions.filter(a=>a.type==="breach").length;
+  const bits=[];
+  if(nH) bits.push(nH>1?`open ${nH} hatchways`:"open the hatchway");
+  if(nB) bits.push(nB>1?`breach ${nB} walls (2AP each)`:"breach the wall (2AP)");
+  return bits.join(" & ");
+}
 // --- base-aware corridor geometry -------------------------------------------------
 // The router must move a BASE, not a point: a route is only valid if the operative's base
 // (radius clr, in px) can travel it without clipping a solid wall. These helpers measure
@@ -1467,7 +1501,7 @@ function fatBlocked(A,B,walls,clr){
 function baseClips(a,b){
   if(!a||!b||a.board!==b.board) return false;
   const clr=itemR(a)+0.05*PPI;
-  return fatBlocked([a.x,a.y],[b.x,b.y], navSolidEdges(a.board), clr);
+  return fatBlocked([a.x,a.y],[b.x,b.y], navHardEdges(a.board), clr);
 }
 let _navCache={};
 function navFingerprint(board){
@@ -1478,7 +1512,7 @@ function navFingerprint(board){
 // on both faces, so a base centred on a node clears the wall; two nodes connect only if a base
 // of radius clr can travel between them (fatBlocked). Cached per board + clearance bucket.
 function navBuild(board,clr){
-  const walls=navSolidEdges(board), OFF=Math.max(clr,0.35*PPI)+0.3*PPI, raw=[];
+  const walls=navHardEdges(board), OFF=Math.max(clr,0.35*PPI)+0.3*PPI, raw=[];
   for(const e of walls){
     const ax=e.a[0],ay=e.a[1],bx=e.b[0],by=e.b[1];
     const L=Math.hypot(bx-ax,by-ay)||1, ux=(bx-ax)/L, uy=(by-ay)/L, px=-uy, py=ux;   // along / perp
@@ -1685,6 +1719,13 @@ function scoreCandidate(cand, npo, prio, behLabel){
     else { score+=8; reasons.push("clean line of fire"); }
   }
   if(cand.action==="Fight"){ score+=15; reasons.push("already engaged — no move needed"); }
+  // Cost of any access actions the route needs (open a hatch = a spent action; breach = 2AP).
+  if(cand.actions && cand.actions.length){
+    const nB=cand.actions.filter(a=>a.type==="breach").length, nH=cand.actions.filter(a=>a.type==="hatch").length;
+    score -= nH*6 + nB*14;
+    if(nH) reasons.push(`must open ${nH>1?nH+" hatchways":"a hatchway"} en route`);
+    if(nB) reasons.push(`must breach ${nB>1?nB+" walls":"a wall"} (2AP)`);
+  }
   if(cand.action==="Charge" && cand.reachable){ score += Math.max(0,8-(cand.need||0)); reasons.push(`reaches engagement (needs ${(cand.need||0).toFixed(1)}\")`); }
   // finish wounded targets
   const tgt=cand.targetId && S.items.find(o=>o.id===cand.targetId);
@@ -1748,15 +1789,18 @@ function enumerateNPOActions(npo){
       const reach=move+2;
       let useD=d, routed=false, path=null;
       const detour = wall || baseClips(npo,e);   // wall crossed OR base would clip a corner
+      let trav=null;
       if(detour){ const pf=navPath(npo,e); const rd=pf?routedEdgeDist(npo,e,pf):null;
-        if(rd!=null){ useD=rd; routed=true; path=pf.pts; } }
+        if(rd!=null){ useD=rd; routed=true; path=pf.pts;
+          trav=routeTraversal(pf.pts, npo.board); useD+=trav.plusIn; } }   // +1" per opening
       const need=useD-CTRL_DEFAULT, inReach=need<=reach+1e-6;
       const noRoute = detour && !routed;
+      const opNote = trav&&trav.actions.length ? ` — ${travNote(trav.actions)} first` : "";
       out.push({action:"Charge", targetId:e.id, weapon:melee[0].n,
-        reachable: inReach && !noRoute, pathBlocked:noRoute, routed, path,
+        reachable: inReach && !noRoute, pathBlocked:noRoute, routed, path, actions:trav?trav.actions:[],
         ap:1, dist:d, need, note: noRoute ? "no route — target is walled off" :
-          (inReach ? `${routed?"charge around cover — ":""}close ${need.toFixed(1)}" into engagement`
-                   : `${(need-reach).toFixed(1)}" out of charge reach${routed?" (around cover)":""}`)});
+          (inReach ? `${routed?"charge around cover — ":""}close ${need.toFixed(1)}" into engagement${opNote}`
+                   : `${(need-reach).toFixed(1)}" out of charge reach${routed?" (around cover)":""}${opNote}`)});
     }
     // Shoot — one candidate per ranged weapon that can see and reach the target
     for(const w of ranged){
@@ -1779,10 +1823,13 @@ function enumerateNPOActions(npo){
     const pf = detour ? navPath(npo,nearest) : null;
     const routed = !!(detour && pf), noRoute = !!(detour && !pf);
     const path = routed ? pf.pts : null;
-    const via = noRoute ? " (no route — walled off)" : (routed ? " (around cover)" : "");
-    out.push({action:"Reposition", targetId:nearest.id, reachable:true, pathBlocked:noRoute, routed, path, ap:1, dist:nearestD, gain:move,
+    const trav = routed ? routeTraversal(pf.pts, npo.board) : null;
+    const opNote = trav&&trav.actions.length ? ` — ${travNote(trav.actions)} en route` : "";
+    const acts = trav ? trav.actions : [];
+    const via = noRoute ? " (no route — walled off)" : (routed ? " (around cover)"+opNote : "");
+    out.push({action:"Reposition", targetId:nearest.id, reachable:true, pathBlocked:noRoute, routed, path, actions:acts, ap:1, dist:nearestD, gain:move,
       note:`move up to ${move}" toward ${nearest.label||"nearest"}${via}`});
-    out.push({action:"Dash", targetId:nearest.id, reachable:true, pathBlocked:noRoute, routed, path, ap:1, dist:nearestD, gain:2,
+    out.push({action:"Dash", targetId:nearest.id, reachable:true, pathBlocked:noRoute, routed, path, actions:acts, ap:1, dist:nearestD, gain:2,
       note:`move up to 2" toward nearest${via}`});
     if(engaged) out.push({action:"Fall Back", reachable:true, ap:1, gain:move,
       note:`disengage — move up to ${move}" away`});
