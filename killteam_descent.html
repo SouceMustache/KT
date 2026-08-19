@@ -536,7 +536,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v259</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v260</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -1177,6 +1177,24 @@ function nearestBoard(x,y){
    Ravener tunnels and Ambull BURROW (later packs) reuse exactly this pairing — that's
    why it lives in the engine, not in any pack. */
 function distIn(ax,ay,bx,by){ return Math.hypot(ax-bx,ay-by)/PPI; }   // world px → inches
+// Small terrain-height tags on walls, ported from the Planner's edgeLabel: level (G/V1/V2)
+// + physical height + cover weight (h/l). Only walls that actually rise get a tag — flat
+// ground edges stay clean. Each label is nudged perpendicular by its base height so walls
+// stacked in plan view (a parapet sitting on a Vantage lip) read as separate lines.
+function edgeLevel(z){ return z<=0.05?"G":z<3.05?"V1":"V2"; }
+function edgeHeightLabel(g,e,col){
+  if(e.panel||e.openHatch) return;                      // swung hatch stubs / open gaps: no tag
+  const zb=e.zBot||0, zt=e.zTop||0, h=zt-zb;
+  if(h<=0.05) return;                                   // nothing to climb — nothing to label
+  const wt = e.cover==="light" ? " l" : e.cover==="heavy" ? " h" : "";
+  const txt = `${edgeLevel(zb)} ${h.toFixed(h%1?1:0)}"${wt}`;
+  const dx=e.b[0]-e.a[0], dy=e.b[1]-e.a[1], L=Math.hypot(dx,dy)||1;
+  const off=zb*3.4;                                     // labels only — geometry untouched
+  const mx=(e.a[0]+e.b[0])/2 - dy/L*off, my=(e.a[1]+e.b[1])/2 + dx/L*off;
+  g.appendChild(attr(Object.assign(mk("text"),{textContent:txt}),
+    {x:mx,y:my-4,fill:col,"font-size":7,"font-family":"var(--mono)","text-anchor":"middle",
+     "paint-order":"stroke",stroke:"var(--bg)","stroke-width":2.2,"pointer-events":"none"}));
+}
 function markerById(id){ return S.markers.find(m=>m.id===id); }
 // Delete a marker; entryways/teleports delete together with their twin so no orphan remains.
 function eraseMarker(m){
@@ -2069,6 +2087,7 @@ function renderTerr(){
         "stroke-width":e.los==="solid"?2.4:1.6,"vector-effect":"non-scaling-stroke","stroke-linecap":"round"});
       if(dash) ln.setAttribute("stroke-dasharray",dash);
       g.appendChild(ln);
+      if(S.showHeights!==false) edgeHeightLabel(g,e,col);
     });
     // selection highlight
     if(S.selInst===inst.id){ const bb=instBounds(inst);
