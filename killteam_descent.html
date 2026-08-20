@@ -536,7 +536,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v263</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v264</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -4328,10 +4328,13 @@ $("#instDone").addEventListener("click",()=>{ S.selInst=null; hideInstBar(); ren
 function packBudget(){ return (S.pack&&S.pack.npoBudget)||110; }
 function npoBudget(){ return S.npoBudgetOverride!=null ? S.npoBudgetOverride : packBudget(); }
 function poolWounds(){ return S.npoPool.reduce((s,k)=>s+(NPO_LIB[k]?NPO_LIB[k].wounds:0),0); }
-function npoInKillzone(){ return S.items.filter(i=>i.side==="npo" && !i.off).length; }
+// An incapacitated (Dead) NPO is out of the game: it no longer occupies an on-board slot
+// nor a pool copy, so it frees space in both the on-board limit and the wounds/point budget.
+function npoInKillzone(){ return S.items.filter(i=>i.side==="npo" && !i.off && !isDead(i)).length; }
 // The pool is a FINITE collection: a unit already on the board is spent and no longer
 // available to arm/roll/place. Availability = pooled copies of a key minus copies in play.
-function npoPlaced(key){ return S.items.filter(i=>i.side==="npo" && i.npoKey===key).length; }
+// A Dead copy is incapacitated/removed, so it stops counting as "in play".
+function npoPlaced(key){ return S.items.filter(i=>i.side==="npo" && i.npoKey===key && !isDead(i)).length; }
 function npoAvail(key){ const inPool=S.npoPool.filter(k=>k===key).length; return inPool-npoPlaced(key); }
 
 function buildNPOSection(){
