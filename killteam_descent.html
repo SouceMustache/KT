@@ -536,7 +536,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v260</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v262</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -1478,6 +1478,61 @@ function travNote(actions){
   if(nB) bits.push(nB>1?`breach ${nB} walls (2AP each)`:"breach the wall (2AP)");
   return bits.join(" & ");
 }
+// Vertical climb/traverse cost (inches) for a move along a routed polyline — the "obstacles to
+// overcome" the flat router can't see. Horizontal distance is measured elsewhere (routedEdgeDist),
+// so this returns ONLY the extra move spent going UP onto/over terrain and DOWN off it. Ported
+// from the Planner's legCost profile engine: sample the floor along the path (start = mover's
+// elevation, end = destination's; between, read the terrain — you drop off a platform you pass,
+// climb onto one you finish on), spike it at low climbable walls and Rubble, then charge each
+// climb (min 2", rounded up) and each drop (rounded up, first 2" of dropping free). Features 0.5"
+// or lower are Insignificant and ignored; hatch/openings are already costed by routeTraversal.
+const INSIG_H = 0.5;
+function routeClimbIn(mover, dest, pts, board){
+  if(!pts || pts.length<2) return 0;
+  const zones=boardZones(board), edges=boardEdges(board);
+  const f0=opFloor(mover), f1=opFloor(dest||{});
+  const hasRelief = f0>0.05 || f1>0.05 ||
+    zones.some(z=>(z.class==="Vantage"||z.class==="Rubble")&&(z.top||0)>INSIG_H) ||
+    edges.some(e=>e.los==="solid"&&!e.hatch&&(e.zTop||0)>INSIG_H);
+  if(!hasRelief) return 0;                                   // dead-flat board & flat endpoints
+  // arc-length sampler over the whole polyline
+  const seg=[]; let total=0;
+  for(let i=1;i<pts.length;i++){ const L=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]); seg.push(L); total+=L; }
+  if(total<1e-6) return 0;
+  const at=(s)=>{ let d=s*total; for(let i=0;i<seg.length;i++){ if(d<=seg[i]||i===seg.length-1){ const t=seg[i]?d/seg[i]:0;
+      return [pts[i][0]+(pts[i+1][0]-pts[i][0])*t, pts[i][1]+(pts[i+1][1]-pts[i][1])*t]; } d-=seg[i]; } return pts[pts.length-1]; };
+  // A raised level exists only inside a Vantage footprint at that height (a Vantage polygon marks
+  // a footprint, not a solid — read the declared height off it). Ground supports everywhere.
+  const supportedAt=(x,y,h)=> h<=0.05 ? true :
+    zones.some(z=>z.class==="Vantage" && (z.top||0)>INSIG_H && Math.abs((z.top||0)-h)<0.4 && losPointInPoly(x,y,z.poly));
+  const N=48, prof=[];
+  for(let i=0;i<=N;i++){ if(i===0){prof.push(f0);continue;} if(i===N){prof.push(f1);continue;}
+    const p=at(i/N), hi=Math.max(f0,f1), lo=Math.min(f0,f1);
+    prof.push(supportedAt(p[0],p[1],hi)?hi : supportedAt(p[0],p[1],lo)?lo : 0); }
+  // Low climbable walls the path still crosses (hard walls are already detoured) and Rubble piles
+  // spike the profile where they sit. Skip anything you pass under (bottom above the local ground).
+  for(const e of edges){ if(e.los!=="solid"||e.hatch) continue; const top=e.zTop||0, bot=e.zBot||0;
+    if(top<=INSIG_H) continue;
+    for(let k=1;k<pts.length;k++){ const X=segX(pts[k-1],pts[k],e.a,e.b); if(!X) continue;
+      let acc=0; for(let m=1;m<k;m++) acc+=seg[m-1]; acc+=Math.hypot(X.x-pts[k-1][0],X.y-pts[k-1][1]);
+      const ci=Math.max(1,Math.min(N-1,Math.round((acc/total)*N)));
+      const fb=prof[ci-1], fa=prof[Math.min(N,ci+1)], lo=Math.min(fb,fa), hi=Math.max(fb,fa);
+      if(top>lo+0.05 && bot<=hi+0.05) prof[ci]=Math.max(prof[ci], top); break; } }
+  zones.forEach(z=>{ if(z.class!=="Rubble") return; const top=z.top||0; if(top<=INSIG_H) return;
+    for(let i=1;i<N;i++){ const p=at(i/N); if(losPointInPoly(p[0],p[1],z.poly)&&top>prof[i]) prof[i]=top; } });
+  // walk the profile: emit up / drop legs, merge same-kind runs, round each up (climbs are the
+  // greater of the height and 2"), round each drop up, then hand back a single shared 2" free drop.
+  const sq=[];
+  for(let i=1;i<=N;i++){ const d=prof[i]-prof[i-1]; if(Math.abs(d)<1e-6) continue;
+    sq.push(d>0?{k:"up",v:Math.max(d,2)}:{k:"drop",v:-d}); }
+  const merged=[]; sq.forEach(s=>{ const last=merged[merged.length-1];
+    if(last&&last.k===s.k) last.v+=s.v; else merged.push({...s}); });
+  merged.forEach(s=> s.v=Math.ceil(s.v));
+  let up=0, dropBudget=2, drop=0;
+  merged.forEach(s=>{ if(s.k==="up"){ up+=s.v; }
+    else { const free=Math.min(dropBudget,s.v); dropBudget-=free; drop+=Math.max(0,s.v-free); } });
+  return up+drop;
+}
 
 /* ============================================================ CROSS-BOARD PORTALS
    Entryway markers and teleport pads link the two killzones. Climbing an Entryway costs 3" of
@@ -1532,7 +1587,8 @@ function reachAcross(npo, target){
   const link=(a,b,w,meta)=>{ if(w==null||!isFinite(w))return; adj[idx[a]].push({j:idx[b],w,meta}); };
   // direct same-board leg
   if(npo.board===target.board){ const pf=navPath(npo,target);
-    if(pf) link("S","G", routedEdgeDist(npo,target,pf)+routeTraversal(pf.pts,npo.board).plusIn, {type:"walk"}); }
+    if(pf) link("S","G", routedEdgeDist(npo,target,pf)+routeTraversal(pf.pts,npo.board).plusIn
+                         +routeClimbIn(npo,target,pf.pts,npo.board), {type:"walk"}); }
   // start → each reachable marker on the npo's board
   portals.forEach(p=>p.markers.forEach(m=>{ if(m.board!==npo.board) return;
     const r=reachToMarker(npo,m); if(r) link("S",m.id,r.move,{type:"toMarker",m,p}); }));
@@ -1906,14 +1962,20 @@ function enumerateNPOActions(npo){
       if(detour){ const pf=navPath(npo,e); const rd=pf?routedEdgeDist(npo,e,pf):null;
         if(rd!=null){ useD=rd; routed=true; path=pf.pts;
           trav=routeTraversal(pf.pts, npo.board); useD+=trav.plusIn; } }   // +1" per opening
+      // Climbing/dropping over the terrain in the way costs move too — a charge onto Vantage or
+      // up a low wall reaches less far than the flat distance suggests (and a charge DOWN a little
+      // more, first 2" of the drop free). Read it off the route the NPO will actually take.
+      const climb = routeClimbIn(npo, e, path || [[npo.x,npo.y],[e.x,e.y]], npo.board);
+      useD += climb;
+      const climbNote = climb>0 ? ` (climb ${climb}")` : "";
       const need=useD-CTRL_DEFAULT, inReach=need<=reach+1e-6;
       const noRoute = detour && !routed;
       const opNote = trav&&trav.actions.length ? ` — ${travNote(trav.actions)} first` : "";
       out.push({action:"Charge", targetId:e.id, weapon:melee[0].n,
         reachable: inReach && !noRoute, pathBlocked:noRoute, routed, path, actions:trav?trav.actions:[],
-        ap:1, dist:d, need, note: noRoute ? "no route — target is walled off" :
-          (inReach ? `${routed?"charge around cover — ":""}close ${need.toFixed(1)}" into engagement${opNote}`
-                   : `${(need-reach).toFixed(1)}" out of charge reach${routed?" (around cover)":""}${opNote}`)});
+        ap:1, dist:d, need, climb, note: noRoute ? "no route — target is walled off" :
+          (inReach ? `${routed?"charge around cover — ":""}close ${need.toFixed(1)}" into engagement${climbNote}${opNote}`
+                   : `${(need-reach).toFixed(1)}" out of charge reach${routed?" (around cover)":""}${climbNote}${opNote}`)});
     }
     // Shoot — one candidate per ranged weapon that can see and reach the target
     for(const w of ranged){
@@ -2420,10 +2482,7 @@ function renderOverlay(){
   gOvl.replaceChildren();
   if(S.selected){
     const t=S.items.find(i=>i.id===S.selected);
-    if(t){ gOvl.appendChild(attr(mk("circle"),{cx:t.x,cy:t.y,r:itemR(t)+4,
-      fill:"none",stroke:"var(--orange)","stroke-width":2,"stroke-dasharray":"4 3",
-      "vector-effect":"non-scaling-stroke"}));
-      crRing(t,"rgba(242,160,61,.55)"); }
+    if(t){ crRing(t,"rgba(242,160,61,.55)"); }   // the Control-Range ring alone marks the selection
   }
   if(S.measure){ const m=S.measure;
     gOvl.appendChild(attr(mk("line"),{x1:m.a.x,y1:m.a.y,x2:m.b.x,y2:m.b.y,
@@ -3388,9 +3447,17 @@ function doTraverse(opId, marker){
       note(`${op.label||"The operative"} must be WHOLLY WITHIN the 60mm teleport pad (its whole base on the disc) to teleport.`);
       return;
     }
-  } else if(distIn(op.x,op.y,marker.x,marker.y) > (marker.ctrl||CTRL_DEFAULT)+1e-6){
-    note(`That marker isn't within ${op.label||"the operative"}'s control range (${(marker.ctrl||CTRL_DEFAULT)}"). Move closer first.`);
-    return;
+  } else {
+    // Control range is measured from the operative's BASE EDGE, not its centre. Subtract the base
+    // radius toward the marker (oval-safe) — measuring centre-to-centre made a large base (e.g. the
+    // Macrocyte) need the marker almost touching its base before a climb was allowed, and it
+    // disagreed with both the drawn Control-Range ring and the advisor's reachToMarker.
+    const cr=(marker.ctrl||CTRL_DEFAULT);
+    const edge=distIn(op.x,op.y,marker.x,marker.y) - baseRadDir(op, marker.x-op.x, marker.y-op.y);
+    if(edge > cr+1e-6){
+      note(`That marker isn't within ${op.label||"the operative"}'s control range (${cr}"). Move closer first.`);
+      return;
+    }
   }
   const res=climbThrough(op, marker);
   if(!res.ok){ note(res.reason); return; }
