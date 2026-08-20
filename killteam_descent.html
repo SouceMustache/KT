@@ -536,7 +536,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v262</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v263</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -3624,10 +3624,15 @@ function reanimBlock(){
 }
 function mpRow(t){
   const v=(S.mission&&S.mission[t.key]!=null)?S.mission[t.key]:t.def;
+  // The Turning Point row carries the All Ready button (ported from the Planner's scoreboard):
+  // a new turning point sets every operative back to Ready, so it belongs right here.
+  const extra = t.key==="tp"
+    ? `<button class="mini" data-allready="1" title="Set every operative — on board and off — to Ready">All Ready</button>`
+    : "";
   return `<div class="mprow"><span class="mplabel">${t.label}</span>`
     +`<button class="mini" data-tk="${t.key}" data-d="-1">−</button>`
     +`<span class="mpval">${v}</span>`
-    +`<button class="mini" data-tk="${t.key}" data-d="1">+</button></div>`;
+    +`<button class="mini" data-tk="${t.key}" data-d="1">+</button>${extra}</div>`;
 }
 // Full scenario rules text for the active mission, from SH_MISSIONS (data, not PDF).
 // Collapsible, default-closed, sits above the trackers. Reference only — not enforced.
@@ -3674,6 +3679,15 @@ $("#missionBody").addEventListener("click",e=>{
   const cpb=e.target.closest("[data-cp]");
   if(cpb){ const [k,d]=cpb.dataset.cp.split("|"); if(!S.cp) S.cp={m:0,e:0};
     S.cp[k]=Math.max(0,(S.cp[k]||0)+(+d)); save(); buildMission(); return; }
+  // All Ready — mass-reset activation: every live operative (players AND NPOs, on board and off)
+  // that was Expended goes back to Ready. Dead operatives are left as they are.
+  const ar=e.target.closest("[data-allready]");
+  if(ar){
+    let n=0; S.items.forEach(o=>{ if(o.kind==="op" && o.expended && !isDead(o)){ o.expended=false; n++; } });
+    if(n){ save(); renderItems(); renderOverlay(); if(sheetOp) renderStatusStrip(sheetOp); }
+    note(n?`All Ready — ${n} operative${n>1?"s":""} reset (on board & off).`:"No Expended operatives to reset.", n>0);
+    return;
+  }
   const mm=e.target.closest("[data-mission]");
   if(mm){ const ms=(S.pack&&S.pack.missions)||[]; const n=ms.length||1;
     S.mission.missionIdx=(((S.mission.missionIdx||0)+(+mm.dataset.mission))%n+n)%n;
