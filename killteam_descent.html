@@ -536,7 +536,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v264</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v265</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -1943,18 +1943,25 @@ function enumerateNPOActions(npo){
   for(const e of targets){
     const d=edgeDist(npo,e);
     if(d<nearestD){ nearestD=d; nearest=e; }
-    if(d<=CTRL_DEFAULT) engaged=true;
+    // Control range is 3D: within 1" horizontally AND within 1" vertically. Two operatives on
+    // different levels (e.g. one on the ground, one on a Vantage 3" up) are NOT engaged even if
+    // their bases overlap horizontally — the vertical gap keeps them out of each other's control
+    // range. vGap is the floor-height difference between the two operatives.
+    const vGap=Math.abs(opFloor(npo)-opFloor(e));
+    const inCtrl = d<=CTRL_DEFAULT+1e-6 && vGap<=CTRL_DEFAULT+1e-6;
+    if(inCtrl) engaged=true;
     const los=losCheck(npo,e);   // same-board visibility + cover
     const wall=pathBlockedByTerrain(npo,e);   // solid wall across the straight base-centre path
-    // Fight — target already within control range, needs a melee weapon
-    if(melee.length && d<=CTRL_DEFAULT+1e-6){
+    // Fight — target already within control range (both axes), needs a melee weapon
+    if(melee.length && inCtrl){
       out.push({action:"Fight", targetId:e.id, weapon:melee[0].n, reachable:true, ap:1, dist:d,
         note:"within control range"});
     }
     // Charge — reachable if we can close to control range within move + 2". If a wall blocks
     // the straight run-in, route around it (or through an opening); a charge that has to detour
-    // uses the routed distance, and is impossible if there is no route at all.
-    if(melee.length && d>CTRL_DEFAULT){
+    // uses the routed distance, and is impossible if there is no route at all. A target that is
+    // horizontally close but on a different level still needs a Charge (climb) to engage.
+    if(melee.length && !inCtrl){
       const reach=move+2;
       let useD=d, routed=false, path=null;
       const detour = wall || baseClips(npo,e);   // wall crossed OR base would clip a corner
