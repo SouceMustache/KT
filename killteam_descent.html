@@ -536,7 +536,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v265</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v266</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -1736,7 +1736,8 @@ function routedEdgeDist(a,b,pf){
   const p=pf.pts, n=p.length;
   const ra=baseRadDir(a, p[1][0]-p[0][0], p[1][1]-p[0][1]);
   const rb=baseRadDir(b, p[n-2][0]-p[n-1][0], p[n-2][1]-p[n-1][1]);
-  return Math.max(0,(pf.distPx-ra-rb)/PPI);
+  // distPx in PX, radii in INCHES — convert to inches before subtracting (see edgeDist note).
+  return Math.max(0, pf.distPx/PPI - ra - rb);
 }
 // Clamp a world-space polyline to an arc length (px); returns {pt,idx} at that distance.
 function clampPolyline(pts,maxPx){
@@ -1880,7 +1881,8 @@ function scoreCandidate(cand, npo, prio, behLabel){
   if(cand.pathBlocked){ score -= 40; reasons.push("no route — target is walled off"); }
   else if(cand.routed){ score -= 8; reasons.push("routes around cover"); }
   if(cand.action==="Shoot"){
-    if(cand.blocked){ reasons.push("no line of sight"); }
+    if(cand.engaged){ reasons.push("within enemy control range — can't Shoot"); }
+    else if(cand.blocked){ reasons.push("no line of sight"); }
     else if(cand.cover==="heavy"){ score-=20; reasons.push("target in heavy cover"); }
     else if(cand.cover==="light"){ score-=10; reasons.push("target in light cover"); }
     else if(cand.obscured){ score-=8; reasons.push("target obscured"); }
@@ -1922,7 +1924,11 @@ function rankNPOActions(npo){
 function edgeDist(a,b){
   const dx=b.x-a.x, dy=b.y-a.y, c=Math.hypot(dx,dy)||1e-9;
   const ra=baseRadDir(a,dx,dy), rb=baseRadDir(b,-dx,-dy);
-  return Math.max(0,(c-ra-rb)/PPI);
+  // c is centre distance in PX; ra/rb are base radii in INCHES (baseAxes is inch-based).
+  // Convert the centre distance to inches BEFORE subtracting the radii — otherwise the base
+  // sizes are ~PPI× too small and effectively ignored (based-in-contact reads as ~1.2" apart,
+  // so control range / Fight never triggers from base contact).
+  return Math.max(0, c/PPI - ra - rb);
 }
 // A weapon's Range X" cap (null = unlimited). Reads the weapon-rules string.
 function weaponRange(w){ const m=/Range\s*(\d+)/i.exec(w&&w.wr||""); return m?+m[1]:null; }
@@ -1940,6 +1946,14 @@ function enumerateNPOActions(npo){
   const targets=npoTargets(npo);
   const out=[];
   let nearest=null, nearestD=Infinity, engaged=false;
+  // An operative cannot perform the Shoot action while within control range of an enemy
+  // (core rules — Shoot). Determine engagement UP FRONT over all targets so Shoot candidates
+  // are gated correctly regardless of the order targets are visited in the loop below.
+  let engagedNow=false;
+  for(const e of targets){
+    const vGap=Math.abs(opFloor(npo)-opFloor(e));
+    if(edgeDist(npo,e)<=CTRL_DEFAULT+1e-6 && vGap<=CTRL_DEFAULT+1e-6){ engagedNow=true; break; }
+  }
   for(const e of targets){
     const d=edgeDist(npo,e);
     if(d<nearestD){ nearestD=d; nearest=e; }
@@ -1989,10 +2003,12 @@ function enumerateNPOActions(npo){
       const R=weaponRange(w);
       const inRange = R==null || d<=R+1e-6;
       const visible = !los.blocked;
-      out.push({action:"Shoot", targetId:e.id, weapon:w.n, reachable:visible&&inRange, ap:1, dist:d,
+      out.push({action:"Shoot", targetId:e.id, weapon:w.n,
+        reachable: visible&&inRange&&!engagedNow, engaged:engagedNow, ap:1, dist:d,
         cover:los.cover, obscured:los.obscured, blocked:los.blocked,
-        note: !visible ? "no line of sight" : (!inRange ? `out of range (${R}")` :
-              (los.coverChoice?"cover/obscured (defender picks)":(los.cover?`${los.cover} cover`:(los.obscured?"obscured":"clear shot"))))});
+        note: engagedNow ? "engaged — can't Shoot (Fight or Fall Back)" :
+              (!visible ? "no line of sight" : (!inRange ? `out of range (${R}")` :
+              (los.coverChoice?"cover/obscured (defender picks)":(los.cover?`${los.cover} cover`:(los.obscured?"obscured":"clear shot")))))});
     }
   }
   // Movement candidates (toward the nearest target), plus Fall Back if currently engaged.
