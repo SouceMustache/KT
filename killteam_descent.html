@@ -536,7 +536,7 @@
 <div id="app">
   <div id="bar">
     <div class="barrow">
-      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v266</span></span>
+      <span class="brand"><span class="brandname">KT&nbsp;<b>Descent</b></span> <span class="buildtag">v267</span></span>
       <span class="spacer"></span>
       <div class="seg" id="toolseg">
         <button class="tool on" data-mode="move" title="Move" aria-label="Move"><svg viewBox="0 0 20 20"><path d="M10 3.2c2.4 0 4 1.6 4 4 0 1.6-.5 2.8-1 3.7-.4.8-.6 1.5-.6 2.3 0 .4.1.9.1 1.3 0 1.6-1 2.4-2.5 2.4s-2.5-.8-2.5-2.4c0-.4.1-.9.1-1.3 0-.8-.2-1.5-.6-2.3-.5-.9-1-2.1-1-3.7 0-2.4 1.6-4 4-4z"/></svg></button>
@@ -1875,10 +1875,20 @@ function behaviourPriority(behKey){
 function scoreCandidate(cand, npo, prio, behLabel){
   const reasons=[]; let score=0;
   const rank=prio[cand.action];
-  if(rank!=null){ score += (10-rank)*10; reasons.push(`${behLabel} prioritises ${cand.action} (#${rank+1})`); }
-  else { score += 5; }
-  if(cand.reachable===false){ score -= 100; reasons.push("not reachable this activation"); }
-  if(cand.pathBlocked){ score -= 40; reasons.push("no route — target is walled off"); }
+  // Behaviour priority is the DOMINANT term. The Shadowhunt NPO behaviours are strict priority
+  // lists ("perform the highest action on the list it's able to"), so an AVAILABLE higher-priority
+  // action must never be overtaken by a lower-priority one because of a situational penalty. Rank
+  // steps of 100 sit well above the ±40-ish situational modifiers below, which therefore only
+  // refine ordering WITHIN a tier (which target to shoot, which route to take) — e.g. a Marksman
+  // with a reachable shot into heavy cover still Shoots rather than Repositioning "to a clear shot".
+  const RANK_STEP=100, AVAIL=1e5;
+  if(rank!=null){ score += (10-rank)*RANK_STEP; reasons.push(`${behLabel} prioritises ${cand.action} (#${rank+1})`); }
+  else { score += 5; }   // action not in this behaviour's list — sits below every listed action
+  // Availability dominates even priority: an action the NPO can't actually perform this activation
+  // (no line of sight / out of range / engaged for Shoot, or no route for a move) always sorts
+  // below any it can perform.
+  if(cand.reachable===false){ score -= AVAIL; reasons.push("not reachable this activation"); }
+  if(cand.pathBlocked){ score -= AVAIL; reasons.push("no route — target is walled off"); }
   else if(cand.routed){ score -= 8; reasons.push("routes around cover"); }
   if(cand.action==="Shoot"){
     if(cand.engaged){ reasons.push("within enemy control range — can't Shoot"); }
