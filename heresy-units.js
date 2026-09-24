@@ -33,7 +33,7 @@ const CONSUL_SW = {
 };
 
 /* ── wybór archetypu bazowego Power weapon (per-model, free) ─────────────── */
-const PW_ARCHETYPE = { id:'pw_choice', label:'Każdy model: typ Power weapon (bazowo, free):', mode:'pick-one', scope:'each-model', base:true,
+const PW_ARCHETYPE = { id:'pw_choice', label:'Każdy model: typ Power weapon (bazowo, free):', mode:'pick-one', scope:'each-model', base:true, for:'Power weapon',
   note:'Kategoria „Power weapon" — wybierz archetyp per model (np. 5× sword, 5× lance). Modele, które wymienią power weapon niżej, ignorują ten wybór.',
   choices:[
     {id:'pw_sword', name:'Power sword', cost:0, costMode:'flat', free:true},
@@ -45,14 +45,14 @@ const PW_ARCHETYPE = { id:'pw_choice', label:'Każdy model: typ Power weapon (ba
 /* ── wspólny blok opcji broni Centuriona terminatorskiego (Cata/Tartaros) ─── */
 const TERM_CENTURION_OPTS = [
   PW_ARCHETYPE,
-  { id:'combi_swap', label:'May exchange combi-bolter for one of:',
+  { id:'combi_swap', label:'May exchange combi-bolter for one of:', replaces:['Combi-bolter'],
     mode:'pick-one', scope:'model',
     choices:[
       {id:'magna_combi', name:'Magna combi-weapon', cost:10, costMode:'flat'},
       {id:'minor_combi', name:'Minor combi-weapon', cost:5,  costMode:'flat'},
       {id:'volkite_charger', name:'Volkite charger', cost:2,  costMode:'flat'},
     ]},
-  { id:'power_swap', label:'May exchange power weapon for one of:',
+  { id:'power_swap', label:'May exchange power weapon for one of:', replaces:['Power weapon'],
     mode:'pick-one', scope:'model',
     choices:[
       {id:'power_fist',     name:'Power fist',     cost:10, costMode:'flat'},
@@ -60,7 +60,7 @@ const TERM_CENTURION_OPTS = [
       {id:'chainfist',      name:'Chainfist',      cost:15, costMode:'flat'},
       {id:'thunder_hammer', name:'Thunder hammer', cost:15, costMode:'flat'},
     ]},
-  { id:'dual_claws', label:'May exchange combi-bolter AND power weapon for:',
+  { id:'dual_claws', label:'May exchange combi-bolter AND power weapon for:', replaces:['Combi-bolter','Power weapon'],
     mode:'toggle', scope:'model',
     choices:[ {id:'two_lightning_claws', name:'Two lightning claws', cost:15, costMode:'flat'} ]},
   { id:'grenade_harness', label:'May take:',
@@ -78,13 +78,13 @@ const MASTER_OF_LEGION = { name:'Master of the Legion', parts:[
 /* ── wspólne opcje Praetora terminatorskiego (Cataphractii/Tartaros) ─────── */
 const TERM_PRAETOR_OPTS = [
   PW_ARCHETYPE,
-  { id:'combi_swap', label:'May exchange combi-bolter for one of:', mode:'pick-one', scope:'model',
+  { id:'combi_swap', label:'May exchange combi-bolter for one of:', replaces:['Combi-bolter'], mode:'pick-one', scope:'model',
     choices:[
       {id:'magna_combi', name:'Magna combi-weapon', cost:10, costMode:'flat'},
       {id:'minor_combi', name:'Minor combi-weapon', cost:5,  costMode:'flat'},
       {id:'volkite_charger', name:'Volkite charger', cost:2,  costMode:'flat'},
     ]},
-  { id:'power_swap', label:'May exchange power weapon for one of:', mode:'pick-one', scope:'model',
+  { id:'power_swap', label:'May exchange power weapon for one of:', replaces:['Power weapon'], mode:'pick-one', scope:'model',
     choices:[
       {id:'power_fist',     name:'Power fist',     cost:10, costMode:'flat'},
       {id:'lightning_claw', name:'Lightning claw', cost:0,  costMode:'flat', free:true},
@@ -92,7 +92,7 @@ const TERM_PRAETOR_OPTS = [
       {id:'thunder_hammer', name:'Thunder hammer', cost:15, costMode:'flat'},
       {id:'paragon_blade',  name:'Paragon blade',  cost:15, costMode:'flat'},
     ]},
-  { id:'dual_claws', label:'May exchange combi-bolter AND power weapon for:', mode:'toggle', scope:'model',
+  { id:'dual_claws', label:'May exchange combi-bolter AND power weapon for:', replaces:['Combi-bolter','Power weapon'], mode:'toggle', scope:'model',
     choices:[ {id:'two_lightning_claws', name:'Two lightning claws', cost:10, costMode:'flat'} ]},
   { id:'grenade_harness', label:'May take:', mode:'toggle', scope:'model',
     choices:[ {id:'grenade_harness', name:'Grenade harness', cost:5, costMode:'flat'} ]},
@@ -235,7 +235,7 @@ const HERESY_UNITS = [
           {id:'thunder_hammer',   name:'Thunder hammer',   cost:30, costMode:'flat'},
           {id:'boarding_shield',  name:'Boarding shield',  cost:0,  costMode:'flat', free:true, note:'+Heavy'},
         ]},
-      { id:'dual_claws', label:'May exchange bolt pistol AND chainsword for:', mode:'toggle', scope:'model',
+      { id:'dual_claws', label:'May exchange bolt pistol AND chainsword for:', replaces:['Bolt pistol','Chainsword'], mode:'toggle', scope:'model',
         note:'Niedostępne z Spatha combat bike / Scimitar jetbike.',
         choices:[ {id:'two_lightning_claws', name:'Two lightning claws', cost:15, costMode:'flat'} ]},
       { id:'shield_or_bombs', label:'May take one of the following:', mode:'pick-one', scope:'model',
@@ -322,7 +322,7 @@ const HERESY_UNITS = [
           {id:'paragon_blade',       name:'Paragon blade',       cost:30, costMode:'flat'},
           {id:'boarding_shield',     name:'Boarding shield',     cost:0,  costMode:'flat', free:true, note:'+Heavy'},
         ]},
-      { id:'dual_claws', label:'May exchange bolt pistol AND chainsword for:', mode:'toggle', scope:'model',
+      { id:'dual_claws', label:'May exchange bolt pistol AND chainsword for:', replaces:['Bolt pistol','Chainsword'], mode:'toggle', scope:'model',
         note:'Niedostępne z Spatha combat bike / Scimitar jetbike.',
         choices:[ {id:'two_lightning_claws', name:'Two lightning claws', cost:20, costMode:'flat'} ]},
       { id:'shield_or_bombs', label:'May take one of the following:', mode:'pick-one', scope:'model',
@@ -788,16 +788,17 @@ const HERESY_UNITS = [
       { id:'extra', label:'May include up to 2 additional Leviathan Dreadnoughts:', mode:'add-models', scope:'unit', min:0, max:2,
         choices:[ {id:'leviathan', name:'Leviathan Dreadnought', cost:270, costMode:'per-model'} ]},
       { id:'claw_swap', label:'May replace either siege claw + in-built meltagun with one of:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:2},
+        replaces:['Two Leviathan siege claws with in-built meltagun'], stockPer:2,
         note:'Storm cannon / cyclonic melta lance / grav-flux bombard → Attacks spada do 4 (raz, niezależnie od liczby wymian).',
         choices:[
           {id:'siege_drill',       name:'Leviathan siege drill w/ meltagun', cost:5,  costMode:'per-each'},
-          {id:'storm_cannon',      name:'Leviathan storm cannon',  cost:10, costMode:'per-each', note:'*A→4'},
-          {id:'cyclonic_lance',    name:'Cyclonic melta lance',    cost:20, costMode:'per-each', note:'*A→4'},
-          {id:'grav_flux',         name:'Grav-flux bombard',       cost:5,  costMode:'per-each', note:'*A→4'},
+          {id:'storm_cannon',      name:'Leviathan storm cannon',  cost:10, costMode:'per-each', note:'*A→4', statMods:{A:4}, statGroup:'lev_a4'},
+          {id:'cyclonic_lance',    name:'Cyclonic melta lance',    cost:20, costMode:'per-each', note:'*A→4', statMods:{A:4}, statGroup:'lev_a4'},
+          {id:'grav_flux',         name:'Grav-flux bombard',       cost:5,  costMode:'per-each', note:'*A→4', statMods:{A:4}, statGroup:'lev_a4'},
         ]},
       { id:'phosphex', label:'May take one:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
         choices:[ {id:'phosphex_discharger', name:'Phosphex discharger', cost:20, costMode:'per-each'} ]},
-      { id:'flamer_swap', label:'May exchange both heavy flamers for:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1},
+      { id:'flamer_swap', label:'May exchange both heavy flamers for:', mode:'ratio-swap', scope:'model', ratio:{per:1,count:1}, replaces:['Two heavy flamers'],
         choices:[ {id:'volkite_calivers', name:'Two twin-linked volkite calivers', cost:15, costMode:'per-each'} ]},
     ],
   },

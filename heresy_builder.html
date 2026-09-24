@@ -156,7 +156,7 @@
   .dtitle{font-size:15px;font-weight:800;margin:2px 2px 12px;display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
   .dtitle .dpts{font-size:13px;font-weight:800;color:var(--green)}
   .dtitle .dpts.over{color:var(--red)}
-  .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .dgrid{display:grid;grid-template-columns:1fr;gap:10px}
   .dtile{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 12px 10px;cursor:pointer;position:relative;overflow:hidden;user-select:none}
   .dtile:active{transform:scale(.97);border-color:var(--accent)}
   .dt-cost{position:absolute;top:9px;right:9px;background:var(--gold);color:#0d1117;font-size:10px;font-weight:800;padding:2px 6px;border-radius:5px}
@@ -173,6 +173,22 @@
   .oh .oh-sub{font-size:11px;color:var(--muted);margin-top:3px}
   .oh .cost{flex:none;background:var(--gold);color:#0d1117;font-size:13px;font-weight:800;padding:4px 10px;border-radius:7px}
   #printArea{display:none}
+  /* Podgląd: górny pasek schowany, tylko powrót */
+  body.disp header{display:none}
+  #backBar{display:none;position:sticky;top:0;z-index:20;background:linear-gradient(180deg,#0a0e16,var(--bg));border-bottom:1px solid var(--border);padding:10px 14px;align-items:center;gap:8px}
+  body.disp #backBar{display:flex}
+  #backBar .back{background:var(--accent);color:#0d1117;border:none;font-size:13px;font-weight:800;padding:7px 14px;border-radius:8px;cursor:pointer}
+  #backBar .printb{margin-left:auto}
+  .dtile table.stats{margin-top:6px}
+  .dtile table.stats th{font-size:8px;padding:2px}
+  .dtile table.stats td{font-size:11px;padding:3px 2px}
+  .dtile table.stats td.pname{font-size:10px}
+  .dt-ret{margin-top:8px;padding-top:7px;border-top:1px dashed var(--border)}
+  .dt-ret .dt-rn{font-size:11px;font-weight:700;color:var(--accent2)}
+  .dt-ret .dt-rn small{color:var(--muted);font-weight:600}
+  td.mod{color:var(--gold)}
+  .chip.gone{text-decoration:line-through;opacity:.45}
+  .ret-sep{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:700;margin:14px 0 8px;padding-top:10px;border-top:1px dashed var(--border)}
   .psheet{margin-bottom:16px}
   .chips{display:flex;flex-wrap:wrap;gap:3px}
   table.wtab{width:100%;border-collapse:collapse;margin-top:2px}
@@ -205,7 +221,7 @@
   table.stats td.pname{text-align:left;color:var(--accent2);font-weight:600;font-size:11px}
 
   @media print{
-    header, .viewbar, #addRow, #roster, #catalog, #menu, #gwrap, #dispWrap{display:none !important}
+    header, #backBar, .viewbar, #addRow, #roster, #catalog, #menu, #gwrap, #dispWrap{display:none !important}
     #printArea{display:block !important}
     body{background:#fff;color:#000;padding:0}
     .psheet{break-inside:avoid}
@@ -240,6 +256,7 @@
     <button class="printb" id="printBtn" onclick="window.print()" style="display:none">🖨 Drukuj</button>
   </div>
 </header>
+<div id="backBar"><button class="back" onclick="setView('build')">← Builder</button><button class="printb" onclick="window.print()">🖨</button></div>
 
 <div class="wrap">
   <div class="add-row" id="addRow"><button class="add-btn" onclick="openCatalog()">+ Dodaj jednostkę</button></div>
@@ -355,6 +372,54 @@ function reconcileRatios(e){ const u=unitById(e.unitId); if(!u)return;
     if(used>al){ let over=used-al; Object.keys(s).sort((a,b)=>s[b]-s[a]).forEach(id=>{ if(over<=0)return; const t=Math.min(over,s[id]); s[id]-=t; over-=t; if(s[id]===0)delete s[id]; }); }
   }); }
 
+/* ── Wymiany stocku (option.replaces) + wbudowane bronie ───────────────── */
+// ile egzemplarzy danego stockowego wargearu wymieniono (suma po opcjach z replaces)
+function replacedCount(e,name){ const u=unitById(e.unitId); if(!u)return 0; let n=0;
+  (u.options||[]).forEach(o=>{ if(!o.replaces||o.replaces.indexOf(name)<0)return; const sel=e.sel[o.id];
+    if(o.mode==='ratio-swap'||o.mode==='add-models')n+=optCount(e,o);
+    else if(o.mode==='toggle'||o.mode==='unit-per-model'){ const s=sel||{}; n+=Object.keys(s).filter(k=>s[k]).length; }
+    else if(sel&&typeof sel==='string')n+=1; });
+  return n; }
+function stockPerModel(u,name){ let p=1; (u.options||[]).forEach(o=>{ if(o.replaces&&o.replaces.indexOf(name)>=0&&o.stockPer)p=Math.max(p,o.stockPer); }); return p; }
+// ile modeli nadal ma dany stock (0 = w pełni wymieniony)
+function stockRemaining(e,name){ const u=unitById(e.unitId); const m=modelCount(e); const per=stockPerModel(u,name);
+  return Math.max(0, m*per-replacedCount(e,name)); }
+function stockGone(e,name){ return stockRemaining(e,name)<=0; }
+// broń wbudowana (jeden wpis wargearu → kilka profili)
+const WEAPON_BUNDLES={
+  'Two Leviathan siege claws with in-built meltagun':['Leviathan siege claw','Meltagun'],
+  'Leviathan siege drill w/ meltagun':['Leviathan siege drill','Meltagun'],
+};
+// wybrany konsul → grantsWargear
+function consulGrants(e){ const u=unitById(e.unitId); const out=[];
+  (u.options||[]).forEach(o=>{ if(o.mode!=='consul')return; const sel=e.sel[o.id]; const ch=sel&&(o.choices||[]).find(c=>c.id===sel); if(ch&&ch.grantsWargear)out.push(...ch.grantsWargear); });
+  return out; }
+
+/* ── Profile efektywne (statMods z wybranych opcji) ─────────────────────── */
+function svNum(v){ const m=String(v==null?'':v).match(/(\d)/); return m?+m[1]:99; }
+function applyMods(p,mods){ const q=Object.assign({},p); q._mod=Object.assign({},p._mod||{});
+  Object.keys(mods).forEach(k=>{ const v=mods[k];
+    if(k==='Sv'||k==='Inv'){ if(svNum(v)<svNum(q[k])){ q[k]=v; q._mod[k]=1; } }
+    else if(q[k]!==v){ q[k]=v; q._mod[k]=1; } });
+  return q; }
+// grupy modyfikatorów: {mods, n (ile modeli/egz.), per (ile egz. na model), label}
+function modGroups(e){ const u=unitById(e.unitId); const groups={};
+  (u.options||[]).forEach(o=>{ if(o.scope==='sergeant'||o.scope==='standard')return; const sel=e.sel[o.id];
+    (o.choices||[]).forEach(ch=>{ if(!ch.statMods)return; let n=0;
+      if(o.mode==='ratio-swap'||(o.mode==='pick-one'&&o.scope==='each-model'))n=(sel&&sel[ch.id])||0;
+      else if(o.mode==='toggle'||o.mode==='unit-per-model')n=(sel&&sel[ch.id])?((o.scope==='each-model')?1:modelCount(e)):0;
+      else if(sel===ch.id)n=modelCount(e);
+      if(!n)return; const key=ch.statGroup||(o.id+'|'+ch.id);
+      const g=groups[key]||(groups[key]={mods:ch.statMods,n:0,per:(o.mode==='ratio-swap'&&o.ratio&&o.ratio.count)||1,label:ch.statGroup?'*':ch.name});
+      g.n+=n; if(ch.statGroup&&g.label==='*')g.label=Object.keys(ch.statMods).map(k=>k+' '+ch.statMods[k]).join(', '); }); });
+  return Object.values(groups); }
+function effProfiles(e){ const u=unitById(e.unitId); let rows=(u.profiles||[]).map(p=>Object.assign({},p));
+  if(!e||!e.sel)return rows; const m=modelCount(e);
+  modGroups(e).forEach(g=>{ const forced=(m<=1)||(g.n>(m-1)*g.per);
+    if(forced){ rows=rows.map(p=>applyMods(p,g.mods)); }
+    else { const v=applyMods(rows[0],g.mods); v.name=rows[0].name+' ('+g.label+')'; rows.push(v); } });
+  return rows; }
+
 function entryCost(e){
   const u=unitById(e.unitId); if(!u)return 0;
   let c=u.baseCost||0; const models=modelCount(e);
@@ -406,8 +471,9 @@ function reconcileEach(e){
   (u.options||[]).forEach(o=>{
     if(o.mode==='pick-one'&&o.scope==='each-model'){
       let s=e.sel[o.id]; if(!s||typeof s!=='object')s=e.sel[o.id]={};
+      const cap=o.for?Math.min(models,stockRemaining(e,o.for)):models;
       let assigned=Object.values(s).reduce((a,b)=>a+b,0);
-      if(assigned>models){ let over=assigned-models; Object.keys(s).sort((a,b)=>s[b]-s[a]).forEach(id=>{ if(over<=0)return; const t=Math.min(over,s[id]); s[id]-=t; over-=t; if(s[id]===0)delete s[id]; }); }
+      if(assigned>cap){ let over=assigned-cap; Object.keys(s).sort((a,b)=>s[b]-s[a]).forEach(id=>{ if(over<=0)return; const t=Math.min(over,s[id]); s[id]-=t; over-=t; if(s[id]===0)delete s[id]; }); }
     }
   });
 }
@@ -485,11 +551,11 @@ function stepModel(uid,optId,cid,d){
 }
 function stepEachModel(uid,optId,cid,d){
   const e=findEntry(uid); const s=e.sel[optId]=(e.sel[optId]&&typeof e.sel[optId]==='object')?e.sel[optId]:{};
-  const models=modelCount(e); const assigned=Object.values(s).reduce((a,b)=>a+b,0);
+  const oo=(unitById(e.unitId).options||[]).find(x=>x.id===optId); const models=(oo&&oo.for)?Math.min(modelCount(e),stockRemaining(e,oo.for)):modelCount(e); const assigned=Object.values(s).reduce((a,b)=>a+b,0);
   if(d>0&&assigned>=models)return; // brak wolnych modeli
   let v=(s[cid]||0)+d; v=Math.max(0,v); s[cid]=v; if(v===0)delete s[cid]; render();save();
 }
-function setEachExclusive(uid,optId,cid){ const e=findEntry(uid); e.sel[optId]={}; e.sel[optId][cid]=1; render();save(); }
+function setEachExclusive(uid,optId,cid){ const e=findEntry(uid); const was=e.sel[optId]&&e.sel[optId][cid]===1; e.sel[optId]={}; if(!was)e.sel[optId][cid]=1; render();save(); }
 function stepRatio(uid,optId,cid,d){
   const e=findEntry(uid);const u=unitById(e.unitId);const o=u.options.find(x=>x.id===optId);
   const models=modelCount(e); const al=effAllowed(e,o);
@@ -515,16 +581,18 @@ function ptsHtml(ch){const per=ch.costMode==='per-model'?'/mdl':(ch.costMode==='
 /* ── TRYB PODGLĄD (datasheet rostera) ──────────────────────────────────── */
 let VIEW='build';
 function setView(v){ VIEW=v;
+  document.body.classList.toggle('disp',v==='display'); window.scrollTo(0,0);
   document.getElementById('vBuild').classList.toggle('on',v==='build');
   document.getElementById('vDisp').classList.toggle('on',v==='display');
   document.getElementById('printBtn').style.display=(v==='display')?'':'none';
   render();
 }
-function statTable(u){
+function statTable(u,e){
   const cols=(u.profileType==='vehicle')?['M','BS','front','side','rear','hp','capacity']:['M','WS','BS','S','T','W','I','A','Ld','Sv','Inv'];
   const lbl={front:'Fr',side:'Sd',rear:'Rr',hp:'HP',capacity:'Cap'};
   const head='<th></th>'+cols.map(c=>'<th>'+(lbl[c]||c)+'</th>').join('');
-  const rows=(u.profiles||[]).map(p=>'<tr><td class="pname">'+esc(p.name)+'</td>'+cols.map(c=>'<td>'+esc(p[c]!=null?p[c]:'\u2014')+'</td>').join('')+'</tr>').join('');
+  const profs=e?effProfiles(e):(u.profiles||[]);
+  const rows=profs.map(p=>'<tr><td class="pname">'+esc(p.name)+'</td>'+cols.map(c=>'<td'+(p._mod&&p._mod[c]?' class="mod"':'')+'>'+esc(p[c]!=null?p[c]:'\u2014')+'</td>').join('')+'</tr>').join('');
   return '<table class="stats"><tr>'+head+'</tr>'+rows+'</table>';
 }
 function ruleCard(r){ let body='';
@@ -559,12 +627,22 @@ function wRow(name,p,sub){
 }
 function isWpn(n){ return !!(typeof heresyWeapon!=='undefined'&&n&&heresyWeapon(n)); }
 function unitWeapons(e){ const u=unitById(e.unitId); const out=[],seen={};
-  const add=n=>{ if(n&&!seen[n]&&isWpn(n)){seen[n]=1;out.push(n);} };
-  (u.wargear||[]).forEach(add);
-  (u.options||[]).forEach(o=>{ const sel=e.sel[o.id];
-    if(o.mode==='ratio-swap'||o.mode==='add-models'||o.mode==='toggle'||o.mode==='unit-per-model'||(o.mode==='pick-one'&&o.scope==='each-model')){ const s=(sel&&typeof sel==='object')?sel:{}; (o.choices||[]).forEach(c=>{ if(s[c.id])add(c.name); }); }
-    else if(sel){ const c=(o.choices||[]).find(x=>x.id===sel); if(c)add(c.name); }
+  const add1=n=>{ if(n&&!seen[n]&&isWpn(n)){seen[n]=1;out.push(n);} };
+  const add=n=>{ if(WEAPON_BUNDLES[n])WEAPON_BUNDLES[n].forEach(add1); else add1(n); };
+  // warianty meta-broni (Power weapon → sword/axe…): pokaż wybrane, generyk tylko gdy coś nieprzydzielone
+  const addMeta=(o,c,count)=>{ const vars=metaVariants(c.name); if(!vars){add(c.name);return;}
+    const s=(e.var&&e.var[o.id+'|'+c.id])||{}; let a=0; vars.forEach(v=>{ if(s[v.id]>0&&isWpn(v.name)){add(v.name);a+=s[v.id];} });
+    if(a<count)add(c.name); };
+  // archetyp bazowy (pw_choice) dla stocku
+  const arch={}; (u.options||[]).forEach(o=>{ if(o.mode==='pick-one'&&o.scope==='each-model'&&o.for)arch[o.for]=o; });
+  (u.wargear||[]).forEach(w=>{ const rem=stockRemaining(e,w); if(rem<=0)return;
+    const ao=arch[w]; if(ao){ const s=e.sel[ao.id]||{}; let a=0; (ao.choices||[]).forEach(c=>{ if(s[c.id]>0){add(c.name);a+=s[c.id];} }); if(a<rem)add(w); }
+    else add(w); });
+  (u.options||[]).forEach(o=>{ if(o.for)return; const sel=e.sel[o.id];
+    if(o.mode==='ratio-swap'||o.mode==='add-models'||o.mode==='toggle'||o.mode==='unit-per-model'||(o.mode==='pick-one'&&o.scope==='each-model')){ const s=(sel&&typeof sel==='object')?sel:{}; (o.choices||[]).forEach(c=>{ if(s[c.id])addMeta(o,c,typeof s[c.id]==='number'?s[c.id]:1); }); }
+    else if(sel){ const c=(o.choices||[]).find(x=>x.id===sel); if(c)addMeta(o,c,1); }
   });
+  consulGrants(e).forEach(add);
   return out; }
 function weaponTable(e){ const names=unitWeapons(e); if(!names.length)return '';
   let rows=''; names.forEach(n=>{ const w=heresyWeapon(n); if(!w)return;
@@ -574,47 +652,54 @@ function weaponTable(e){ const names=unitWeapons(e); if(!names.length)return '';
 }
 function dsheetBody(e){
   const u=unitById(e.unitId); const cfg=configSummary(e);
-  let body='<div class="dsec"><div class="dsec-t">Profil</div>'+statTable(u)+'</div>';
+  let body='<div class="dsec"><div class="dsec-t">Profil</div>'+statTable(u,e)+'</div>';
   const wtab=weaponTable(e); if(wtab)body+='<div class="dsec"><div class="dsec-t">Bronie</div>'+wtab+'</div>';
-  const gear=(u.wargear||[]).filter(w=>!isWpn(w));
+  const gear=(u.wargear||[]).filter(w=>!isWpn(w)&&!WEAPON_BUNDLES[w]&&!stockGone(e,w)).concat(consulGrants(e).filter(w=>!isWpn(w)));
   if(gear.length)body+='<div class="dsec"><div class="dsec-t">Wyposażenie</div><div class="chips">'+gear.map(w=>chipHtml(w)).join('')+'</div></div>';
   if(cfg)body+='<div class="dsec"><div class="dsec-t">Konfiguracja</div>'+cfg+'</div>';
   if(u.weaponProfiles&&u.weaponProfiles.length)body+='<div class="dsec"><div class="dsec-t">Bronie sygnaturowe</div>'+u.weaponProfiles.map(w=>'<div class="wpn"><b>'+esc(w.name)+'</b> <span class="wprof">'+esc(w.profile)+'</span>'+(w.note?'<div class="note-src">'+esc(w.note)+'</div>':'')+'</div>').join('')+'</div>';
   if(u.rules&&u.rules.length)body+='<div class="dsec"><div class="dsec-t">Zasady specjalne</div><div class="chips">'+u.rules.map(w=>chipHtml(w)).join('')+'</div></div>';
   if(u.rulesText&&u.rulesText.length)body+='<div class="dsec">'+u.rulesText.map(ruleCard).join('')+'</div>';
   if(e.transport){ const tu=unitById(e.transport.unitId); const tcfg=configSummary(e.transport);
-    body+='<div class="dsec"><div class="dsec-t">\uD83D\uDE9A Transport: '+esc(tu.name)+' ('+entryCost(e.transport)+' pts)</div>'+statTable(tu)+weaponTable(e.transport)+
+    body+='<div class="dsec"><div class="dsec-t">\uD83D\uDE9A Transport: '+esc(tu.name)+' ('+entryCost(e.transport)+' pts)</div>'+statTable(tu,e.transport)+weaponTable(e.transport)+
       (tu.wargear&&tu.wargear.length?'<div class="chips">'+tu.wargear.filter(w=>!isWpn(w)).map(w=>chipHtml(w)).join('')+'</div>':'')+tcfg+'</div>'; }
   return body;
 }
-const MINI=[['M','M'],['WS','WS'],['BS','BS'],['S','S'],['T','T'],['W','W'],['Sv','Sv'],['Inv','Inv']];
-const MINI_VEH=[['M','M'],['BS','BS'],['Fr','front'],['Sd','side'],['Rr','rear'],['HP','hp'],['Cap','capacity']];
+// Retinue przypięte do hosta → jeden oddział w podglądzie
+function retinuesOf(host){ return STATE.entries.filter(r=>r.retinueOf===host.uid&&retinueValid(r)); }
+function groupCost(e){ return entryTotalCost(e)+retinuesOf(e).reduce((s,r)=>s+entryTotalCost(r),0); }
+function dispUnits(){ return [...STATE.entries].filter(e=>!retinueValid(e)).sort((a,b)=>SLOT_ORDER.indexOf(unitById(a.unitId).slot)-SLOT_ORDER.indexOf(unitById(b.unitId).slot)); }
 function dispTile(e){
-  const u=unitById(e.unitId); const p=(u.profiles&&u.profiles[0])||{};
-  const set=(u.profileType==='vehicle')?MINI_VEH:MINI;
-  const mini=set.map(pair=>{let v=p[pair[1]];if(v==null)v='\u2014';return '<div><div class="k">'+pair[0]+'</div><div class="v">'+esc(v)+'</div></div>';}).join('');
-  const badge=(retinueValid(e)?' \uD83D\uDEE1':'')+(e.transport?' \uD83D\uDE9A':'');
+  const u=unitById(e.unitId); const rets=retinuesOf(e);
+  const badge=(rets.length?' \uD83D\uDEE1':'')+(e.transport?' \uD83D\uDE9A':'');
+  const models=modelCount(e)+rets.reduce((s,r)=>s+modelCount(r),0);
+  let retHtml=rets.map(r=>{ const ru=unitById(r.unitId);
+    return '<div class="dt-ret"><div class="dt-rn">+ '+esc(ru.name)+' <small>'+modelCount(r)+'\u00d7 \u00b7 '+entryTotalCost(r)+' pts</small></div>'+statTable(ru,r)+'</div>'; }).join('');
   return '<div class="dtile" onclick="openDisp(\''+e.uid+'\')">'+
-    '<div class="dt-cost">'+entryTotalCost(e)+'</div>'+
+    '<div class="dt-cost">'+groupCost(e)+'</div>'+
     '<div class="dt-role">'+esc(ROLES[u.slot]||u.slot)+'</div>'+
     '<div class="dt-name">'+esc(u.name)+'</div>'+
-    '<div class="dt-sub">'+modelCount(e)+'\u00d7 '+(u.profileType==='vehicle'?'poj.':'mdl')+badge+'</div>'+
-    '<div class="mini" style="grid-template-columns:repeat('+set.length+',1fr)">'+mini+'</div></div>';
+    '<div class="dt-sub">'+models+'\u00d7 '+(u.profileType==='vehicle'?'poj.':'mdl')+badge+'</div>'+
+    statTable(u,e)+retHtml+'</div>';
 }
+function groupSheet(e){ let b=dsheetBody(e);
+  retinuesOf(e).forEach(r=>{ const ru=unitById(r.unitId);
+    b+='<div class="ret-sep">\uD83D\uDEE1 Retinue: '+esc(ru.name)+' \u00b7 '+modelCount(r)+'\u00d7 \u00b7 '+entryTotalCost(r)+' pts</div>'+dsheetBody(r); });
+  return b; }
 function openDisp(uid){ const e=STATE.entries.find(x=>x.uid===uid); if(!e)return; const u=unitById(e.unitId);
-  document.getElementById('dispSheet').innerHTML='<div class="oh"><div><div class="role">'+esc(ROLES[u.slot]||u.slot)+'</div><h3>'+esc(u.name)+'</h3><div class="oh-sub">'+modelCount(e)+'\u00d7 '+(u.profileType==='vehicle'?'poj.':'mdl')+'</div></div><div class="cost">'+entryTotalCost(e)+' pts</div></div>'+dsheetBody(e);
+  document.getElementById('dispSheet').innerHTML='<div class="oh"><div><div class="role">'+esc(ROLES[u.slot]||u.slot)+'</div><h3>'+esc(u.name)+'</h3><div class="oh-sub">'+modelCount(e)+'\u00d7 '+(u.profileType==='vehicle'?'poj.':'mdl')+'</div></div><div class="cost">'+groupCost(e)+' pts</div></div>'+groupSheet(e);
   const ov=document.getElementById('dispWrap');ov.classList.add('show');ov.scrollTop=0;
 }
 function closeDisp(ev){ if(ev&&ev.target&&ev.target.id!=='dispWrap')return; document.getElementById('dispWrap').classList.remove('show'); }
 function renderDisplay(){
   const r=document.getElementById('roster');
   if(!STATE.entries.length){r.innerHTML='<div class="empty">Roster jest pusty.<br>Prze\u0142\u0105cz na Builder i dodaj jednostki.</div>';document.getElementById('printArea').innerHTML='';return;}
-  const ordered=[...STATE.entries].sort((a,b)=>SLOT_ORDER.indexOf(unitById(a.unitId).slot)-SLOT_ORDER.indexOf(unitById(b.unitId).slot));
+  const ordered=dispUnits();
   const t=rosterTotal(); const over=t>STATE.cap;
   const title='<div class="dtitle">'+esc(STATE.name||'Roster')+'<span class="dpts'+(over?' over':'')+'">'+t+' / '+STATE.cap+' pts</span></div>';
   r.innerHTML=title+'<div class="dgrid">'+ordered.map(dispTile).join('')+'</div>';
   document.getElementById('printArea').innerHTML=title.replace('dpts'+(over?' over':''),'dpts')+
-    ordered.map(e=>{const u=unitById(e.unitId);return '<div class="psheet"><div class="oh"><div><div class="role">'+esc(ROLES[u.slot]||u.slot)+'</div><h3>'+esc(u.name)+'</h3></div><div class="cost">'+entryTotalCost(e)+' pts \u00b7 '+modelCount(e)+'\u00d7</div></div>'+dsheetBody(e)+'</div>';}).join('');
+    ordered.map(e=>{const u=unitById(e.unitId);return '<div class="psheet"><div class="oh"><div><div class="role">'+esc(ROLES[u.slot]||u.slot)+'</div><h3>'+esc(u.name)+'</h3></div><div class="cost">'+groupCost(e)+' pts \u00b7 '+modelCount(e)+'\u00d7</div></div>'+groupSheet(e)+'</div>';}).join('');
 }
 
 function renderTotals(){
@@ -623,7 +708,7 @@ function renderTotals(){
   const box=document.getElementById('ptsBox');
   box.className='pts'+(t>STATE.cap?' over':(t>0?' ok':''));
   // FOC
-  const counts={}; STATE.entries.forEach(e=>{const u=unitById(e.unitId);if(!u)return;if(retinueValid(e))return;counts[u.slot]=(counts[u.slot]||0)+1;});
+  const counts={}; STATE.entries.forEach(e=>{const u=unitById(e.unitId);if(!u)return;if(retinueValid(e)||retinueKind(u)==='command')return;counts[u.slot]=(counts[u.slot]||0)+1;});
   const strip=document.getElementById('focStrip');
   strip.innerHTML=SLOT_ORDER.filter(s=>counts[s]||FOC_LIM[s]).map(s=>{
     const n=counts[s]||0; const lim=FOC_LIM[s]; let cls='slot';
@@ -662,16 +747,19 @@ function optControl(e,o){
           '<span class="n">'+v+'</span>'+
           '<button onclick="stepRatio(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\',1)"'+(used>=al?' disabled':'')+'>+</button></span></div>'+variantBlock(e,o,ch);
       }).join('');
+  } else if(o.mode==='pick-one'&&o.scope==='each-model'&&o.for&&stockGone(e,o.for)){
+    return '<div class="opt"><div class="opt-l">'+esc(o.label)+'<span class="mode">off</span></div><div class="cx-info">'+esc(o.for)+' wymieniony \u2014 wyb\u00f3r typu nieaktywny.</div></div>';
   } else if(o.mode==='pick-one'&&o.scope==='each-model'){
     const s=(sel&&typeof sel==='object')?sel:{};
-    const assigned=Object.values(s).reduce((a,b)=>a+b,0); const rem=models-assigned;
-    if(o.base&&models<=1){ // bazowa broń, pojedynczy model → radio (ekskluzywny wybór)
+    const capM=o.for?Math.min(models,stockRemaining(e,o.for)):models;
+    const assigned=Object.values(s).reduce((a,b)=>a+b,0); const rem=capM-assigned;
+    if(o.base&&capM<=1&&models<=1){ // bazowa broń, pojedynczy model → radio (ekskluzywny wybór, klik ponownie = odznacz)
       inner=(o.choices||[]).map(ch=>{
         const on=s[ch.id]===1;
         return '<div class="pick'+(on?' sel':'')+'" onclick="setEachExclusive(\''+e.uid+'\',\''+o.id+'\',\''+ch.id+'\')"><span class="nm">'+esc(ch.name)+'</span>'+ptsHtml(ch)+'</div>';
       }).join('');
     } else { // wiele modeli → licznik na wariant (Σ ≤ liczba modeli)
-      const info=o.base?('Przydzielono '+assigned+' / '+models+(rem>0?' \u00b7 nieprzydzielone: '+rem:'')):('Wybrano '+assigned+' / '+models+' modeli');
+      const info=o.base?('Przydzielono '+assigned+' / '+capM+(rem>0?' \u00b7 nieprzydzielone: '+rem:'')+(capM<models?' \u00b7 '+(models-capM)+' wymieni\u0142o':'')):('Wybrano '+assigned+' / '+models+' modeli');
       inner='<div class="cx-info">'+info+'</div>'+
         (o.choices||[]).map(ch=>{
           const v=s[ch.id]||0;
@@ -708,7 +796,7 @@ function renderEntry(e){
   const compMax=maxAddModels(u);
   let body='';
   // notka uzbrojenia bazowego (stock) — klikalne chipy z podglądem statystyk
-  if(u.wargear&&u.wargear.length)body+='<div class="stock"><span class="lbl">Baza</span>'+u.wargear.map(w=>chipHtml(w)).join('')+'</div>';
+  if(u.wargear&&u.wargear.length)body+='<div class="stock"><span class="lbl">Baza</span>'+u.wargear.map(w=>stockGone(e,w)?chipHtml(w).replace('class="chip','class="chip gone'):chipHtml(w)).join('')+'</div>';
   // model stepper (tylko gdy skład zmienny)
   if(compMax>0){
     const addOpt=(u.options||[]).find(o=>o.mode==='add-models');
@@ -735,7 +823,7 @@ function renderEntry(e){
       : 'Dodaj HQ z Master of the Legion w pancerzu '+(ARMOUR_PL[armourClass(u)]||'?')+' (Praetor / Geigor / Hvarl).';
     body+='<div class="attach"><div class="attach-h">'+title+'</div>'+
       '<select class="rsel" onchange="attachRetinue(\''+e.uid+'\',this.value)">'+opts+'</select>'+
-      (retinueValid(e)?'<div class="cx-info">Przypi\u0119to \u2014 nie zu\u017cywa slotu FOC.</div>'
+      (retinueValid(e)?'<div class="cx-info">Przypi\u0119to \u2014 jeden oddzia\u0142 z bohaterem, nie zu\u017cywa slotu FOC.</div>'
         :(hosts.length?'':'<div class="opt-note">'+esc(hint)+'</div>'))+
       '</div>';
   }
@@ -771,6 +859,7 @@ function renderEntry(e){
 
 function render(){
   STATE.entries.forEach(reconcileRatios);
+  STATE.entries.forEach(e=>{ reconcileEach(e); if(e.transport)reconcileEach(e.transport); });
   STATE.entries.forEach(reconcileRetinueMount);
   renderTotals();
   document.getElementById('addRow').style.display=(VIEW==='display')?'none':'';
