@@ -407,7 +407,8 @@ function modGroups(e){ const u=unitById(e.unitId); const groups={};
   (u.options||[]).forEach(o=>{ if(o.scope==='sergeant'||o.scope==='standard')return; const sel=e.sel[o.id];
     (o.choices||[]).forEach(ch=>{ if(!ch.statMods)return; let n=0;
       if(o.mode==='ratio-swap'||(o.mode==='pick-one'&&o.scope==='each-model'))n=(sel&&sel[ch.id])||0;
-      else if(o.mode==='toggle'||o.mode==='unit-per-model')n=(sel&&sel[ch.id])?((o.scope==='each-model')?1:modelCount(e)):0;
+      else if(o.mode==='unit-per-model')n=(sel&&sel[ch.id])?modelCount(e):0; // cały oddział
+      else if(o.mode==='toggle')n=(sel&&sel[ch.id])?((o.scope==='each-model')?1:modelCount(e)):0;
       else if(sel===ch.id)n=modelCount(e);
       if(!n)return; const key=ch.statGroup||(o.id+'|'+ch.id);
       const g=groups[key]||(groups[key]={mods:ch.statMods,n:0,per:(o.mode==='ratio-swap'&&o.ratio&&o.ratio.count)||1,label:ch.statGroup?'*':ch.name});
